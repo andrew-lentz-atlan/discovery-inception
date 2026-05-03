@@ -154,6 +154,29 @@ When this stops being a research artifact and starts being something used by mor
 
 ---
 
+## Harness integration (Phase 2 of intake stack)
+
+The discovery system produces a `RoleContext` skill, but for the closed-loop story to actually work, that skill needs to feed into a runnable harness whose trace data reveals where the discovery fell short. We have such a harness already — [andrew-lentz-atlan/harness](https://github.com/andrew-lentz-atlan/harness) — but it's currently llama-server-only, which blocks anyone on the team from running it without a local model.
+
+**The work, scoped:**
+
+1. **Refactor `core/client.py` in the harness** into a `ModelClient` interface with two implementations:
+   - `LlamaServerClient` — the existing llama.cpp HTTP client, preserved as-is
+   - `LiteLLMClient` — `openai.AsyncOpenAI` pointed at Atlan's LiteLLM proxy via `LITELLM_BASE_URL` + `LITELLM_API_KEY` (matches the pattern in `experiment/`, `job-search/`, and this project)
+2. **Add a `backend` field to the harness config** with values `llama-server | litellm`, defaulting to `litellm` so cloned repos work out of the box.
+3. **Surface the choice in the sidebar** as a dropdown alongside the existing model/temperature/system-prompt controls.
+4. **Reconcile streaming and tool-calling differences** — the existing `chat.js` SSE parser is tuned to llama-server's CRLF-quirk shape. Verify it works for proxy-shaped streams (probably normalized by LiteLLM, but verify) or branch behavior in the parser.
+5. **Update tests** — the 32 existing unit tests assume `LlamaClient`. Refactor mocks to the new interface and add coverage for both backends.
+6. **Update README + `.env.example`** so a fresh clone documents both paths and defaults to the easier one (LiteLLM).
+
+**Why it's the right next move:**
+
+Once this lands, anyone on the team can clone the harness, paste their proxy creds, and have a working agent runtime in two minutes. That's the precondition for the closed-loop story being demonstrable. Without it, "the trace closes the loop" is a slide claim, not a clickable demo.
+
+**Estimated effort:** ~half a day of careful work. Ideally first thing the morning after this plan was written.
+
+**Status:** scheduled.
+
 ## Known prompt weaknesses to address later
 
 Things we noticed during the 2026-05-03 hand-run that produced the SC gold reference, but deliberately did not fix tonight to avoid going down a rabbit hole. Address when an artifact surfaces them more sharply or when we have time to test fixes properly.

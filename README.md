@@ -24,6 +24,21 @@ This project tests that thesis by building the tool that does decomposition for 
 
 - 2026-05-03: Project conceived. Planning docs drafted. No implementation. Next concrete move is the intake agent in [`02-intake-agent.md`](plans/02-intake-agent.md).
 
-## Sister project
+## Companion: the harness
 
-- `../harness/` — the Phase 1+2 LLM agent harness built from scratch. This project will run on top of it (using the existing agent loop, tool registry, and trace view as building blocks).
+- [andrew-lentz-atlan/harness](https://github.com/andrew-lentz-atlan/harness) — a minimal, fully-inspectable LLM agent harness. This is what consumes the `RoleContext` outputs we produce and runs the actual agent. Its trace view is the introspection layer that closes the discovery → build → trace → feedback loop:
+
+```
+discovery-inception produces context repo
+        │
+        ▼
+harness consumes it and runs the agent
+        │
+        ▼
+harness's trace tab reveals which steps had bad context
+        │
+        ▼
+feedback patches the discovery output
+```
+
+Currently the harness is llama-server-only. The next step (in flight) is to add a LiteLLM proxy backend so anyone with proxy creds can run it without a local model — see `plans/04-future-considerations.md` for the integration plan.
