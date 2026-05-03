@@ -1,0 +1,120 @@
+{
+  "role_name": "Solutions Consultant",
+  "role_summary": "Solutions Consultants serve as primary technical points of contact for implementing Success Plan use cases, providing strategic implementation leadership and customer technical partnership. They translate business problems into technical implementation plans and advise on technical strategy for governance, metadata management, and data operations. The role bridges strategy with execution, helping customers become self-sufficient in operating and extending Atlan.",
+  "primary_outcomes": [
+    "Enable customers to become self-sufficient in operating and extending Atlan"
+  ],
+  "typical_workflows": [
+    {
+      "name": "Implement solution using existing products",
+      "purpose": "Deploy Atlan capabilities to address a customer's metadata and data governance challenge.",
+      "trigger": "Customer has an identified use case or problem (e.g., inconsistent documentation across 50+ data sources).",
+      "steps": [
+        "Assess current state and define target metadata maturity",
+        "Design phased implementation plan: connectors -> classification -> glossary -> search optimization",
+        "Guide execution across quarters, adjusting based on adoption metrics",
+        "Enable customer team to maintain and evolve the solution"
+      ],
+      "typical_duration": null
+    }
+  ],
+  "decision_criteria": [
+    {
+      "name": "Build vs. escalate to Solutions Architect",
+      "inputs": [
+        "Scope and complexity of the required solution",
+        "SC's capabilities and bandwidth"
+      ],
+      "criteria": [
+        "Solutions Architects lead most solution builds",
+        "SCs build where they are able"
+      ],
+      "is_judgment": true
+    }
+  ],
+  "escalation_paths": [
+    {
+      "trigger": "Net-new solution builds are required that exceed SC capabilities.",
+      "handoff_target": "Solutions Architects",
+      "artifacts_passed": [
+        "Current state assessment",
+        "Implementation plan",
+        "Customer context"
+      ]
+    }
+  ],
+  "domain_vocabulary": {
+    "Solutions Consultant": "Primary technical point of contact for implementation of Success Plan use cases; serves as a trusted technical advisor who bridges strategy with execution. Translates business problems into technical implementation plans and advises on technical strategy for governance, metadata management, and data operations.",
+    "TAM": "Formerly used title for Solutions Consultant; now superseded by the Solutions Consultant role name.",
+    "Solutions Architect": "Role responsible for designing and leading net-new solution builds; consulted when requirements exceed standard Atlan product capabilities.",
+    "CSA": "Likely abbreviation for Solutions Architect; referenced in context of leading most solution builds.",
+    "Success Plan use cases": "Implementation projects aligned with the customer's strategic objectives and covered by their Success Plan with Atlan.",
+    "Implementation Engineer": "Role focused on connector deployment and data integration work; outside the scope of the Solutions Consultant.",
+    "Customer Success Manager (CSM)": "Role that owns the customer relationship and commercial outcomes; distinct from Solutions Consultant's technical leadership.",
+    "Metadata maturity": "The target state of metadata governance and documentation completeness the Solutions Consultant defines with the customer.",
+    "Adoption metrics": "Measurements used to track and adjust solution execution across quarters."
+  },
+  "common_edge_cases": [
+    {
+      "description": "SC has capability to build solutions but the role structure leaves this optional.",
+      "handling": "SCs are encouraged to build where they are able, but Solutions Architects (CSAs) take the lead on most solution builds."
+    }
+  ],
+  "unwritten_rules": [
+    "Solutions Consultants should build solutions independently when they have the capability, rather than automatically deferring to Solutions Architects.",
+    "Enable customer self-sufficiency and long-term independence as a core success criterion, not just solution delivery.",
+    "Solutions execution should be phased and adaptive, with regular checkpoints to adjust based on adoption metrics and customer readiness."
+  ],
+  "confidence_per_field": {
+    "role_name": 1.0,
+    "role_summary": 0.9,
+    "primary_outcomes": 0.6,
+    "typical_workflows": 0.8,
+    "decision_criteria": 0.5,
+    "escalation_paths": 0.85,
+    "domain_vocabulary": 0.7,
+    "common_edge_cases": 0.75,
+    "unwritten_rules": 0.5,
+    "flagged_unknowns": 0.85
+  },
+  "flagged_unknowns": [
+    {
+      "field": "Escalation decision criteria for Solutions Architect handoff",
+      "why_it_matters": "An agent needs to know what signals (scope, timeline, complexity) trigger escalation to avoid incorrectly handling vs. escalating similar requests.",
+      "probe_suggestion": "What specific criteria do Solutions Consultants use to decide whether they can implement a solution or need to escalate to Solutions Architects? Examples: timeline constraints, technical complexity, architecture scope, team size."
+    },
+    {
+      "field": "Definition and scope of Success Plan use cases",
+      "why_it_matters": "An agent needs to understand what types of work fall within the SC's primary responsibility to correctly scope and route requests.",
+      "probe_suggestion": "What are 3-5 specific examples of use cases that are typically included in a customer's Success Plan that a Solutions Consultant would implement?"
+    },
+    {
+      "field": "Criteria and examples for net-new vs. standard implementations",
+      "why_it_matters": "The source says 'net-new solution builds' but without concrete examples, an agent can't distinguish which requests require escalation.",
+      "probe_suggestion": "Give specific examples of what you consider a 'net-new solution build' (needing SA involvement) vs. a 'standard Atlan implementation' (SC handles alone)."
+    },
+    {
+      "field": "Measurement criteria for customer self-sufficiency",
+      "why_it_matters": "The role's success metric is enabling self-sufficiency, but without defined milestones, an agent can't evaluate whether the outcome has been achieved.",
+      "probe_suggestion": "How does a Solutions Consultant determine that a customer has achieved self-sufficiency? What specific milestones, skills, or capabilities must the customer demonstrate?"
+    },
+    {
+      "field": "Factors determining implementation phase design and pace",
+      "why_it_matters": "The workflow mentions phased execution and adjustment based on adoption metrics, but the factors driving these decisions aren't specified.",
+      "probe_suggestion": "How do Solutions Consultants decide on the phases and timeline for implementation? What signals determine whether to accelerate, slow down, or adjust the plan?"
+    },
+    {
+      "field": "Interaction model and handoff points with CSM",
+      "why_it_matters": "While the source separates SC and CSM roles, it doesn't explain the collaboration pattern or when/how they coordinate on shared customer success.",
+      "probe_suggestion": "How does a Solutions Consultant coordinate with the CSM? Are there regular touchpoints, handoffs, or shared decision-making moments?"
+    },
+    {
+      "field": "Specific tools, APIs, and systems used",
+      "why_it_matters": "An agent needs to know what systems and tools it should reference when assessing current state, designing solutions, and guiding execution.",
+      "probe_suggestion": "What are the primary systems, APIs, or tools a Solutions Consultant uses to assess metadata maturity, design phased plans, and track adoption metrics?"
+    }
+  ],
+  "source_artifacts": [
+    "sc-role.md"
+  ]
+}

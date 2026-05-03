@@ -1,0 +1,42 @@
+# Secrets — never commit
+.env
+.env.local
+*.pem
+*.key
+credentials*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtualenv
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+build/
+*.egg
+
+# Generated outputs
+# Note: skills/solutions-consultant-gold/ IS committed (gold reference)
+# Other generated skills (from real intake runs) are not — uncomment to ignore them:
+# skills/solutions-consultant/
