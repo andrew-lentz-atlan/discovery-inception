@@ -19,10 +19,12 @@ This project tests that thesis by building the tool that does decomposition for 
 | [02-intake-agent.md](plans/02-intake-agent.md) | When you're ready to build the first concrete piece. This is the smallest scoped experiment that pressure-tests the most novel idea (CaaS). |
 | [03-stages-deep-dive.md](plans/03-stages-deep-dive.md) | When you need the per-stage detail. Hard parts, prompting notes, sub-agents per stage. |
 | [04-future-considerations.md](plans/04-future-considerations.md) | When you've got an MVP and need to think about output format, evals, scale. Parking lot for things that aren't on the critical path now. |
+| [demos/closed-loop-sc.md](demos/closed-loop-sc.md) | When you want to *see* the closed loop work. End-to-end recipe + verbatim agent transcripts proving the priors actually shape behavior. The artifact to share with anyone asking "does this thing actually work?" |
 
 ## Status
 
-- 2026-05-03: Project conceived. Planning docs drafted. No implementation. Next concrete move is the intake agent in [`02-intake-agent.md`](plans/02-intake-agent.md).
+- **2026-05-04 — Closed loop closed.** First end-to-end demo working. The discovery system produces a `RoleContext`, `scripts/role_to_prompt.py` renders it as a system prompt, the harness consumes it, and the agent uses the priors — *including* refusing to fabricate when it hits a gap marker and probing the user instead. See [`demos/closed-loop-sc.md`](demos/closed-loop-sc.md) for the recipe and verbatim transcripts of the four test questions.
+- 2026-05-03: Project conceived. Planning docs drafted. Intake agent built. First successful production run on the SC role (see [`skills/solutions-consultant/context.json`](skills/solutions-consultant/context.json)).
 
 ## Companion: the harness
 
