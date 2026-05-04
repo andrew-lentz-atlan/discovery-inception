@@ -94,36 +94,55 @@ async def call_step(
 ) -> BaseModel:
     """One LLM call → validated Pydantic instance.
 
-    Uses response_format={"type": "json_object"} so the proxy returns
-    valid JSON; we then validate against the Pydantic model.
+    Note on response_format: we deliberately do NOT pass
+    `response_format={"type": "json_object"}`. When LiteLLM proxies that
+    OpenAI-shaped param to Claude, it can result in the model returning
+    a minimal `{}` instead of following the prompt's schema. Claude
+    follows the prompt's "output JSON only" instructions reliably without
+    needing the structured-output flag — keep the prompt strict and
+    parse with our existing fence-tolerant JSON parser.
     """
     response = await client.chat.completions.create(
         model=MODEL,
         max_tokens=max_tokens,
         temperature=temperature,
-        response_format={"type": "json_object"},
         messages=[
             {
                 "role": "system",
                 "content": (
                     "You produce JSON output exactly as instructed by the user. "
                     "Output only the JSON object — no prose, no markdown fences, "
-                    "no preamble or commentary."
+                    "no preamble or commentary. Begin your response with `{` and "
+                    "end with `}`."
                 ),
             },
             {"role": "user", "content": user_prompt},
         ],
     )
     raw = response.choices[0].message.content or ""
+
+    if not raw.strip():
+        raise ValueError(
+            f"{output_model.__name__}: empty response from model. "
+            f"finish_reason={response.choices[0].finish_reason!r}"
+        )
+
     try:
         data = parse_json_response(raw)
     except json.JSONDecodeError as exc:
         raise ValueError(
-            f"Could not parse JSON for {output_model.__name__}: {exc}\n"
+            f"{output_model.__name__}: could not parse JSON — {exc}\n"
             f"Raw content (first 1200 chars):\n{raw[:1200]}"
         ) from exc
 
-    return output_model.model_validate(data)
+    try:
+        return output_model.model_validate(data)
+    except Exception as exc:
+        raise ValueError(
+            f"{output_model.__name__}: parsed JSON but validation failed — {exc}\n"
+            f"Parsed JSON: {json.dumps(data, indent=2)[:1200]}\n"
+            f"Raw content (first 1200 chars):\n{raw[:1200]}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,148 @@
+{
+  "role_name": "Solutions Consultant",
+  "role_summary": "Solutions Consultants serve as the primary technical point of contact and trusted advisor for implementation of Success Plan use cases, translating business problems into technical implementation plans with clear milestones and deliverables. They bridge strategy with execution by advising on technical strategy and best practices for governance, metadata management, and data operations, while enabling customers to become self-sufficient in operating and extending Atlan.",
+  "primary_outcomes": [
+    "Customers become self-sufficient in operating and extending Atlan",
+    "Implementation of Success Plan use cases completed with clear milestones and deliverables",
+    "Adoption metrics tracked and used to adjust phased implementation plans"
+  ],
+  "typical_workflows": [
+    {
+      "name": "Phased metadata maturity implementation",
+      "purpose": "Transform customer's data documentation and discoverability from current state to target metadata maturity",
+      "trigger": "Customer challenge identified during engagement (e.g., multiple data sources with no consistent documentation)",
+      "steps": [
+        "Assess current state and define target metadata maturity",
+        "Design phased implementation plan: connectors → classification → glossary → search optimization",
+        "Guide execution across quarters, adjusting based on adoption metrics",
+        "Enable customer team to maintain and evolve the solution"
+      ],
+      "typical_duration": null
+    }
+  ],
+  "decision_criteria": [
+    {
+      "name": "Build vs. collaborate decision",
+      "inputs": [
+        "Scope of solution required",
+        "Solutions Consultant's capability and capacity",
+        "Whether net-new solution builds are needed"
+      ],
+      "criteria": [
+        "Implement solutions using existing products, certified apps/solutions, and platform capabilities",
+        "Collaborate with Solutions Architects when net-new solution builds are required",
+        "Solutions Consultants may build where they are able, though CSAs take the lead on most solution builds"
+      ],
+      "is_judgment": true
+    }
+  ],
+  "escalation_paths": [
+    {
+      "trigger": "Net-new solution builds are required beyond existing products and certified apps",
+      "handoff_target": "Solutions Architects",
+      "artifacts_passed": [
+        "Current state assessment",
+        "Target metadata maturity definition",
+        "Implementation plan and requirements"
+      ]
+    }
+  ],
+  "domain_vocabulary": {
+    "Solutions Consultant": "Formerly known as TAMs; serves as the primary technical point of contact for implementation of Success Plan use cases, translating business problems into technical implementation plans with clear milestones and deliverables, and enabling customers to become self-sufficient in operating and extending Atlan.",
+    "TAM": "Former title for Solutions Consultant; see Solutions Consultant for current definition.",
+    "Success Plan use cases": "Implementation objectives and outcomes defined collaboratively with the customer that Solutions Consultants lead execution on.",
+    "Atlan": "The data governance and metadata management platform that Solutions Consultants implement and advise on.",
+    "Solutions Architect": "Role that takes the lead on net-new solution builds; Solutions Consultants collaborate with Solutions Architects when custom solution development is required beyond existing products and certified apps.",
+    "CSA": "[INFERRED — please confirm] Abbreviation for Solutions Architect, used in the source as 'CSAs take the lead on most solution builds.'",
+    "CSM": "[INFERRED — please confirm] Customer Success Manager — standard industry term; the source states CSMs own the customer relationship and commercial outcomes, distinguishing this from the Solutions Consultant role.",
+    "Implementation Engineer": "Role that owns connector deployment work; distinct from Solutions Consultant responsibilities.",
+    "metadata maturity": "A target state of data documentation and governance that Solutions Consultants assess and define for customers, typically progressing through phases of connectors, classification, glossary, and search optimization.",
+    "phased implementation plan": "A structured, multi-quarter approach to implementing customer solutions with clear milestones, deliverables, and adoption metrics used to adjust execution.",
+    "certified apps/solutions": "Pre-built or validated solutions and applications within Atlan's platform that Solutions Consultants can implement without requiring net-new custom builds.",
+    "platform capabilities": "Native features and functionality of Atlan that Solutions Consultants leverage to implement solutions.",
+    "adoption metrics": "Quantitative measures used to track customer progress and inform adjustments to phased implementation plans across quarters.",
+    "governance": "Best practices and technical strategy domain that Solutions Consultants advise customers on, as part of their technical advisory responsibilities.",
+    "metadata management": "Best practices and technical strategy domain that Solutions Consultants advise customers on, as part of their technical advisory responsibilities.",
+    "data operations": "Best practices and technical strategy domain that Solutions Consultants advise customers on, as part of their technical advisory responsibilities.",
+    "current state assessment": "Analysis of a customer's existing data documentation, systems, and processes; the first step in the phased metadata maturity implementation workflow.",
+    "target metadata maturity": "The desired end-state level of data governance and documentation that Solutions Consultants define in collaboration with customers."
+  },
+  "common_edge_cases": [
+    {
+      "description": "Customer has 50+ data sources with no consistent documentation and data teams waste significant time searching for datasets",
+      "handling": "Assess current state, design phased implementation plan starting with connectors, then classification, glossary, and search optimization, guide execution across quarters while adjusting based on adoption metrics"
+    }
+  ],
+  "unwritten_rules": [
+    "When a customer can build a solution themselves with existing products and certified apps, prefer customer self-sufficiency over SC building, but SCs should still build where they are able to.",
+    "On solution builds, default to Solutions Architects taking the lead, but encourage SCs to build when capable rather than always deferring.",
+    "Prioritize translating business problems into phased technical plans with clear milestones over jumping to immediate implementation."
+  ],
+  "confidence_per_field": {
+    "role_name": 1.0,
+    "role_summary": 0.95,
+    "primary_outcomes": 0.85,
+    "typical_workflows": 0.8,
+    "decision_criteria": 0.75,
+    "escalation_paths": 0.85,
+    "domain_vocabulary": 0.9,
+    "common_edge_cases": 0.8,
+    "unwritten_rules": 0.7,
+    "flagged_unknowns": 0.95
+  },
+  "flagged_unknowns": [
+    {
+      "field": "Typical duration of phased metadata maturity implementation",
+      "why_it_matters": "Without knowing the expected timeline (e.g., 2 quarters, 6 months, 1 year), an agent cannot set realistic milestones, pace guidance, or know when to flag delays as problems.",
+      "probe_suggestion": "In the example of a customer with 50+ data sources, how many quarters or months would you typically expect the full phased implementation (connectors → classification → glossary → search optimization) to take from start to finish?"
+    },
+    {
+      "field": "Adoption metrics definition and thresholds",
+      "why_it_matters": "The role states adoption metrics are used to adjust plans, but without knowing which metrics are tracked (e.g., % of data sources cataloged, user login frequency, query volume) and what thresholds trigger plan adjustments, an agent cannot make informed decisions about pacing or escalation.",
+      "probe_suggestion": "Name 2–3 specific adoption metrics you track during a phased implementation (e.g., percentage of connectors deployed, active users per month, searches per week). At what point in each metric would you consider the phase unsuccessful and adjust the plan?"
+    },
+    {
+      "field": "Criteria for 'Solutions Consultant's capability and capacity' in build vs. collaborate decision",
+      "why_it_matters": "The decision criteria lists this as an input, but without defining what 'capability' and 'capacity' mean (e.g., technical skills, available hours, prior experience with a feature), an agent cannot reliably decide whether to build or escalate.",
+      "probe_suggestion": "When you evaluate whether a Solutions Consultant has the 'capability' to build a solution, what specific skills or prior experience do you check for? And what does 'capacity' mean—available hours per week, or something else?"
+    },
+    {
+      "field": "Definition of 'net-new solution builds' vs. implementation using existing products",
+      "why_it_matters": "The escalation trigger hinges on this distinction, but the boundary is unclear; an agent needs concrete examples to know when a request crosses from 'implement certified app' to 'build net-new solution requiring Solutions Architect.'",
+      "probe_suggestion": "Give an example of a customer request that would be a 'net-new solution build' requiring a Solutions Architect, and contrast it with an example that would be 'implementation using existing products or certified apps' that a Solutions Consultant handles alone."
+    },
+    {
+      "field": "Failure modes and recovery paths in phased implementation",
+      "why_it_matters": "The workflow describes the happy path (assess → design → guide → enable), but an agent needs to know what happens if adoption stalls, a phase fails, or a customer team cannot execute—without this, the agent cannot handle common problems.",
+      "probe_suggestion": "If a customer completes the connectors phase but adoption is very low (e.g., <20% of data teams using the catalog), what does the Solutions Consultant do? Do you pause, pivot to a different phase, or escalate?"
+    },
+    {
+      "field": "Tools and systems Solutions Consultants use to track adoption and manage implementation",
+      "why_it_matters": "The role involves tracking adoption metrics and adjusting plans, but without knowing what systems or dashboards are used (e.g., Atlan's own platform, Salesforce, a custom tracker), an agent cannot know where to pull data or log progress.",
+      "probe_suggestion": "What tool or system do you use to track adoption metrics and log progress during a phased implementation? Is it Atlan's platform itself, a CRM, a project management tool, or something else?"
+    },
+    {
+      "field": "Handoff protocol and timing to Solutions Architects",
+      "why_it_matters": "The escalation path names Solutions Architects as the target, but without knowing when in the workflow the handoff occurs (e.g., immediately upon identifying net-new build, or after a discovery call), what artifacts are needed, and who owns the customer relationship during the handoff, an agent may escalate too early or too late.",
+      "probe_suggestion": "When you identify that a net-new solution build is needed, do you hand off to a Solutions Architect immediately, or do you first conduct additional discovery with the customer? What is the typical turnaround time for a Solutions Architect to take over?"
+    },
+    {
+      "field": "Definition of 'self-sufficient' in customer enablement",
+      "why_it_matters": "A primary outcome is 'customers become self-sufficient in operating and extending Atlan,' but without defining what self-sufficiency looks like (e.g., customer can deploy connectors, write custom metadata rules, troubleshoot issues), an agent cannot know when enablement is complete or what training/documentation is required.",
+      "probe_suggestion": "What does 'self-sufficient' mean for a customer at the end of a phased implementation? Can they deploy new connectors on their own? Write custom classification rules? Troubleshoot common issues without calling you?"
+    },
+    {
+      "field": "Scope boundaries and out-of-scope work for Solutions Consultants",
+      "why_it_matters": "The role description excludes connector deployment (owned by Implementation Engineers) and relationship/commercial ownership (owned by CSMs), but other boundaries are unclear; an agent needs to know what other work is out-of-scope to avoid overcommitting.",
+      "probe_suggestion": "Beyond connector deployment and commercial relationship ownership, what other types of work should a Solutions Consultant decline or hand off to another role?"
+    },
+    {
+      "field": "Frequency and cadence of check-ins and plan adjustments",
+      "why_it_matters": "The workflow mentions adjusting plans based on adoption metrics across quarters, but without knowing how often check-ins happen (e.g., weekly, bi-weekly, monthly), an agent cannot schedule reviews or know when to flag stalled progress.",
+      "probe_suggestion": "During a phased implementation, how often do you check in with the customer to review adoption metrics and adjust the plan—weekly, bi-weekly, monthly, or at the end of each quarter?"
+    }
+  ],
+  "source_artifacts": [
+    "sc-role.md"
+  ]
+}

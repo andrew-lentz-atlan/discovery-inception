@@ -6,8 +6,29 @@ object. Every other intake module reads from / writes to these types.
 """
 from __future__ import annotations
 
-from typing import Literal
-from pydantic import BaseModel, Field
+from typing import Annotated, Any, Literal
+from pydantic import BaseModel, BeforeValidator, Field
+
+
+def _coerce_to_list_of_str(value: Any) -> Any:
+    """Coerce a scalar string into a single-element list.
+
+    Small LLMs occasionally emit a JSON string where the schema expects
+    `list[str]` (typically when the model has only one item to put in
+    the list). Normalize that into a one-element list rather than 400ing
+    the run, but pass through anything else (real lists, None, etc.) so
+    Pydantic still validates downstream.
+    """
+    if isinstance(value, str):
+        return [value]
+    if value is None:
+        return []
+    return value
+
+
+# Use this anywhere a list[str] field could be hit by an LLM that
+# scalarized a one-item list. Equivalent to list[str] otherwise.
+ListOfStr = Annotated[list[str], BeforeValidator(_coerce_to_list_of_str)]
 
 
 # ---------------------------------------------------------------------------
@@ -19,15 +40,15 @@ class Workflow(BaseModel):
     name: str = Field(..., description="Short noun phrase. Example: 'onboard new customer'.")
     purpose: str = Field(..., description="Why this workflow exists. One sentence.")
     trigger: str = Field(..., description="What initiates the workflow.")
-    steps: list[str] = Field(default_factory=list, description="Ordered steps the role takes, as written or implied.")
+    steps: ListOfStr = Field(default_factory=list, description="Ordered steps the role takes, as written or implied.")
     typical_duration: str | None = Field(None, description="If mentioned: how long this normally takes.")
 
 
 class Decision(BaseModel):
     """A judgment moment in the role's work."""
     name: str = Field(..., description="Short label. Example: 'choose escalation path'.")
-    inputs: list[str] = Field(default_factory=list, description="What information the role consults to make this decision.")
-    criteria: list[str] = Field(default_factory=list, description="Rules or heuristics that govern the decision, as stated.")
+    inputs: ListOfStr = Field(default_factory=list, description="What information the role consults to make this decision.")
+    criteria: ListOfStr = Field(default_factory=list, description="Rules or heuristics that govern the decision, as stated.")
     is_judgment: bool = Field(False, description="True if criteria are partly subjective; False if rule-based.")
 
 
@@ -35,7 +56,7 @@ class Escalation(BaseModel):
     """When and how the role hands off to someone else."""
     trigger: str = Field(..., description="The condition under which escalation happens.")
     handoff_target: str = Field(..., description="Who receives the escalation. Role/team name preferred.")
-    artifacts_passed: list[str] = Field(default_factory=list, description="What information goes with the handoff.")
+    artifacts_passed: ListOfStr = Field(default_factory=list, description="What information goes with the handoff.")
 
 
 class EdgeCase(BaseModel):
@@ -64,7 +85,7 @@ class RoleContext(BaseModel):
 
     role_name: str = Field(..., description="Canonical role name. Example: 'Solutions Consultant'.")
     role_summary: str = Field(..., description="2-3 sentences on what the role exists to do.")
-    primary_outcomes: list[str] = Field(
+    primary_outcomes: ListOfStr = Field(
         default_factory=list,
         description="Measurable success states. Each should be specific (named outcome, ideally with a metric).",
     )
@@ -76,7 +97,7 @@ class RoleContext(BaseModel):
         description="Role-specific terms and definitions. Keys are terms, values are definitions.",
     )
     common_edge_cases: list[EdgeCase] = Field(default_factory=list)
-    unwritten_rules: list[str] = Field(
+    unwritten_rules: ListOfStr = Field(
         default_factory=list,
         description=(
             "Heuristics, biases, soft rules captured from the source. These are the most "
@@ -92,7 +113,7 @@ class RoleContext(BaseModel):
         default_factory=list,
         description="Things the source doesn't cover. Input to the discovery agent's gap finder.",
     )
-    source_artifacts: list[str] = Field(
+    source_artifacts: ListOfStr = Field(
         default_factory=list,
         description="Filenames or URLs of the source artifacts this context was extracted from.",
     )
@@ -124,7 +145,7 @@ class ExtractionResult(BaseModel):
     """Output of step 2 — initial structured extraction."""
     role_name: str
     role_summary: str
-    primary_outcomes: list[str] = Field(default_factory=list)
+    primary_outcomes: ListOfStr = Field(default_factory=list)
     typical_workflows: list[Workflow] = Field(default_factory=list)
     decision_criteria: list[Decision] = Field(default_factory=list)
     escalation_paths: list[Escalation] = Field(default_factory=list)
@@ -134,7 +155,7 @@ class ExtractionResult(BaseModel):
 class VocabularyResult(BaseModel):
     """Output of step 3 — deduplicated, defined domain terms."""
     domain_vocabulary: dict[str, str] = Field(default_factory=dict)
-    synonyms_collapsed: list[str] = Field(
+    synonyms_collapsed: ListOfStr = Field(
         default_factory=list,
         description="Notes on synonyms that were merged. Useful for debugging extraction quality.",
     )
@@ -142,8 +163,8 @@ class VocabularyResult(BaseModel):
 
 class UnwrittenRulesResult(BaseModel):
     """Output of step 4 — implicit heuristics and soft rules."""
-    rules: list[str] = Field(default_factory=list)
-    candidate_quotes: list[str] = Field(
+    rules: ListOfStr = Field(default_factory=list)
+    candidate_quotes: ListOfStr = Field(
         default_factory=list,
         description="The source-text snippets each rule was derived from. Aids verification.",
     )

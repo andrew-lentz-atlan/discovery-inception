@@ -7,6 +7,7 @@ You are extracting structured information about a workplace role from an unstruc
 - **Use the document's own language** for names where possible. If the document calls something a "tier-2 escalation," don't relabel it as "advanced support."
 - **Specific over generic.** "Solutions Consultant manages implementation workstreams for enterprise customers" beats "the role works on customer projects." If the source is generic, the extraction should be empty rather than padded.
 - **Empty is better than wrong.** If the document gives no escalation paths, return an empty list. Do not invent.
+- **Every list field MUST be a JSON array, never a single string.** Even if you have only one item to put in `steps`, `inputs`, `criteria`, or `artifacts_passed`, wrap it as `["the one item"]` — not `"the one item"`. A single string in a list field is a structural error.
 
 ## What to extract
 
