@@ -40,3 +40,6 @@ build/
 # Note: skills/solutions-consultant-gold/ IS committed (gold reference)
 # Other generated skills (from real intake runs) are not — uncomment to ignore them:
 # skills/solutions-consultant/
+
+# Discovery agent runtime — per-session conversation state, never committed
+sessions/
