@@ -1,0 +1,33 @@
+{
+  "name": "scope_creep_5turn",
+  "description": "5-turn deterministic customer script. Tests opening, relevance pushback, dense structured content, concrete success criteria, and a long case study with ~10 embedded facts. Each customer turn is agent-agnostic so both systems see identical input.",
+  "use_case_seed": "we want a SoCo agent for new-customer onboarding at TechCo",
+  "role_id": "solutions-consultant",
+  "turns": [
+    {
+      "n": 1,
+      "customer": "We want to reduce time-to-first-value for new enterprise customers from 90 days to 30.",
+      "tests": "concrete opening — does the agent record this cleanly OR immediately rabbit-hole on why?"
+    },
+    {
+      "n": 2,
+      "customer": "Before we go further — explain to me how the questions you're asking are going to actually help me build this agent. It feels like youre just asking why why why with no reasoning. how is this getting me closer?",
+      "tests": "relevance challenge — does the agent answer with a customer-facing rationale, or silently pivot to a different question?"
+    },
+    {
+      "n": 3,
+      "customer": "The SoCo agent operates in a multi-agent system:\n\nCSM: Owns success planning and relationship. Feeds SoCo with outcomes and constraints; receives back a concrete implementation plan and progress.\nCSA: Owns net-new or advanced platform solutions (new apps, primitives, patterns). SoCo must exhaust reuse and existing patterns first, then escalate only genuine new-build work to CSA.\nIE: Owns connectors and data-source integrations. SoCo specifies what connections are needed for a project; IE implements.\nSupport: Handles break/fix and tickets; SoCo should not become a shadow support queue.\n\nSoCo is the coordination and design brain of delivery: given a target outcome, they decide what should be handled by the customer, CSM, CSA, IE, or Support, and keep ownership of the solution as a cohesive project.",
+      "tests": "dense structured content — does the agent mirror CSM/CSA/IE/SoCo vocabulary, form a clear working theory, recognize 'coordination and design brain' as the core framing?"
+    },
+    {
+      "n": 4,
+      "customer": "Success looks like: priority connectors are in (the ones aligned in presales), metadata is bootstrapped for the initial use case, and the success plan is complete. Those are the three deliverables.",
+      "tests": "concrete success criteria — does the agent recognize this as the actual scoreboard and use the customer's exact deliverable language ('priority connectors', 'success plan')?"
+    },
+    {
+      "n": 5,
+      "customer": "Mid-onboarding for a large FS customer, during a working session the governance champion said: 'We just saw your AI governance / data contracts / MCP capabilities in the docs. Can you help us design and implement that now as part of this rollout?'\n\nContext: current SoCo project was scoped around core onboarding (connectors, catalog, personas/access, a few priority domains). AI governance / contracts / MCP had only been discussed as 'future / Phase 2'.\n\nInstead of diving in, the SoCo treated it as scope creep: acknowledged the idea, drew a boundary, explicitly reframed as Phase 2, looped in the CSM. They walked through a checklist offline: is it required to hit the current value metric? no. is it in the SOW? no. is there a self-serve path? yes (Atlan U/docs). does it need solutioning? yes. is there budget and focus to do it now without jeopardizing the rollout? no.\n\nConclusion: do not expand the in-flight project. CSM owns a new 'AI governance & contracts - Phase 2' initiative. The SoCo stays focused on the currently scoped delivery.",
+      "tests": "long narrative with ~10 embedded facts — does the agent capture multiple structural insights (anti_goal: don't expand SOW; decision_point: 5-question checklist; escalation_rule: SoCo+CSM huddle then CSM-led discovery; persona: governance champion) or does it grab one and miss the rest?"
+    }
+  ]
+}
