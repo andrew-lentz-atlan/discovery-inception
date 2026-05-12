@@ -1,8 +1,32 @@
 # discovery-inception
 
-A research project to build a **Discovery Inception agent**: a multi-stage AI system that runs structured discovery for new agentic use cases the way a Forward Deployed Engineer would. Inspired by ThoughtWorks Lean Inception, adapted to AI agent design instead of application design.
+A chained-agent system that interviews a customer to produce a structured spec for a new AI agent build. Inspired by ThoughtWorks Lean Inception, adapted to AI agent design. The tester plays the customer; the discovery agent plays the Forward Deployed Engineer.
 
-This directory holds **planning only**. No code yet. Implementation will live alongside or on top of `../harness/` once the design is locked.
+## Try it (the easy way)
+
+**Fastest** — drop the Claude skill into your installation and say "test discovery-inception for [your use case]":
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/andrew-lentz-atlan/discovery-inception/main/claude-skill/SKILL.md \
+    -o ~/.claude/skills/discovery-inception.md
+```
+
+Restart Claude Code or Claude Desktop. Then in any chat:
+> *"Use the discovery-inception skill — I want to test it for a renewal-risk agent for our CSM team at FinCo."*
+
+The skill handles repo cloning, dependency install, credential setup, and drives the discovery interview turn-by-turn until you wrap up. Output: a `spec.md` you could hand to a builder. See [`claude-skill/README.md`](claude-skill/README.md).
+
+**Or as an MCP server** if you want the discovery tools available across all Claude sessions: see [`agent/mcp_server/README.md`](agent/mcp_server/README.md) for the one-time config.
+
+**Or from the terminal** if you don't use Claude Code/Desktop:
+```bash
+git clone https://github.com/andrew-lentz-atlan/discovery-inception.git
+cd discovery-inception && uv sync
+# add LITELLM_BASE_URL + LITELLM_API_KEY to .env
+uv run python -m agent.cli list-priors
+uv run python -m agent.cli start-session --use-case-seed "..."
+# (continue with submit-turn → state → finalize)
+```
 
 ## What this project is
 
