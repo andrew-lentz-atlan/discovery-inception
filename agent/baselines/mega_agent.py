@@ -194,7 +194,7 @@ class MegaAgentSession:
         customer_message: str,
         *,
         tool_schemas: list[dict],
-        tool_dispatch: Callable[[str, dict], str],
+        tool_dispatch: Callable[[str, dict], Any],
         max_tool_iterations: int = 4,
     ) -> tuple[str, dict]:
         """Run one customer turn with tool-calling enabled.
@@ -253,13 +253,19 @@ class MegaAgentSession:
                     "content": msg.content or "",
                     "tool_calls": tc_payload,
                 })
-                # Execute each tool, append a tool result message
+                # Execute each tool, append a tool result message.
+                # Dispatcher may be sync OR async (await coroutines, pass strings).
+                import inspect
                 for tc in msg.tool_calls:
                     try:
                         args = json.loads(tc.function.arguments) if tc.function.arguments else {}
                     except json.JSONDecodeError:
                         args = {}
-                    result = tool_dispatch(tc.function.name, args)
+                    raw_result = tool_dispatch(tc.function.name, args)
+                    if inspect.iscoroutine(raw_result):
+                        result = await raw_result
+                    else:
+                        result = raw_result
                     tool_calls_made.append({
                         "name": tc.function.name,
                         "arguments": args,
