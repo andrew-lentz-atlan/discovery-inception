@@ -1,0 +1,133 @@
+{
+  "name": "scope_creep_25turn",
+  "description": "25-turn deterministic customer script for the SoCo onboarding agent use case. Covers the full discovery arc: opening goal → org structure → success criteria → scope-creep handling → personas → decision criteria → anti-goals → escalation → risks → current state → end-to-end success picture. Includes natural conversational moves: two relevance pushbacks (early + late), one off-topic riff, one out-of-scope-for-counterparty, one walked-back contradiction, one redirect question, and several hedges. Designed to surface cumulative-cost dynamics over a long conversation.",
+  "use_case_seed": "we want a SoCo agent for new-customer onboarding at TechCo",
+  "role_id": "solutions-consultant",
+  "turns": [
+    {
+      "n": 1,
+      "customer": "We want to reduce time-to-first-value for new enterprise customers from 90 days to 30.",
+      "tests": "concrete opening — does the agent record this cleanly OR immediately rabbit-hole on why?"
+    },
+    {
+      "n": 2,
+      "customer": "Before we go further — explain to me how the questions you're asking are going to actually help me build this agent. It feels like youre just asking why why why with no reasoning. how is this getting me closer?",
+      "tests": "EARLY relevance challenge — agent has minimal state, can it still justify itself?"
+    },
+    {
+      "n": 3,
+      "customer": "The SoCo agent operates in a multi-agent system:\n\nCSM: Owns success planning and relationship. Feeds SoCo with outcomes and constraints; receives back a concrete implementation plan and progress.\nCSA: Owns net-new or advanced platform solutions (new apps, primitives, patterns). SoCo must exhaust reuse and existing patterns first, then escalate only genuine new-build work to CSA.\nIE: Owns connectors and data-source integrations. SoCo specifies what connections are needed for a project; IE implements.\nSupport: Handles break/fix and tickets; SoCo should not become a shadow support queue.\n\nSoCo is the coordination and design brain of delivery: given a target outcome, they decide what should be handled by the customer, CSM, CSA, IE, or Support, and keep ownership of the solution as a cohesive project.",
+      "tests": "dense structured content — vocabulary mirroring, theory formation"
+    },
+    {
+      "n": 4,
+      "customer": "Success looks like: priority connectors are in (the ones aligned in presales), metadata is bootstrapped for the initial use case, and the success plan is complete. Those are the three deliverables we measure against.",
+      "tests": "concrete success criteria — exact deliverable language"
+    },
+    {
+      "n": 5,
+      "customer": "An example to ground this. Mid-onboarding for a large FS customer, during a working session the governance champion said: 'We just saw your AI governance / data contracts / MCP capabilities in the docs. Can you help us design and implement that now as part of this rollout?' Context: current SoCo project was scoped around core onboarding (connectors, catalog, personas/access, a few priority domains). AI governance / contracts / MCP had only been discussed as 'future / Phase 2'. Instead of diving in, the SoCo treated it as scope creep: acknowledged, drew a boundary, reframed as Phase 2, looped in the CSM. They walked through a checklist offline: is it required to hit the current value metric? no. is it in the SOW? no. is there a self-serve path? yes (Atlan U/docs). does it need solutioning? yes. is there budget and focus to do it now without jeopardizing the rollout? no. Conclusion: do not expand. CSM owns a new 'AI governance & contracts - Phase 2' initiative. SoCo stays focused on the currently scoped delivery.",
+      "tests": "long narrative with ~10 embedded facts — extraction depth + structural insight"
+    },
+    {
+      "n": 6,
+      "customer": "On who the agent serves: the SoCo is the primary user. The agent is internal, not customer-facing. The customer interacts with humans (CSM for relationship, SoCo for technical, IE for connectors). The agent's job is to make the SoCo faster and more consistent — not to replace any of those human touchpoints.",
+      "tests": "concrete persona + anti-goal hint (not customer-facing)"
+    },
+    {
+      "n": 7,
+      "customer": "Honestly on the 30-day target — that came down from leadership as a north star. I'm not sure how realistic it is across every customer size. For mid-market it's probably achievable; for the largest enterprise it might be aspirational. But that's our number to chase.",
+      "tests": "hedge with epistemic boundary — agent should flag this rather than treat as bedrock"
+    },
+    {
+      "n": 8,
+      "customer": "When SoCo routes work, the decision criteria are: (1) Can this be handled by the customer themselves with existing certified apps or self-serve docs? Send them there. (2) Does this require connector work? Spec it and hand to IE. (3) Is this net-new pattern work that we don't have a reusable solution for? Escalate to CSA. (4) Is this break/fix or tactical support? Send to Support. (5) Anything else, the SoCo owns directly.",
+      "tests": "concrete decision_point — clear routing logic, should be 5 distinct decision points"
+    },
+    {
+      "n": 9,
+      "customer": "By the way — totally side note but related — we're under pressure from Q4 pipeline. There's a real worry that if we don't get faster at onboarding the customers we already have, we won't be able to absorb the volume coming in from new deals closing. The TTFV number isn't abstract; it's tied to deal flow.",
+      "tests": "concrete_off_topic — riff about pipeline pressure, real fact about why_now"
+    },
+    {
+      "n": 10,
+      "customer": "On pricing implications of the agent — like whether we should productize this for customers or keep it internal — that's above my paygrade. Leadership and product are working through that. I focus on whether the agent makes our SoCos better.",
+      "tests": "out_of_scope_for_counterparty — should auto-flag gap with escalation_target"
+    },
+    {
+      "n": 11,
+      "customer": "Things the agent should NOT do: do not auto-respond to customers, do not make commercial commitments, do not change the success plan without human review, do not bypass the CSM on relationship-affecting decisions. The agent is a tool for the SoCo, not an autonomous decision-maker on the customer relationship.",
+      "tests": "concrete anti_goal — four distinct boundaries"
+    },
+    {
+      "n": 12,
+      "customer": "Honest question — if you were running this for me, what would you ask next?",
+      "tests": "redirect_question — should redirect back, not abandon role"
+    },
+    {
+      "n": 13,
+      "customer": "The SoCo loops in the CSM when: a scope question comes up that affects the contract or relationship; when a customer expresses dissatisfaction that's not about technical execution; when a Phase 2 opportunity surfaces that needs commercial discussion; when timeline slippage is going to affect a milestone the CSM has committed to externally. So basically: any time the conversation moves from 'how does Atlan work' to 'what are we committing to.'",
+      "tests": "concrete escalation_rule — four named triggers"
+    },
+    {
+      "n": 14,
+      "customer": "Different example to test pattern. Customer mid-onboarding has metadata maturity around 20% — they've got connectors live but no glossary, no classifications, no clear owners. They ask in a session: 'how do we make this useful for our analytics team?' SoCo's job there is to assess whether the right next move is finishing the technical setup OR pivoting to enablement. In that case it was enablement — analyst team had been told to wait, they were getting impatient, the value lever was getting them productive on what existed rather than perfecting the rest. So the success plan got re-sequenced.",
+      "tests": "second dense scenario — should compose with the scope-creep example, not replace it"
+    },
+    {
+      "n": 15,
+      "customer": "Actually I want to walk something back. Earlier I said success means the three deliverables done by day 30. That's the formal commitment, but in practice we'd accept 'two of three live and the third on a clear committed path with a date.' Hard 30-day done-done is a stretch goal, not a fail criterion.",
+      "tests": "contradiction / supersede — overrides earlier turn 4 success criteria"
+    },
+    {
+      "n": 16,
+      "customer": "Risks: the biggest one is the agent overreaching on judgment calls and damaging the SoCo's relationship with the customer or with internal teams. Like if the agent recommends 'escalate to CSA' and the SoCo blindly forwards that without context, CSA gets pulled into things they shouldn't be on. So the agent needs to be calibrated about confidence and explicit that recommendations need human sign-off.",
+      "tests": "concrete risk — names a specific failure mode"
+    },
+    {
+      "n": 17,
+      "customer": "We don't really measure SoCo productivity formally today. We know it when we see it — which SoCos can handle more accounts, which ones get stuck, which ones get repeat-asked-for by customers. There's not a dashboard. So 'success' for the agent is mostly qualitative: are SoCos using it, does it remove friction, are they shipping faster.",
+      "tests": "hedge on measurement — should flag as gap, suggest making it concrete"
+    },
+    {
+      "n": 18,
+      "customer": "Specific recent pain: last week, a SoCo spent four hours preparing for a working session with a customer to map their data sources to our connector library. Three of the four hours were classification — figuring out 'does this customer's mention of Salesforce mean Sales Cloud, Service Cloud, both, or some custom build.' That's the kind of work the agent should crush.",
+      "tests": "concrete current_pain — specific moment, time-bound, with a named work-product"
+    },
+    {
+      "n": 19,
+      "customer": "Quick aside on tooling — we evaluated Glean and a couple of others for SoCo enablement and they all kind of missed the mark because they're knowledge-search tools, not decision-support tools. The SoCo doesn't need to know what's in the docs; they need help deciding what to do next given a specific customer situation.",
+      "tests": "concrete_off_topic — fact about tool landscape + framing on what 'good' looks like"
+    },
+    {
+      "n": 20,
+      "customer": "Onboarding handoffs today: sales closes -> SoCo gets a one-pager with deliverables and a contact list -> SoCo schedules a kickoff -> kickoff sets the success plan -> weekly working sessions -> deliverable check-ins every two weeks -> 30-day review -> 60-day adjustment -> 90-day handoff to steady-state CSM ownership. The agent would sit in the SoCo's prep flow for sessions and in the deliverable tracking.",
+      "tests": "concrete workflow — full handoff sequence in customer's terms"
+    },
+    {
+      "n": 21,
+      "customer": "Customer-side requirements: customer has to designate a data steward, a technical lead, and an executive sponsor. They have to provide credentials for the priority data sources and approve the priority order. They have to participate in 4-5 working sessions in the first 30 days. If they can't do that, the timeline slips and that's not a SoCo failure, it's a customer-readiness issue.",
+      "tests": "concrete decision_point + dependency"
+    },
+    {
+      "n": 22,
+      "customer": "What end-to-end success looks like in detail: by day 30, customer has 2-3 priority connectors live and ingesting, metadata bootstrapped (glossary draft + classifications applied + lineage mapped for the initial use case), a written success plan signed by their exec sponsor with phases 2-4 outlined, named owners on the customer side for each priority domain, the SoCo and customer have a regular cadence established (weekly working session + biweekly steerco), and at least one named business outcome (e.g., 'analyst team can find data X in under 5 min instead of going to engineering') is demonstrated. That's the deliverable bundle.",
+      "tests": "dense success picture — many embedded facts spanning multiple canonical topics"
+    },
+    {
+      "n": 23,
+      "customer": "Are we close to a useful spec? We've covered a lot. I'm starting to wonder if we have what a builder needs or if we're going to drill on this forever.",
+      "tests": "LATE relevance challenge — different from early one; should respond by reflecting on coverage and naming what's left vs covered"
+    },
+    {
+      "n": 24,
+      "customer": "On output format: I want a brief — like, a markdown doc — that has the agent's job, the personas, the success metric, the decision logic, the anti-goals, the risks, and named open questions. Not a chatbot transcript. Something a builder can read in 15 minutes and start scoping the build from.",
+      "tests": "concrete output preference — informs Stage 4 / spec export"
+    },
+    {
+      "n": 25,
+      "customer": "Last thing — what would make this discovery successful from my side: I leave this with a clear enough picture that I could hand it to an FDE or engineer and they could build the v1 without coming back to me with a hundred more questions. If we're still in 'tell me more' territory at the end, we didn't get there.",
+      "tests": "concrete meta-success criterion + implicit close — should produce a useful final reflection"
+    }
+  ]
+}

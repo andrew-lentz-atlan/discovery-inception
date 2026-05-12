@@ -223,6 +223,37 @@ def _render_markdown(script, rows, sess_v6_final, sess_v7_final) -> str:
         lines.append(f"**v0.7 tool calls:** {dict(v7_cnt)}")
     lines.append("")
 
+    # ---- Cumulative cost progression — surfaces how savings compound over turns ----
+    lines.append("## Cumulative cost progression")
+    lines.append("")
+    lines.append("Per-turn cumulative metrics — shows whether the savings gap widens or holds as the conversation lengthens.")
+    lines.append("")
+    lines.append("| Turn | v0.6 cum ms | v0.7 cum ms | v0.6 cum ex | v0.7 cum ex | v0.6 cum in-tok | v0.7 cum in-tok | v0.7 vs v0.6 in-tok |")
+    lines.append("|---|---|---|---|---|---|---|---|")
+    v6_cum_ms = 0
+    v7_cum_ms = 0
+    v6_cum_ex = 0
+    v7_cum_ex = 0
+    v6_cum_in = 0
+    v7_cum_in = 0
+    for r in rows:
+        v6_cum_ms += r["v6_metrics"]["duration_ms"]
+        v7_cum_ms += r["v7_metrics"]["duration_ms"]
+        v6_cum_ex += r["v6_metrics"]["n_extractor_calls"]
+        v7_cum_ex += r["v7_metrics"]["n_extractor_calls"]
+        v6_cum_in += r["v6_metrics"]["tokens"].get("input") or 0
+        v7_cum_in += r["v7_metrics"]["tokens"].get("input") or 0
+        pct = (
+            f"{((v7_cum_in - v6_cum_in) / v6_cum_in * 100):+.1f}%"
+            if v6_cum_in > 0
+            else "n/a"
+        )
+        lines.append(
+            f"| {r['n']} | {v6_cum_ms} | {v7_cum_ms} | {v6_cum_ex} | {v7_cum_ex} | "
+            f"{v6_cum_in} | {v7_cum_in} | {pct} |"
+        )
+    lines.append("")
+
     def _spec_summary(spec, label):
         n_topics = len(spec.get("topics", []))
         n_facts = sum(len(t.get("facts", [])) for t in spec.get("topics", []))
