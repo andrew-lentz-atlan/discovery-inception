@@ -39,6 +39,7 @@ from agent.orchestrator import (
     load_prompt,
     _relevant_priors,
     _topic_summary,
+    _spec_state_summary,
     _last_probe_text,
     _last_probe_target_topic,
 )
@@ -135,6 +136,65 @@ async def _run_synthesizer_for_tool(client: AsyncOpenAI, prompt: str):
 
 
 # ---------------------------------------------------------------------------
+# Deterministic session-end synthesis
+# ---------------------------------------------------------------------------
+
+async def run_final_synthesis(
+    client: AsyncOpenAI,
+    session: DiscoverySession,
+) -> WorkingTheory:
+    """Run one final synthesizer pass at session close.
+
+    The point: v0.7's lazy synthesizer means a session where the mega-agent
+    never invoked `synthesize_my_thinking()` would end with no working
+    theory at all (or a stale one from the agent's last invocation). This
+    function guarantees a final theory regardless — the agent's lazy
+    judgment about WHEN to reflect mid-conversation is preserved, but the
+    final deliverable is always built deterministically with the full
+    conversation in scope.
+
+    Run this when the session is being closed (end of script, user-driven
+    `declare_ready`, or anyone wrapping up the session).
+
+    Mutates session.spec.working_theory and appends prior theory to
+    theory_history. Returns the new theory.
+    """
+    prior_theory_json = (
+        session.spec.working_theory.model_dump_json(indent=2)
+        if session.spec.working_theory
+        else "(no prior synthesis this session — this final pass is the first)"
+    )
+
+    synth_prompt = load_prompt(
+        "05_synthesizer.md",
+        USE_CASE_SEED=session.spec.use_case_seed,
+        SPEC_STATE_SUMMARY=_spec_state_summary(session),
+        CUSTOMER_MESSAGE=(
+            "(SESSION-CLOSE SYNTHESIS — the discovery conversation is wrapping up. "
+            "Produce a final working theory that integrates everything captured so "
+            "far. Don't bias toward the most recent turn; survey the whole arc.)"
+        ),
+        PRIOR_THEORY=prior_theory_json,
+        RELEVANT_PRIORS=_relevant_priors(session, None),
+    )
+
+    new_theory, _ms, _model = await call_sub_agent(
+        client,
+        sub_agent="synthesizer",
+        user_prompt=synth_prompt,
+        output_model=WorkingTheory,
+        max_tokens=1024,
+    )
+
+    if session.spec.working_theory is not None:
+        session.spec.theory_history.append(session.spec.working_theory)
+    session.spec.working_theory = new_theory
+    session.save()
+
+    return new_theory
+
+
+# ---------------------------------------------------------------------------
 # Per-turn pipeline
 # ---------------------------------------------------------------------------
 
@@ -154,19 +214,33 @@ async def run_v07_turn(
     topic_summary = _topic_summary(session)
 
     # ---- Eager extractor 1: Triage ----
+    # Fallback: if triage exhausts retries (occasional LiteLLM proxy quirk
+    # where the model responds with stock "please provide inputs" prose),
+    # default to label="concrete" so the conversation continues. Better to
+    # mislabel one turn than abort a 25-turn comparison.
     triage_prompt = load_prompt(
         "01_triage.md",
         LAST_PROBE=last_probe,
         CUSTOMER_MESSAGE=customer_message,
         TOPIC_SUMMARY=topic_summary,
     )
-    triage, ms, model = await call_sub_agent(
-        client,
-        sub_agent="triage",
-        user_prompt=triage_prompt,
-        output_model=TriageResult,
-        max_tokens=512,
-    )
+    try:
+        triage, ms, model = await call_sub_agent(
+            client,
+            sub_agent="triage",
+            user_prompt=triage_prompt,
+            output_model=TriageResult,
+            max_tokens=512,
+        )
+    except Exception as exc:
+        triage = TriageResult(
+            label="concrete",
+            reasoning=f"(triage call failed after retries — defaulted to 'concrete'; error: {str(exc)[:200]})",
+            contradicted_topic=None,
+            inferred_topic=None,
+            escalation_target=None,
+        )
+        ms, model = 0, "fallback"
     turn.events.append(
         TurnEvent(
             sub_agent="triage",

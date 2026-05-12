@@ -39,7 +39,7 @@ from agent.baselines.run_comparison import (  # noqa: E402
 from agent.schemas import DiscoverySpec  # noqa: E402
 from agent.state import DiscoverySession  # noqa: E402
 from agent.v06.orchestrator import run_v06_turn  # noqa: E402
-from agent.v07.orchestrator import run_v07_turn  # noqa: E402
+from agent.v07.orchestrator import run_v07_turn, run_final_synthesis  # noqa: E402
 
 
 async def run_v06_v07(script_path: Path, out_dir: Path) -> Path:
@@ -151,8 +151,22 @@ async def run_v06_v07(script_path: Path, out_dir: Path) -> Path:
             "v7_response": v7_msg, "v7_metrics": v7_metrics,
         })
 
+    # ---- Deterministic session-close synthesis for v0.7 ----
+    # v0.7's lazy synthesizer means a session where the mega-agent never
+    # invoked synthesize_my_thinking would end with no/stale theory. This
+    # final pass guarantees a clean closing theory regardless of whether
+    # the agent invoked it during the conversation. v0.6 doesn't need this
+    # — eager synth already produced a final theory.
+    print("→ Running deterministic session-close synthesis for v0.7…")
+    started = time.perf_counter()
+    final_v7_theory = await run_final_synthesis(openai_client, sess_v7)
+    finalize_ms = int((time.perf_counter() - started) * 1000)
+    print(f"  finalize_synthesis: {finalize_ms}ms — confidence={final_v7_theory.confidence}")
+    print()
+
     sess_v6_final = json.loads(sess_v6.model_dump_json())
     sess_v7_final = json.loads(sess_v7.model_dump_json())
+    sess_v7_final["_finalize_ms"] = finalize_ms
 
     await openai_client.close()
 
@@ -254,7 +268,7 @@ def _render_markdown(script, rows, sess_v6_final, sess_v7_final) -> str:
         )
     lines.append("")
 
-    def _spec_summary(spec, label):
+    def _spec_summary(spec, label, finalize_ms=None):
         n_topics = len(spec.get("topics", []))
         n_facts = sum(len(t.get("facts", [])) for t in spec.get("topics", []))
         theory = spec.get("working_theory") or {}
@@ -268,13 +282,29 @@ def _render_markdown(script, rows, sess_v6_final, sess_v7_final) -> str:
         if theory.get("one_line_framing"):
             out.append(f"- Working-theory framing:")
             out.append(f"  > {theory['one_line_framing']}")
+        if theory.get("candidate_framings"):
+            out.append(f"- Candidate framings ({len(theory['candidate_framings'])}):")
+            for cf in theory["candidate_framings"][:3]:
+                out.append(f"  - {cf}")
+        if theory.get("open_questions"):
+            out.append(f"- Open questions ({len(theory['open_questions'])}):")
+            for q in theory["open_questions"][:3]:
+                out.append(f"  - {q}")
+        if theory.get("sharpest_disconfirmer"):
+            out.append(f"- Sharpest disconfirmer: {theory['sharpest_disconfirmer']}")
         out.append(f"- Theory history snapshots: {len(spec.get('theory_history') or [])}")
         out.append(f"- Gaps flagged: {len(spec.get('gaps', []))}")
+        if finalize_ms is not None:
+            out.append(f"- Deterministic close-out synthesis: ran ({finalize_ms}ms)")
         out.append("")
         return out
 
     lines.extend(_spec_summary(sess_v6_final.get("spec", {}), "v0.6"))
-    lines.extend(_spec_summary(sess_v7_final.get("spec", {}), "v0.7"))
+    lines.extend(_spec_summary(
+        sess_v7_final.get("spec", {}),
+        "v0.7 (with deterministic session-close synthesis)",
+        finalize_ms=sess_v7_final.get("_finalize_ms"),
+    ))
 
     lines.append("## Per-turn side-by-side")
     lines.append("")

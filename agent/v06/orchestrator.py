@@ -150,13 +150,23 @@ async def run_v06_turn(
         CUSTOMER_MESSAGE=customer_message,
         TOPIC_SUMMARY=topic_summary,
     )
-    triage, ms, model = await call_sub_agent(
-        client,
-        sub_agent="triage",
-        user_prompt=triage_prompt,
-        output_model=TriageResult,
-        max_tokens=512,
-    )
+    try:
+        triage, ms, model = await call_sub_agent(
+            client,
+            sub_agent="triage",
+            user_prompt=triage_prompt,
+            output_model=TriageResult,
+            max_tokens=512,
+        )
+    except Exception as exc:
+        triage = TriageResult(
+            label="concrete",
+            reasoning=f"(triage call failed after retries — defaulted to 'concrete'; error: {str(exc)[:200]})",
+            contradicted_topic=None,
+            inferred_topic=None,
+            escalation_target=None,
+        )
+        ms, model = 0, "fallback"
     turn.events.append(
         TurnEvent(
             sub_agent="triage",

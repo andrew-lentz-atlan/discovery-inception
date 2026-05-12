@@ -85,6 +85,46 @@ def parse_json_response(content: str) -> dict | list:
     return json.loads(s)
 
 
+async def _call_sub_agent_once(
+    client: AsyncOpenAI,
+    *,
+    sub_agent: str,
+    user_prompt: str,
+    max_tokens: int,
+    temperature: float,
+) -> tuple[str, str, int]:
+    """One raw LLM call. Returns (raw_text, model, duration_ms).
+
+    The JSON-output instruction is bundled into the user prompt (not split
+    into a system prompt) because LiteLLM-via-Bedrock-Claude occasionally
+    ignores the user content when the system prompt is short and
+    instructional — the model interprets the system prompt as the "real"
+    instruction and responds with stock "please provide inputs" prose
+    instead of classifying the user message. Single user prompt avoids
+    the ambiguity.
+    """
+    model = SUB_AGENT_MODELS[sub_agent]
+    full_prompt = (
+        f"{user_prompt}\n\n"
+        f"---\n"
+        f"Output ONLY a valid JSON object matching the schema above. "
+        f"Begin your response with `{{` and end with `}}`. "
+        f"No prose, no markdown fences, no preamble, no commentary — JSON only."
+    )
+    started = time.perf_counter()
+    response = await client.chat.completions.create(
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        messages=[
+            {"role": "user", "content": full_prompt},
+        ],
+    )
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    raw = response.choices[0].message.content or ""
+    return raw, model, duration_ms
+
+
 async def call_sub_agent(
     client: AsyncOpenAI,
     *,
@@ -92,49 +132,69 @@ async def call_sub_agent(
     user_prompt: str,
     output_model: type[BaseModel],
     max_tokens: int = 2048,
-    temperature: float = 0.2,
+    temperature: float = 0.0,
+    max_retries: int = 3,
 ) -> tuple[BaseModel, int, str]:
-    """One LLM call → validated Pydantic instance. Returns (result, ms, model)."""
-    model = SUB_AGENT_MODELS[sub_agent]
-    started = time.perf_counter()
-    response = await client.chat.completions.create(
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You produce JSON output exactly as instructed by the user. "
-                    "Output only the JSON object — no prose, no markdown fences, "
-                    "no preamble or commentary. Begin your response with `{` and "
-                    "end with `}`."
-                ),
-            },
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    duration_ms = int((time.perf_counter() - started) * 1000)
-    raw = response.choices[0].message.content or ""
+    """One LLM call → validated Pydantic instance. Returns (result, ms, model).
 
-    if not raw.strip():
-        raise ValueError(
-            f"{sub_agent}: empty response. finish_reason="
-            f"{response.choices[0].finish_reason!r}"
+    Retries on transient response failures up to `max_retries` times.
+
+    Known failure modes worth retrying on:
+      - Empty response from the proxy
+      - Model returns prose like "I'm ready to triage. Please provide..."
+        instead of the JSON the prompt asked for. This happens occasionally
+        with LiteLLM-via-Bedrock-Claude — the proxy or model ignores the
+        user message under some conditions. Always recovers on retry.
+      - Malformed JSON
+
+    Aggregates duration_ms across retries so the metrics reflect the
+    actual wall-time cost.
+    """
+    import asyncio
+    last_error: Exception | None = None
+    total_duration_ms = 0
+    model = SUB_AGENT_MODELS[sub_agent]
+
+    for attempt in range(max_retries + 1):
+        if attempt > 0:
+            # Brief backoff before retry — gives the proxy time to recover
+            # from transient issues and reduces concurrent-call pressure.
+            await asyncio.sleep(0.75 * attempt)
+        raw, model, duration_ms = await _call_sub_agent_once(
+            client,
+            sub_agent=sub_agent,
+            user_prompt=user_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
         )
-    try:
-        data = parse_json_response(raw)
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{sub_agent}: could not parse JSON — {exc}\nRaw: {raw[:800]}"
-        ) from exc
-    try:
-        return output_model.model_validate(data), duration_ms, model
-    except Exception as exc:
-        raise ValueError(
-            f"{sub_agent}: parsed JSON but validation failed — {exc}\n"
-            f"Parsed: {json.dumps(data, indent=2)[:800]}"
-        ) from exc
+        total_duration_ms += duration_ms
+
+        if not raw.strip():
+            last_error = ValueError(f"{sub_agent}: empty response on attempt {attempt+1}")
+            continue
+        try:
+            data = parse_json_response(raw)
+        except json.JSONDecodeError as exc:
+            last_error = ValueError(
+                f"{sub_agent}: could not parse JSON on attempt {attempt+1} — "
+                f"{exc}\nRaw (first 400 chars): {raw[:400]}"
+            )
+            continue
+        try:
+            result = output_model.model_validate(data)
+            # Success path — return below for clean indentation
+            return result, total_duration_ms, model
+        except Exception as exc:
+            last_error = ValueError(
+                f"{sub_agent}: parsed JSON but validation failed on attempt {attempt+1} — "
+                f"{exc}\nParsed: {json.dumps(data, indent=2)[:400]}"
+            )
+            continue
+
+    # Exhausted retries — raise the last error we hit
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError(f"{sub_agent}: unreachable — exhausted retries with no error captured")
 
 
 # ---------------------------------------------------------------------------
