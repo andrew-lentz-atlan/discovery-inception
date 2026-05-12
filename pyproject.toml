@@ -9,6 +9,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
+    "mcp>=1.0",
 ]
 
 [dependency-groups]
@@ -27,3 +29,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["intake", "agent"]
+
+[project.scripts]
+discovery-inception-mcp = "agent.mcp_server.__main__:main"
