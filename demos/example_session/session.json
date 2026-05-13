@@ -1,0 +1,991 @@
+{
+  "session_id": "sess_8975c7bb39ab",
+  "created_at": "2026-05-13T17:17:37.244310+00:00",
+  "spec": {
+    "use_case_seed": "we want an early-warning renewal-risk agent for our CSM team at FinCo — surfaces at-risk accounts 60-90 days before renewal so CSMs can intervene",
+    "role_id": "csm-finco-demo",
+    "phase": "drilling",
+    "topics": [
+      {
+        "topic": "renewal_risk_escalation",
+        "facts": [
+          "8 enterprise accounts churned last year because CSM didn't flag them as at-risk until the last 30 days. Goal: catch renewal risk 60-90 days early instead of 30 days."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "leading_indicators",
+        "facts": [
+          "Technical sponsor departure in prior 90 days, executive sponsor engagement dropped to zero (no email response, no QBR attendance), product usage off 30-50% from peak, support tickets shifted from feature-request to frustration tone, procurement asking unusual payment questions. At least 3 of these 5 signals present on all 8 churned accounts. None were aggregated anywhere."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "current_pain",
+        "facts": [
+          "Data exists in 4 different systems (Salesforce, data warehouse, Zendesk, NetSuite) but CSM has no workflow that aggregates it. Nobody was looking at the cross-system pattern — everyone was looking at their slice."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "escalation_rule",
+        "facts": [
+          "No calibrated rubric yet. Hypothesis: exec sponsor disengagement + technical sponsor turnover is the highest-signal combo based on worst churn cases observed. Want the agent to learn from outcomes over time rather than pre-defining thresholds.",
+          "Flag account red if 2+ of 5 signals are red AND less than 120 days to renewal. Flag yellow if tech sponsor change OR exec disengagement alone within 60 days of renewal. Agent surfaces both; CSM decides action.",
+          "Support sentiment analysis is not planned for v1. Ship without it; add later. The other 4 signals are high-signal; support sentiment is nuance-tier.",
+          "CSM has a dashboard view of their book of business. At-risk accounts are at the top with status (red/yellow), days to renewal, and the specific signals that triggered the flag. When an account moves to red, the CSM has 48 hours to acknowledge and propose an intervention plan in a structured form. If they don't acknowledge in 48 hours, it auto-escalates to their manager AND the AE on that account. If account stays red for 14 days without progress against the plan, exec sponsor (FinCo VP CS) gets pulled in. CSM owns the relationship throughout — the agent surfaces, it doesn't act."
+        ],
+        "sources": [
+          "stated",
+          "stated",
+          "stated",
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "signal_data_source",
+        "facts": [
+          "Technical sponsor departure: 'Primary Technical Contact' field on Account record in Salesforce, updated by rep. Exec sponsor disengagement: derived from no exec emails in 60 days + no QBR attendance in last cycle. Usage: warehouse. Support sentiment: requires sentiment analysis on Zendesk tickets (not currently available). Procurement signals: Gong call transcripts."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "intervention_types",
+        "facts": [
+          "Standardize intervention plans with a menu of types: schedule exec sponsor call, deploy a SoCo for technical re-engagement, launch a usage push, escalate to AE for commercial conversation, or other (free text). Each logged with date and outcome for correlation analysis."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "success_metric",
+        "facts": [
+          "Headline metric: fewer than 2 accounts churn per year where the CSM didn't flag them at-risk 60+ days early. Also tracking: percentage of red flags acknowledged in <48 hours (process compliance), percentage of red accounts moved back to green within 30 days (intervention efficacy), and leading indicator of churns that were 'agent surfaced 60+ days out and CSM did something' vs 'agent surfaced and CSM ignored' to identify whether surfacing is working and whether CSM follow-through is the bottleneck."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "anti_goal",
+        "facts": [
+          "Agent should NOT message the customer directly. It should NOT auto-downgrade or upgrade plans. It should NOT make commercial commitments. It should NOT communicate risk to the customer in any form — that's CSM judgment."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      },
+      {
+        "topic": "persona",
+        "facts": [
+          "Three personas use the agent: (1) CSM — primary user, has their book of business view, gets red/yellow flags, owns the intervention plan and the customer relationship. (2) CSM Manager — sees their team's at-risk accounts in aggregate, gets escalations after 48 hours of un-acknowledged red. (3) VP Customer Success — sees company-wide rollup with trend lines, gets pulled in on 14-day stuck-red accounts. Plus AE involvement on a per-account basis when commercial conversations are needed but not in the agent UI directly — they get Slack pings or similar."
+        ],
+        "sources": [
+          "stated"
+        ],
+        "superseded_facts": [],
+        "bedrock_reached": false,
+        "why_chain": [],
+        "terminal_answer": null,
+        "pending_questions": []
+      }
+    ],
+    "gaps": [],
+    "working_theory": {
+      "one_line_framing": "A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.",
+      "candidate_framings": [
+        "Passive monitor + alert system — agent watches signals, flags accounts, CSM decides if/when to act; escalations are automatic but intervention is entirely CSM-owned",
+        "Active orchestrator — agent not only flags but suggests next steps (QBR scheduling, renewal conversation talking points, expansion hooks) and tracks CSM response; escalations are both automatic and conditional on CSM inaction",
+        "Workflow executor for escalation only — agent handles the mechanical escalation (routing to CSM Manager, VP, AE) but does not suggest or track CSM interventions; CSM still owns the renewal motion itself"
+      ],
+      "open_questions": [
+        "When a CSM sees a red flag on an account, does the agent suggest specific next actions (e.g., 'schedule QBR,' 'pull usage report,' 'loop in AE on expansion'), or does the CSM decide the intervention independently?",
+        "For the 48-hour escalation to CSM Manager, what does 'unacknowledged' mean — the CSM hasn't clicked/viewed the flag, or the CSM hasn't updated the account status or intervention plan?",
+        "Do you want the agent to surface leading indicators (e.g., 'technical sponsor departed,' 'usage down 30%') as separate signals, or only as a composite 'at-risk' score that triggers the flag?"
+      ],
+      "sharpest_disconfirmer": "If the CSM tells us they want the agent to execute the renewal conversation itself (e.g., draft talking points, run the call, log outcomes) rather than just flag and escalate, the theory shifts from 'escalation coordinator' to 'renewal workflow executor' — a fundamentally different product.",
+      "confidence": "medium"
+    },
+    "theory_history": [
+      {
+        "one_line_framing": "A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.",
+        "candidate_framings": [
+          "Passive monitor + alert system — agent watches signals, flags accounts, CSM decides if/when to act; escalations are automatic but intervention is entirely CSM-owned",
+          "Active orchestrator — agent not only flags but suggests next steps (QBR scheduling, renewal conversation talking points, expansion hooks) and tracks CSM response; escalations are both automatic and conditional on CSM inaction",
+          "Workflow executor for escalation only — agent handles the mechanical escalation (routing to CSM Manager, VP, AE) but does not suggest or track CSM interventions; CSM still owns the renewal motion itself"
+        ],
+        "open_questions": [
+          "When a CSM sees a red flag on an account, does the agent suggest specific next actions (e.g., 'schedule QBR,' 'pull usage report,' 'loop in AE on expansion'), or does the CSM decide the intervention independently?",
+          "For the 48-hour escalation to CSM Manager, what does 'unacknowledged' mean — the CSM hasn't clicked/viewed the flag, or the CSM hasn't updated the account status or intervention plan?",
+          "Do you want the agent to surface leading indicators (e.g., 'technical sponsor departed,' 'usage down 30%') as separate signals, or only as a composite 'at-risk' score that triggers the flag?"
+        ],
+        "sharpest_disconfirmer": "If the CSM tells us they want the agent to execute the renewal conversation itself (e.g., draft talking points, run the call, log outcomes) rather than just flag and escalate, the theory shifts from 'escalation coordinator' to 'renewal workflow executor' — a fundamentally different product.",
+        "confidence": "medium"
+      },
+      {
+        "one_line_framing": "A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.",
+        "candidate_framings": [
+          "Passive monitor + alert system — agent watches signals, flags accounts, CSM decides if/when to act; escalations are automatic but intervention is entirely CSM-owned",
+          "Active orchestrator — agent not only flags but suggests next steps (QBR scheduling, renewal conversation talking points, expansion hooks) and tracks CSM response; escalations are both automatic and conditional on CSM inaction",
+          "Workflow executor for escalation only — agent handles the mechanical escalation (routing to CSM Manager, VP, AE) but does not suggest or track CSM interventions; CSM still owns the renewal motion itself"
+        ],
+        "open_questions": [
+          "When a CSM sees a red flag on an account, does the agent suggest specific next actions (e.g., 'schedule QBR,' 'pull usage report,' 'loop in AE on expansion'), or does the CSM decide the intervention independently?",
+          "For the 48-hour escalation to CSM Manager, what does 'unacknowledged' mean — the CSM hasn't clicked/viewed the flag, or the CSM hasn't updated the account status or intervention plan?",
+          "Do you want the agent to surface leading indicators (e.g., 'technical sponsor departed,' 'usage down 30%') as separate signals, or only as a composite 'at-risk' score that triggers the flag?"
+        ],
+        "sharpest_disconfirmer": "If the CSM tells us they want the agent to execute the renewal conversation itself (e.g., draft talking points, run the call, log outcomes) rather than just flag and escalate, the theory shifts from 'escalation coordinator' to 'renewal workflow executor' — a fundamentally different product.",
+        "confidence": "medium"
+      }
+    ],
+    "strawman_shown": false,
+    "declared_ready": false,
+    "ready_summary": null,
+    "ready_confidence": null,
+    "remaining_known_gaps": []
+  },
+  "messages": [
+    {
+      "role": "customer",
+      "content": "We had 8 enterprise accounts churn last year where the CSM didn't flag them as at-risk until the last 30 days. We want to cut that to 2 or fewer. So the headline is: catch renewal risk 60-90 days early instead of 30.",
+      "ts": "2026-05-13T17:12:19.559772+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Good. I've got the headline. That's a concrete pain point — 8 churned accounts, CSMs flying blind until the last month, and you want to flip that to 60-90 day visibility.\n\nBefore I drill into *how* the agent should work, I need to understand the shape of the problem better. Let me ask this:\n\n**Of those 8 accounts that churned — do you know what the leading indicators were?** In other words: looking back, what signals *should* have tipped off the CSM that these accounts were at risk? Was it usage dropping, the executive sponsor going quiet, a technical issue that didn't get resolved, budget concerns they mentioned in a call — what?",
+      "ts": "2026-05-13T17:12:32.322376+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Yes. Looking back at those 8 accounts, the common patterns were: (1) technical sponsor departed in the prior 90 days, (2) executive sponsor engagement dropped to zero — no exec response on emails, no QBR attendance, (3) product usage was off 30-50% from peak, (4) support tickets shifted from feature-request tone to frustration tone, (5) payment was on time but procurement started asking weird questions. We had at least 3 of these 5 signals on every one. None were aggregated anywhere.",
+      "ts": "2026-05-13T17:12:43.290841+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "That's really helpful. So you had the signals — they just weren't surfaced together in one place where a CSM could see them and act.\n\nLet me make sure I'm reading this right: **when you say \"none were aggregated anywhere,\" do you mean the CSM had to manually hunt across five different systems to piece this together — or that the signals existed but nobody was looking at them at all?**\n\nIn other words: was the problem that the data was hard to find, or that there was no systematic way to flag \"hey, this account just hit three of these five warning signs\"?",
+      "ts": "2026-05-13T17:12:53.373629+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Both honestly. Most of the data exists — sponsor changes are in Salesforce, usage is in our data warehouse, support sentiment is in Zendesk tags, payment is in NetSuite. But it's in 4 different systems. The CSM does not have a workflow that aggregates them. And nobody — not the CSM, not their manager, not exec — was looking at the cross-system pattern. Everyone was looking at their slice.",
+      "ts": "2026-05-13T17:13:07.220379+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "That makes sense. Four silos, no aggregation layer, no one with a view of the whole picture.\n\nNow I want to understand what \"at-risk\" actually means for you operationally. You've given me the five signals, but I need to know: **if an account hits, say, 2 of those 5 signals, is that at-risk? Or do you need 3? And does it matter which 3?**\n\nFor example: is \"technical sponsor departed + usage down 30%\" the same risk level as \"technical sponsor departed + exec sponsor went quiet\"? Or do some combinations matter more than others?",
+      "ts": "2026-05-13T17:13:16.970786+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Honestly we don't have a calibrated rubric for this. We know it when we see it. Our hypothesis is that exec sponsor disengagement + technical sponsor turnover is the highest-signal combo — that's what we saw on the worst churn cases. But we'd want the agent to learn from outcomes over time rather than us pre-defining thresholds.",
+      "ts": "2026-05-13T17:13:28.399843+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "I hear you — and I appreciate the honesty. But let me push back gently, because this matters for what we're actually building.\n\nIf the agent is supposed to *learn* thresholds over time, that means you need to tell it what \"at-risk\" means *now* so it can start making predictions and then you can validate whether those predictions were right or wrong. Without a starting rubric — even a rough one — the agent has no signal to learn from.\n\nHere's what I'm asking: **can you commit to a v1 rule, even if it's imperfect?** Something like: \"flag an account if we see exec sponsor disengagement + technical sponsor turnover, or if we see 3 of the 5 signals, or if usage drops 40%+ in a quarter.\" \n\nYou can iterate on it. But you need *something* to start with so the agent can flag accounts, CSMs can validate those flags against reality, and you can refine the rule based on what actually predicted churn.\n\nWhat would feel like a reasonable starting heuristic?",
+      "ts": "2026-05-13T17:13:41.446880+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Wait — why are you drilling into thresholds? I told you what I want. Surface accounts at risk 60-90 days early. The threshold question feels like a builder problem not a discovery problem.",
+      "ts": "2026-05-13T17:13:52.002896+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Fair pushback. Let me reframe why I'm asking.\n\nYou want the agent to surface at-risk accounts 60-90 days early so CSMs can intervene. But \"at-risk\" is the input to that workflow — it's what the agent needs to know to decide which accounts to surface. If I don't understand what makes an account at-risk *in your world*, I can't write a spec that a builder can execute. They'll have to guess, and they'll guess wrong.\n\nSo the threshold question isn't about implementation detail — it's about the decision rule the agent needs to operate. **What does the CSM need to see in order to act?**\n\nYou said your hypothesis is \"exec sponsor disengagement + technical sponsor turnover is highest-signal.\" Does that mean: if those two things happen together, that's always at-risk? Or is there a time window — like, if they happen within 30 days of each other? And what about the other three signals — do they matter at all, or are they just noise?\n\nI'm asking because the spec needs to say: \"the agent flags an account when X, Y, and Z conditions are met.\" What are X, Y, and Z?",
+      "ts": "2026-05-13T17:13:59.954379+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "OK that makes sense, fair. So v1 rule: any account with 2+ of the 5 signals red, AND less than 120 days to renewal, gets flagged red. Tech sponsor change OR exec disengagement alone (1 signal) within 60 days of renewal flags yellow. The agent surfaces both, CSM decides what to do.",
+      "ts": "2026-05-13T17:14:09.083648+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Perfect. That's concrete and testable. So red = 2+ signals + <120 days to renewal, yellow = either of those two signals alone + <60 days to renewal.\n\nQuick clarification on the signals themselves: **when you say \"technical sponsor departed,\" how do you know that happened?** Is it a Salesforce field that gets updated, or is it something a CSM has to manually log, or does it come from somewhere else?\n\nI'm asking because the agent needs to know where to *look* for each signal. Same question for the other four — where does each signal live?",
+      "ts": "2026-05-13T17:14:19.458957+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Salesforce has a 'Primary Technical Contact' field on every Account record. When the rep updates it, that's the signal. Exec sponsor disengagement is harder — we'd derive it from no exec emails in 60 days + no QBR attendance in the last cycle. Usage is straightforward from our warehouse. Support sentiment we'd need to do sentiment analysis on Zendesk tickets — we don't have that today. Procurement signals come from Gong call transcripts.",
+      "ts": "2026-05-13T17:14:31.404814+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Got it. So four of the five are either already in a system or can be derived from existing data. Support sentiment is the one that requires new work — sentiment analysis on Zendesk.\n\nBefore I go further, let me check: **is that sentiment analysis something you're already planning to build, or is this the first time we're surfacing that as a dependency?** Because if it's new, that's a build task that needs to happen before the agent can work.",
+      "ts": "2026-05-13T17:14:40.939255+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "First time hearing about it. Not planned. We'd have to scope that separately. For v1 of this agent we can probably ship without it and add it later — the other 4 signals are the high-signal ones anyway. Support sentiment is more nuance-tier.",
+      "ts": "2026-05-13T17:14:53.418826+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Good. So v1 ships with 4 signals: tech sponsor change, exec disengagement, usage drop, and procurement signals. Support sentiment is backlog.\n\nNow let me understand the workflow on the other end. **When the agent flags an account as red or yellow, what's supposed to happen?** Does it land in the CSM's inbox, or does it show up in a dashboard they check, or does it trigger an alert to their manager? And who decides what the CSM does with it?",
+      "ts": "2026-05-13T17:15:01.831405+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "CSM has a dashboard view of their book of business. At-risk accounts are at the top with status (red/yellow), days to renewal, and the specific signals that triggered the flag. When an account moves to red, the CSM has 48 hours to acknowledge and propose an intervention plan in a structured form. If they don't acknowledge in 48 hours, it auto-escalates to their manager AND the AE on that account. If account stays red for 14 days without progress against the plan, exec sponsor (FinCo VP CS) gets pulled in. CSM owns the relationship throughout — the agent surfaces, it doesn't act.",
+      "ts": "2026-05-13T17:15:13.232711+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Clear. So the agent is a visibility and escalation trigger, not a decision-maker. CSM owns the response.\n\nOne thing I want to nail down: **when you say \"propose an intervention plan,\" what does that look like?** Is it a free-text note, or are there specific intervention types you want CSMs to choose from? For example: \"schedule QBR,\" \"technical deep-dive,\" \"executive business review,\" \"pause billing to investigate,\" etc.?\n\nBecause if the agent is going to learn over time whether interventions actually prevent churn, it needs to know what interventions were attempted.",
+      "ts": "2026-05-13T17:15:22.839774+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Right now intervention plans are unstructured. Different CSMs do different things. We should standardize. A short menu of intervention types would be useful: schedule exec sponsor call, deploy a SoCo for technical re-engagement, launch a usage push, escalate to AE for commercial conversation, or other (free text). Each one logged with date and outcome so we can correlate over time.",
+      "ts": "2026-05-13T17:15:32.885879+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Good. We've got escalation rules and current pain nailed down. But I'm missing a few things that matter for the spec. Let me ask about success metric first, because it's the most concrete:\n\n**How will you know this agent is working?** You said you want to cut churn from 8 accounts to 2 or fewer. Is that the metric — \"fewer than 2 accounts churn per year where the CSM didn't flag them at-risk 60+ days early\"? Or is there another way you're measuring success?",
+      "ts": "2026-05-13T17:15:46.373985+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Yes that's the headline metric. Also useful: percentage of red flags that got acknowledged in <48 hours (process compliance), percentage of red accounts that moved back to green within 30 days (intervention efficacy). And a leading indicator I care about: number of churns that were 'agent surfaced 60+ days out and CSM did something' vs 'agent surfaced and CSM ignored' — tells us whether the surfacing is working AND whether CSM follow-through is the bottleneck.",
+      "ts": "2026-05-13T17:15:56.711772+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Excellent. Those are all measurable and they tell you different things — compliance, efficacy, and whether the problem is the signal or the response.\n\nNow let me ask about the flip side: **what would make you want to turn this agent off or consider it a failure?** Is there a scenario where surfacing too many false positives becomes a problem — like, if the agent flags 50 accounts a month and only 2 actually churn, does that tank CSM trust? Or is the cost of a false positive low enough that you'd rather over-flag than miss one?",
+      "ts": "2026-05-13T17:16:05.392736+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Great question. False positives are costly because CSMs lose trust fast — if 8 out of 10 flagged accounts turn out fine after they did a bunch of intervention work, they stop opening the dashboard. We'd rather miss one than cry wolf 5 times. So tune toward precision over recall, at least for v1. Anti-goals: agent should NOT message the customer directly. It should NOT auto-downgrade or upgrade plans. It should NOT make commercial commitments. It should NOT communicate risk to the customer in any form — that's CSM judgment.",
+      "ts": "2026-05-13T17:16:15.977270+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Got it. Precision over recall, and the agent is strictly a visibility layer — no customer-facing actions, no commercial moves, no messaging. CSM is the only voice to the customer.\n\nLet me check my understanding of the personas here. **Who are the people actually using this agent?** I know CSMs are the primary user, but you mentioned their manager gets escalations, and the VP CS gets pulled in on 14-day red accounts. Are those the only three, or are there others?",
+      "ts": "2026-05-13T17:16:24.957547+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "Three personas. (1) CSM — primary user, has their book of business view, gets red/yellow flags, owns the intervention plan and the customer relationship. (2) CSM Manager — sees their team's at-risk accounts in aggregate, gets escalations after 48 hours of un-acknowledged red. (3) VP Customer Success — sees company-wide rollup with trend lines, gets pulled in on 14-day stuck-red accounts. Plus AE involvement on a per-account basis when commercial conversations are needed but not in the agent UI directly — they get Slack pings or similar.",
+      "ts": "2026-05-13T17:16:36.535821+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Good. I think I've got the shape of this. But I want to clarify one thing that came up in my synthesis:\n\n**When a CSM sees a red flag on their dashboard, what does the agent do next?** Does it just show them the flag and the signals, and they figure out what to do? Or does the agent also suggest specific interventions — like \"this account is red because exec sponsor is disengaged and usage is down; consider scheduling a QBR and looping in SoCo\"?\n\nIn other words: is the agent a *visibility* tool, or is it also a *guidance* tool?",
+      "ts": "2026-05-13T17:16:59.551110+00:00"
+    },
+    {
+      "role": "customer",
+      "content": "I think we've covered enough. Let's wrap it up and see what the spec looks like.",
+      "ts": "2026-05-13T17:17:08.257788+00:00"
+    },
+    {
+      "role": "agent",
+      "content": "Here's what I'm hearing:\n\n**One-line framing:** A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.\n\n**The core shape:** Passive monitor + alert system. The agent watches four signals (tech sponsor change, exec disengagement, usage drop, procurement signals), flags accounts as red (2+ signals + <120 days to renewal) or yellow (either of the two high-signal ones + <60 days to renewal), and escalates mechanically if the CSM doesn't acknowledge or move the account. CSM owns the intervention entirely.\n\n**What's locked in:**\n- v1 signals: tech sponsor change, exec disengagement, usage drop, procurement signals (support sentiment is backlog)\n- Red/yellow thresholds: 2+ signals + <120 days = red; either high-signal + <60 days = yellow\n- Escalation: 48h no-ack → CSM Manager + AE; 14 days red + no progress → VP CS\n- Intervention types: structured menu (exec call, SoCo re-engagement, usage push, AE commercial, other)\n- Success metrics: churn <2, ack rate >X%, intervention efficacy, signal precision over recall\n- Anti-goals: no customer messaging, no commercial moves, no auto-downgrades, CSM is the only voice\n\n**One thing still open:** When the CSM sees a red flag, does the agent *suggest* next steps, or just show them the signals and let them decide? You said \"the agent surfaces, it doesn't act\" — I'm reading that as the latter, but I want to confirm that's right before we hand this off.\n\nDoes that match what you're building?",
+      "ts": "2026-05-13T17:17:28.158835+00:00"
+    }
+  ],
+  "turns": [
+    {
+      "turn_index": 0,
+      "customer_message": "We had 8 enterprise accounts churn last year where the CSM didn't flag them as at-risk until the last 30 days. We want to cut that to 2 or fewer. So the headline is: catch renewal risk 60-90 days early instead of 30.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg=\"We had 8 enterprise accounts churn last year where the CSM didn't flag them as a\"",
+          "output": {
+            "label": "concrete",
+            "reasoning": "The customer provided specific, measurable facts: 8 enterprise accounts churned last year due to late CSM flagging, target is 2 or fewer, and the concrete goal is to detect renewal risk 60-90 days early instead of 30 days.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3141,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "renewal_risk_escalation",
+            "content": "8 enterprise accounts churned last year because CSM didn't flag them as at-risk until the last 30 days. Goal: catch renewal risk 60-90 days early instead of 30 days.",
+            "source": "stated"
+          },
+          "duration_ms": 3385,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=2, tool_calls=['get_current_spec_state', 'get_checklist_progress']",
+          "output": {
+            "final_response": "Good. I've got the headline. That's a concrete pain point — 8 churned accounts, CSMs flying blind until the last month, and you want to flip that to 60-90 day visibility.\n\nBefore I drill into *how* the agent should work, I need to understand the shape of the problem better. Let me ask this:\n\n**Of those 8 accounts that churned — do you know what the leading indicators were?** In other words: looking back, what signals *should* have tipped off the CSM that these accounts were at risk? Was it usage dropping, the executive sponsor going quiet, a technical issue that didn't get resolved, budget concerns they mentioned in a call — what?",
+            "tool_calls": [
+              {
+                "name": "get_current_spec_state",
+                "arguments": {},
+                "result_preview": "Phase: lay_of_the_land\n\nTopics + facts so far:\n  renewal_risk_escalation (1 fact(s)):\n    - [stated] 8 enterprise accounts churned last year because CSM didn't flag them as at-risk until the last 30 days. Goal: catch renewal risk 60-90 days early instead of 30 days."
+              },
+              {
+                "name": "get_checklist_progress",
+                "arguments": {},
+                "result_preview": "Phase: lay_of_the_land\n\nCanonical-topic coverage:\n  · desired_outcome: 0 fact(s) (need 1)\n  · success_metric: 0 fact(s) (need 1)\n  · anti_goal: 0 fact(s) (need 1)\n  · current_pain: 0 fact(s) (need 1)\n  · persona: 0 fact(s) (need 1)\n  · decision_point: 0 fact(s) (need 3)\n  · escalation_rule: 0 fact(s"
+              }
+            ],
+            "input_tokens": 6136,
+            "output_tokens": 231
+          },
+          "duration_ms": 6230,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Good. I've got the headline. That's a concrete pain point — 8 churned accounts, CSMs flying blind until the last month, and you want to flip that to 60-90 day visibility.\n\nBefore I drill into *how* the agent should work, I need to understand the shape of the problem better. Let me ask this:\n\n**Of those 8 accounts that churned — do you know what the leading indicators were?** In other words: looking back, what signals *should* have tipped off the CSM that these accounts were at risk? Was it usage dropping, the executive sponsor going quiet, a technical issue that didn't get resolved, budget concerns they mentioned in a call — what?",
+      "started_at": "2026-05-13T17:12:19.559763+00:00",
+      "ended_at": "2026-05-13T17:12:32.322352+00:00"
+    },
+    {
+      "turn_index": 1,
+      "customer_message": "Yes. Looking back at those 8 accounts, the common patterns were: (1) technical sponsor departed in the prior 90 days, (2) executive sponsor engagement dropped to zero — no exec response on emails, no QBR attendance, (3) product usage was off 30-50% from peak, (4) support tickets shifted from feature-request tone to frustration tone, (5) payment was on time but procurement started asking weird questions. We had at least 3 of these 5 signals on every one. None were aggregated anywhere.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='Yes. Looking back at those 8 accounts, the common patterns were: (1) technical s'",
+          "output": {
+            "label": "concrete",
+            "reasoning": "Customer provided specific, enumerated leading indicators (5 concrete signals: sponsor departure, exec disengagement, usage drop %, support ticket tone shift, procurement questions) that directly answer the probe about what signals should have tipped off CSMs to churn risk.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3384,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "leading_indicators",
+            "content": "Technical sponsor departure in prior 90 days, executive sponsor engagement dropped to zero (no email response, no QBR attendance), product usage off 30-50% from peak, support tickets shifted from feature-request to frustration tone, procurement asking unusual payment questions. At least 3 of these 5 signals present on all 8 churned accounts. None were aggregated anywhere.",
+            "source": "stated"
+          },
+          "duration_ms": 3371,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "That's really helpful. So you had the signals — they just weren't surfaced together in one place where a CSM could see them and act.\n\nLet me make sure I'm reading this right: **when you say \"none were aggregated anywhere,\" do you mean the CSM had to manually hunt across five different systems to piece this together — or that the signals existed but nobody was looking at them at all?**\n\nIn other words: was the problem that the data was hard to find, or that there was no systematic way to flag \"hey, this account just hit three of these five warning signs\"?",
+            "tool_calls": [],
+            "input_tokens": 3125,
+            "output_tokens": 130
+          },
+          "duration_ms": 3321,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "That's really helpful. So you had the signals — they just weren't surfaced together in one place where a CSM could see them and act.\n\nLet me make sure I'm reading this right: **when you say \"none were aggregated anywhere,\" do you mean the CSM had to manually hunt across five different systems to piece this together — or that the signals existed but nobody was looking at them at all?**\n\nIn other words: was the problem that the data was hard to find, or that there was no systematic way to flag \"hey, this account just hit three of these five warning signs\"?",
+      "started_at": "2026-05-13T17:12:43.290836+00:00",
+      "ended_at": "2026-05-13T17:12:53.373598+00:00"
+    },
+    {
+      "turn_index": 2,
+      "customer_message": "Both honestly. Most of the data exists — sponsor changes are in Salesforce, usage is in our data warehouse, support sentiment is in Zendesk tags, payment is in NetSuite. But it's in 4 different systems. The CSM does not have a workflow that aggregates them. And nobody — not the CSM, not their manager, not exec — was looking at the cross-system pattern. Everyone was looking at their slice.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='Both honestly. Most of the data exists — sponsor changes are in Salesforce, usag'",
+          "output": {
+            "label": "concrete",
+            "reasoning": "Customer gave a specific, fact-bearing answer that directly addresses the probe: the problem was both data fragmentation (4 systems) AND lack of aggregation workflow, with no systematic cross-system pattern detection.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3393,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "current_pain",
+            "content": "Data exists in 4 different systems (Salesforce, data warehouse, Zendesk, NetSuite) but CSM has no workflow that aggregates it. Nobody was looking at the cross-system pattern — everyone was looking at their slice.",
+            "source": "stated"
+          },
+          "duration_ms": 2972,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "That makes sense. Four silos, no aggregation layer, no one with a view of the whole picture.\n\nNow I want to understand what \"at-risk\" actually means for you operationally. You've given me the five signals, but I need to know: **if an account hits, say, 2 of those 5 signals, is that at-risk? Or do you need 3? And does it matter which 3?**\n\nFor example: is \"technical sponsor departed + usage down 30%\" the same risk level as \"technical sponsor departed + exec sponsor went quiet\"? Or do some combinations matter more than others?",
+            "tool_calls": [],
+            "input_tokens": 3353,
+            "output_tokens": 140
+          },
+          "duration_ms": 3379,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "That makes sense. Four silos, no aggregation layer, no one with a view of the whole picture.\n\nNow I want to understand what \"at-risk\" actually means for you operationally. You've given me the five signals, but I need to know: **if an account hits, say, 2 of those 5 signals, is that at-risk? Or do you need 3? And does it matter which 3?**\n\nFor example: is \"technical sponsor departed + usage down 30%\" the same risk level as \"technical sponsor departed + exec sponsor went quiet\"? Or do some combinations matter more than others?",
+      "started_at": "2026-05-13T17:13:07.220375+00:00",
+      "ended_at": "2026-05-13T17:13:16.970748+00:00"
+    },
+    {
+      "turn_index": 3,
+      "customer_message": "Honestly we don't have a calibrated rubric for this. We know it when we see it. Our hypothesis is that exec sponsor disengagement + technical sponsor turnover is the highest-signal combo — that's what we saw on the worst churn cases. But we'd want the agent to learn from outcomes over time rather than us pre-defining thresholds.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg=\"Honestly we don't have a calibrated rubric for this. We know it when we see it. \"",
+          "output": {
+            "label": "concrete_off_topic",
+            "reasoning": "Customer gave a concrete, fact-bearing answer about their highest-signal risk combo (exec sponsor disengagement + technical sponsor turnover) and their preference for learned thresholds, but did not directly answer the asked probe about whether 2, 3, or specific combinations of the 5 signals constitute at-risk status operationally.",
+            "contradicted_topic": null,
+            "inferred_topic": "escalation_rule",
+            "escalation_target": null
+          },
+          "duration_ms": 3538,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='escalation_rule'",
+          "output": {
+            "topic": "escalation_rule",
+            "content": "No calibrated rubric yet. Hypothesis: exec sponsor disengagement + technical sponsor turnover is the highest-signal combo based on worst churn cases observed. Want the agent to learn from outcomes over time rather than pre-defining thresholds.",
+            "source": "stated"
+          },
+          "duration_ms": 2663,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "I hear you — and I appreciate the honesty. But let me push back gently, because this matters for what we're actually building.\n\nIf the agent is supposed to *learn* thresholds over time, that means you need to tell it what \"at-risk\" means *now* so it can start making predictions and then you can validate whether those predictions were right or wrong. Without a starting rubric — even a rough one — the agent has no signal to learn from.\n\nHere's what I'm asking: **can you commit to a v1 rule, even if it's imperfect?** Something like: \"flag an account if we see exec sponsor disengagement + technical sponsor turnover, or if we see 3 of the 5 signals, or if usage drops 40%+ in a quarter.\" \n\nYou can iterate on it. But you need *something* to start with so the agent can flag accounts, CSMs can validate those flags against reality, and you can refine the rule based on what actually predicted churn.\n\nWhat would feel like a reasonable starting heuristic?",
+            "tool_calls": [],
+            "input_tokens": 3573,
+            "output_tokens": 239
+          },
+          "duration_ms": 6841,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "I hear you — and I appreciate the honesty. But let me push back gently, because this matters for what we're actually building.\n\nIf the agent is supposed to *learn* thresholds over time, that means you need to tell it what \"at-risk\" means *now* so it can start making predictions and then you can validate whether those predictions were right or wrong. Without a starting rubric — even a rough one — the agent has no signal to learn from.\n\nHere's what I'm asking: **can you commit to a v1 rule, even if it's imperfect?** Something like: \"flag an account if we see exec sponsor disengagement + technical sponsor turnover, or if we see 3 of the 5 signals, or if usage drops 40%+ in a quarter.\" \n\nYou can iterate on it. But you need *something* to start with so the agent can flag accounts, CSMs can validate those flags against reality, and you can refine the rule based on what actually predicted churn.\n\nWhat would feel like a reasonable starting heuristic?",
+      "started_at": "2026-05-13T17:13:28.399839+00:00",
+      "ended_at": "2026-05-13T17:13:41.446849+00:00"
+    },
+    {
+      "turn_index": 4,
+      "customer_message": "Wait — why are you drilling into thresholds? I told you what I want. Surface accounts at risk 60-90 days early. The threshold question feels like a builder problem not a discovery problem.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='Wait — why are you drilling into thresholds? I told you what I want. Surface acc'",
+          "output": {
+            "label": "relevance_challenge",
+            "reasoning": "The customer is questioning whether the agent's line of questioning (drilling into thresholds) is relevant to discovery at all, arguing it's a builder problem rather than a discovery problem.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3673,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "Fair pushback. Let me reframe why I'm asking.\n\nYou want the agent to surface at-risk accounts 60-90 days early so CSMs can intervene. But \"at-risk\" is the input to that workflow — it's what the agent needs to know to decide which accounts to surface. If I don't understand what makes an account at-risk *in your world*, I can't write a spec that a builder can execute. They'll have to guess, and they'll guess wrong.\n\nSo the threshold question isn't about implementation detail — it's about the decision rule the agent needs to operate. **What does the CSM need to see in order to act?**\n\nYou said your hypothesis is \"exec sponsor disengagement + technical sponsor turnover is highest-signal.\" Does that mean: if those two things happen together, that's always at-risk? Or is there a time window — like, if they happen within 30 days of each other? And what about the other three signals — do they matter at all, or are they just noise?\n\nI'm asking because the spec needs to say: \"the agent flags an account when X, Y, and Z conditions are met.\" What are X, Y, and Z?",
+            "tool_calls": [],
+            "input_tokens": 3858,
+            "output_tokens": 266
+          },
+          "duration_ms": 4275,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Fair pushback. Let me reframe why I'm asking.\n\nYou want the agent to surface at-risk accounts 60-90 days early so CSMs can intervene. But \"at-risk\" is the input to that workflow — it's what the agent needs to know to decide which accounts to surface. If I don't understand what makes an account at-risk *in your world*, I can't write a spec that a builder can execute. They'll have to guess, and they'll guess wrong.\n\nSo the threshold question isn't about implementation detail — it's about the decision rule the agent needs to operate. **What does the CSM need to see in order to act?**\n\nYou said your hypothesis is \"exec sponsor disengagement + technical sponsor turnover is highest-signal.\" Does that mean: if those two things happen together, that's always at-risk? Or is there a time window — like, if they happen within 30 days of each other? And what about the other three signals — do they matter at all, or are they just noise?\n\nI'm asking because the spec needs to say: \"the agent flags an account when X, Y, and Z conditions are met.\" What are X, Y, and Z?",
+      "started_at": "2026-05-13T17:13:52.002889+00:00",
+      "ended_at": "2026-05-13T17:13:59.954343+00:00"
+    },
+    {
+      "turn_index": 5,
+      "customer_message": "OK that makes sense, fair. So v1 rule: any account with 2+ of the 5 signals red, AND less than 120 days to renewal, gets flagged red. Tech sponsor change OR exec disengagement alone (1 signal) within 60 days of renewal flags yellow. The agent surfaces both, CSM decides what to do.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='OK that makes sense, fair. So v1 rule: any account with 2+ of the 5 signals red,'",
+          "output": {
+            "label": "concrete",
+            "reasoning": "Customer provided specific, testable decision rules for when the agent flags accounts (2+ signals + <120 days to renewal = red; 1 signal within 60 days of renewal = yellow), directly answering the probe about what conditions trigger at-risk classification.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3494,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "escalation_rule",
+            "content": "Flag account red if 2+ of 5 signals are red AND less than 120 days to renewal. Flag yellow if tech sponsor change OR exec disengagement alone within 60 days of renewal. Agent surfaces both; CSM decides action.",
+            "source": "stated"
+          },
+          "duration_ms": 2376,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "Perfect. That's concrete and testable. So red = 2+ signals + <120 days to renewal, yellow = either of those two signals alone + <60 days to renewal.\n\nQuick clarification on the signals themselves: **when you say \"technical sponsor departed,\" how do you know that happened?** Is it a Salesforce field that gets updated, or is it something a CSM has to manually log, or does it come from somewhere else?\n\nI'm asking because the agent needs to know where to *look* for each signal. Same question for the other four — where does each signal live?",
+            "tool_calls": [],
+            "input_tokens": 4205,
+            "output_tokens": 132
+          },
+          "duration_ms": 4498,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Perfect. That's concrete and testable. So red = 2+ signals + <120 days to renewal, yellow = either of those two signals alone + <60 days to renewal.\n\nQuick clarification on the signals themselves: **when you say \"technical sponsor departed,\" how do you know that happened?** Is it a Salesforce field that gets updated, or is it something a CSM has to manually log, or does it come from somewhere else?\n\nI'm asking because the agent needs to know where to *look* for each signal. Same question for the other four — where does each signal live?",
+      "started_at": "2026-05-13T17:14:09.083644+00:00",
+      "ended_at": "2026-05-13T17:14:19.458916+00:00"
+    },
+    {
+      "turn_index": 6,
+      "customer_message": "Salesforce has a 'Primary Technical Contact' field on every Account record. When the rep updates it, that's the signal. Exec sponsor disengagement is harder — we'd derive it from no exec emails in 60 days + no QBR attendance in the last cycle. Usage is straightforward from our warehouse. Support sentiment we'd need to do sentiment analysis on Zendesk tickets — we don't have that today. Procurement signals come from Gong call transcripts.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg=\"Salesforce has a 'Primary Technical Contact' field on every Account record. When\"",
+          "output": {
+            "label": "concrete",
+            "reasoning": "The customer provided specific, testable answers for where each of the five signals lives: Salesforce field, email/QBR logs, warehouse, Zendesk sentiment analysis, and Gong transcripts — directly addressing the probe about signal data sources.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3520,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "signal_data_source",
+            "content": "Technical sponsor departure: 'Primary Technical Contact' field on Account record in Salesforce, updated by rep. Exec sponsor disengagement: derived from no exec emails in 60 days + no QBR attendance in last cycle. Usage: warehouse. Support sentiment: requires sentiment analysis on Zendesk tickets (not currently available). Procurement signals: Gong call transcripts.",
+            "source": "stated"
+          },
+          "duration_ms": 3141,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "Got it. So four of the five are either already in a system or can be derived from existing data. Support sentiment is the one that requires new work — sentiment analysis on Zendesk.\n\nBefore I go further, let me check: **is that sentiment analysis something you're already planning to build, or is this the first time we're surfacing that as a dependency?** Because if it's new, that's a build task that needs to happen before the agent can work.",
+            "tool_calls": [],
+            "input_tokens": 4444,
+            "output_tokens": 103
+          },
+          "duration_ms": 2866,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Got it. So four of the five are either already in a system or can be derived from existing data. Support sentiment is the one that requires new work — sentiment analysis on Zendesk.\n\nBefore I go further, let me check: **is that sentiment analysis something you're already planning to build, or is this the first time we're surfacing that as a dependency?** Because if it's new, that's a build task that needs to happen before the agent can work.",
+      "started_at": "2026-05-13T17:14:31.404808+00:00",
+      "ended_at": "2026-05-13T17:14:40.939209+00:00"
+    },
+    {
+      "turn_index": 7,
+      "customer_message": "First time hearing about it. Not planned. We'd have to scope that separately. For v1 of this agent we can probably ship without it and add it later — the other 4 signals are the high-signal ones anyway. Support sentiment is more nuance-tier.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg=\"First time hearing about it. Not planned. We'd have to scope that separately. Fo\"",
+          "output": {
+            "label": "concrete",
+            "reasoning": "The customer directly answered whether sentiment analysis was planned (it wasn't) and provided a concrete decision for v1 (ship without it, add later), addressing the specific probe about whether this is a new dependency.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3093,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "escalation_rule",
+            "content": "Support sentiment analysis is not planned for v1. Ship without it; add later. The other 4 signals are high-signal; support sentiment is nuance-tier.",
+            "source": "stated"
+          },
+          "duration_ms": 2187,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "Good. So v1 ships with 4 signals: tech sponsor change, exec disengagement, usage drop, and procurement signals. Support sentiment is backlog.\n\nNow let me understand the workflow on the other end. **When the agent flags an account as red or yellow, what's supposed to happen?** Does it land in the CSM's inbox, or does it show up in a dashboard they check, or does it trigger an alert to their manager? And who decides what the CSM does with it?",
+            "tool_calls": [],
+            "input_tokens": 4608,
+            "output_tokens": 111
+          },
+          "duration_ms": 3125,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Good. So v1 ships with 4 signals: tech sponsor change, exec disengagement, usage drop, and procurement signals. Support sentiment is backlog.\n\nNow let me understand the workflow on the other end. **When the agent flags an account as red or yellow, what's supposed to happen?** Does it land in the CSM's inbox, or does it show up in a dashboard they check, or does it trigger an alert to their manager? And who decides what the CSM does with it?",
+      "started_at": "2026-05-13T17:14:53.418822+00:00",
+      "ended_at": "2026-05-13T17:15:01.831352+00:00"
+    },
+    {
+      "turn_index": 8,
+      "customer_message": "CSM has a dashboard view of their book of business. At-risk accounts are at the top with status (red/yellow), days to renewal, and the specific signals that triggered the flag. When an account moves to red, the CSM has 48 hours to acknowledge and propose an intervention plan in a structured form. If they don't acknowledge in 48 hours, it auto-escalates to their manager AND the AE on that account. If account stays red for 14 days without progress against the plan, exec sponsor (FinCo VP CS) gets pulled in. CSM owns the relationship throughout — the agent surfaces, it doesn't act.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='CSM has a dashboard view of their book of business. At-risk accounts are at the '",
+          "output": {
+            "label": "concrete",
+            "reasoning": "The customer provided specific, time-bound, testable answers to the asked probe: dashboard view for CSMs, 48-hour acknowledgment window with auto-escalation to manager and AE, 14-day red threshold triggering VP CS involvement, and clear ownership model (CSM owns relationship, agent surfaces only).",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 2633,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "escalation_rule",
+            "content": "CSM has a dashboard view of their book of business. At-risk accounts are at the top with status (red/yellow), days to renewal, and the specific signals that triggered the flag. When an account moves to red, the CSM has 48 hours to acknowledge and propose an intervention plan in a structured form. If they don't acknowledge in 48 hours, it auto-escalates to their manager AND the AE on that account. If account stays red for 14 days without progress against the plan, exec sponsor (FinCo VP CS) gets pulled in. CSM owns the relationship throughout — the agent surfaces, it doesn't act.",
+            "source": "stated"
+          },
+          "duration_ms": 3785,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "Clear. So the agent is a visibility and escalation trigger, not a decision-maker. CSM owns the response.\n\nOne thing I want to nail down: **when you say \"propose an intervention plan,\" what does that look like?** Is it a free-text note, or are there specific intervention types you want CSMs to choose from? For example: \"schedule QBR,\" \"technical deep-dive,\" \"executive business review,\" \"pause billing to investigate,\" etc.?\n\nBecause if the agent is going to learn over time whether interventions actually prevent churn, it needs to know what interventions were attempted.",
+            "tool_calls": [],
+            "input_tokens": 4861,
+            "output_tokens": 134
+          },
+          "duration_ms": 3181,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Clear. So the agent is a visibility and escalation trigger, not a decision-maker. CSM owns the response.\n\nOne thing I want to nail down: **when you say \"propose an intervention plan,\" what does that look like?** Is it a free-text note, or are there specific intervention types you want CSMs to choose from? For example: \"schedule QBR,\" \"technical deep-dive,\" \"executive business review,\" \"pause billing to investigate,\" etc.?\n\nBecause if the agent is going to learn over time whether interventions actually prevent churn, it needs to know what interventions were attempted.",
+      "started_at": "2026-05-13T17:15:13.232706+00:00",
+      "ended_at": "2026-05-13T17:15:22.839709+00:00"
+    },
+    {
+      "turn_index": 9,
+      "customer_message": "Right now intervention plans are unstructured. Different CSMs do different things. We should standardize. A short menu of intervention types would be useful: schedule exec sponsor call, deploy a SoCo for technical re-engagement, launch a usage push, escalate to AE for commercial conversation, or other (free text). Each one logged with date and outcome so we can correlate over time.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='Right now intervention plans are unstructured. Different CSMs do different thing'",
+          "output": {
+            "label": "concrete",
+            "reasoning": "The customer gave a specific, structured answer to the probe about what 'propose an intervention plan' looks like: a standardized menu of five intervention types (exec sponsor call, SoCo deployment, usage push, commercial escalation, other) with logging of date and outcome.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3463,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "intervention_types",
+            "content": "Standardize intervention plans with a menu of types: schedule exec sponsor call, deploy a SoCo for technical re-engagement, launch a usage push, escalate to AE for commercial conversation, or other (free text). Each logged with date and outcome for correlation analysis.",
+            "source": "stated"
+          },
+          "duration_ms": 3569,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=2, tool_calls=['get_current_spec_state', 'get_checklist_progress']",
+          "output": {
+            "final_response": "Good. We've got escalation rules and current pain nailed down. But I'm missing a few things that matter for the spec. Let me ask about success metric first, because it's the most concrete:\n\n**How will you know this agent is working?** You said you want to cut churn from 8 accounts to 2 or fewer. Is that the metric — \"fewer than 2 accounts churn per year where the CSM didn't flag them at-risk 60+ days early\"? Or is there another way you're measuring success?",
+            "tool_calls": [
+              {
+                "name": "get_current_spec_state",
+                "arguments": {},
+                "result_preview": "Phase: lay_of_the_land\n\nTopics + facts so far:\n  renewal_risk_escalation (1 fact(s)):\n    - [stated] 8 enterprise accounts churned last year because CSM didn't flag them as at-risk until the last 30 days. Goal: catch renewal risk 60-90 days early instead of 30 days.\n  leading_indicators (1 fact(s)):"
+              },
+              {
+                "name": "get_checklist_progress",
+                "arguments": {},
+                "result_preview": "Phase: lay_of_the_land\n\nCanonical-topic coverage:\n  · desired_outcome: 0 fact(s) (need 1)\n  · success_metric: 0 fact(s) (need 1)\n  · anti_goal: 0 fact(s) (need 1)\n  ✓ current_pain: 1 fact(s) (need 1)\n  · persona: 0 fact(s) (need 1)\n  · decision_point: 0 fact(s) (need 3)\n  ✓ escalation_rule: 4 fact(s"
+              }
+            ],
+            "input_tokens": 11311,
+            "output_tokens": 232
+          },
+          "duration_ms": 6448,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Good. We've got escalation rules and current pain nailed down. But I'm missing a few things that matter for the spec. Let me ask about success metric first, because it's the most concrete:\n\n**How will you know this agent is working?** You said you want to cut churn from 8 accounts to 2 or fewer. Is that the metric — \"fewer than 2 accounts churn per year where the CSM didn't flag them at-risk 60+ days early\"? Or is there another way you're measuring success?",
+      "started_at": "2026-05-13T17:15:32.885875+00:00",
+      "ended_at": "2026-05-13T17:15:46.373889+00:00"
+    },
+    {
+      "turn_index": 10,
+      "customer_message": "Yes that's the headline metric. Also useful: percentage of red flags that got acknowledged in <48 hours (process compliance), percentage of red accounts that moved back to green within 30 days (intervention efficacy). And a leading indicator I care about: number of churns that were 'agent surfaced 60+ days out and CSM did something' vs 'agent surfaced and CSM ignored' — tells us whether the surfacing is working AND whether CSM follow-through is the bottleneck.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg=\"Yes that's the headline metric. Also useful: percentage of red flags that got ac\"",
+          "output": {
+            "label": "concrete",
+            "reasoning": "Customer directly answered the asked probe with four specific, measurable success metrics: churn reduction (headline), flag acknowledgment time (<48h), intervention efficacy (30-day recovery %), and a leading indicator comparing agent surfacing + CSM action vs. inaction.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 2456,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "success_metric",
+            "content": "Headline metric: fewer than 2 accounts churn per year where the CSM didn't flag them at-risk 60+ days early. Also tracking: percentage of red flags acknowledged in <48 hours (process compliance), percentage of red accounts moved back to green within 30 days (intervention efficacy), and leading indicator of churns that were 'agent surfaced 60+ days out and CSM did something' vs 'agent surfaced and CSM ignored' to identify whether surfacing is working and whether CSM follow-through is the bottleneck.",
+            "source": "stated"
+          },
+          "duration_ms": 3140,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "Excellent. Those are all measurable and they tell you different things — compliance, efficacy, and whether the problem is the signal or the response.\n\nNow let me ask about the flip side: **what would make you want to turn this agent off or consider it a failure?** Is there a scenario where surfacing too many false positives becomes a problem — like, if the agent flags 50 accounts a month and only 2 actually churn, does that tank CSM trust? Or is the cost of a false positive low enough that you'd rather over-flag than miss one?",
+            "tool_calls": [],
+            "input_tokens": 5313,
+            "output_tokens": 127
+          },
+          "duration_ms": 3077,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Excellent. Those are all measurable and they tell you different things — compliance, efficacy, and whether the problem is the signal or the response.\n\nNow let me ask about the flip side: **what would make you want to turn this agent off or consider it a failure?** Is there a scenario where surfacing too many false positives becomes a problem — like, if the agent flags 50 accounts a month and only 2 actually churn, does that tank CSM trust? Or is the cost of a false positive low enough that you'd rather over-flag than miss one?",
+      "started_at": "2026-05-13T17:15:56.711769+00:00",
+      "ended_at": "2026-05-13T17:16:05.392708+00:00"
+    },
+    {
+      "turn_index": 11,
+      "customer_message": "Great question. False positives are costly because CSMs lose trust fast — if 8 out of 10 flagged accounts turn out fine after they did a bunch of intervention work, they stop opening the dashboard. We'd rather miss one than cry wolf 5 times. So tune toward precision over recall, at least for v1. Anti-goals: agent should NOT message the customer directly. It should NOT auto-downgrade or upgrade plans. It should NOT make commercial commitments. It should NOT communicate risk to the customer in any form — that's CSM judgment.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='Great question. False positives are costly because CSMs lose trust fast — if 8 o'",
+          "output": {
+            "label": "concrete",
+            "reasoning": "The customer directly answered the probe about failure conditions and anti-goals with specific, testable constraints: false positives erode CSM trust, precision over recall for v1, and four concrete prohibitions (no direct messaging, no plan changes, no commercial commitments, no customer-facing risk communication).",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3341,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "anti_goal",
+            "content": "Agent should NOT message the customer directly. It should NOT auto-downgrade or upgrade plans. It should NOT make commercial commitments. It should NOT communicate risk to the customer in any form — that's CSM judgment.",
+            "source": "stated"
+          },
+          "duration_ms": 2277,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=1, tool_calls=[]",
+          "output": {
+            "final_response": "Got it. Precision over recall, and the agent is strictly a visibility layer — no customer-facing actions, no commercial moves, no messaging. CSM is the only voice to the customer.\n\nLet me check my understanding of the personas here. **Who are the people actually using this agent?** I know CSMs are the primary user, but you mentioned their manager gets escalations, and the VP CS gets pulled in on 14-day red accounts. Are those the only three, or are there others?",
+            "tool_calls": [],
+            "input_tokens": 5563,
+            "output_tokens": 109
+          },
+          "duration_ms": 3355,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Got it. Precision over recall, and the agent is strictly a visibility layer — no customer-facing actions, no commercial moves, no messaging. CSM is the only voice to the customer.\n\nLet me check my understanding of the personas here. **Who are the people actually using this agent?** I know CSMs are the primary user, but you mentioned their manager gets escalations, and the VP CS gets pulled in on 14-day red accounts. Are those the only three, or are there others?",
+      "started_at": "2026-05-13T17:16:15.977265+00:00",
+      "ended_at": "2026-05-13T17:16:24.957517+00:00"
+    },
+    {
+      "turn_index": 12,
+      "customer_message": "Three personas. (1) CSM — primary user, has their book of business view, gets red/yellow flags, owns the intervention plan and the customer relationship. (2) CSM Manager — sees their team's at-risk accounts in aggregate, gets escalations after 48 hours of un-acknowledged red. (3) VP Customer Success — sees company-wide rollup with trend lines, gets pulled in on 14-day stuck-red accounts. Plus AE involvement on a per-account basis when commercial conversations are needed but not in the agent UI directly — they get Slack pings or similar.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg='Three personas. (1) CSM — primary user, has their book of business view, gets re'",
+          "output": {
+            "label": "concrete",
+            "reasoning": "The customer named three specific personas (CSM, CSM Manager, VP Customer Success) with concrete roles, visibility scopes, and escalation triggers, directly answering the asked probe about who uses the agent.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 2462,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "distill",
+          "input_summary": "distilling on target_topic='(inferred)'",
+          "output": {
+            "topic": "persona",
+            "content": "Three personas use the agent: (1) CSM — primary user, has their book of business view, gets red/yellow flags, owns the intervention plan and the customer relationship. (2) CSM Manager — sees their team's at-risk accounts in aggregate, gets escalations after 48 hours of un-acknowledged red. (3) VP Customer Success — sees company-wide rollup with trend lines, gets pulled in on 14-day stuck-red accounts. Plus AE involvement on a per-account basis when commercial conversations are needed but not in the agent UI directly — they get Slack pings or similar.",
+            "source": "stated"
+          },
+          "duration_ms": 3678,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "phase_advance",
+          "input_summary": "lay_of_the_land threshold met",
+          "output": {
+            "new_phase": "drilling"
+          },
+          "duration_ms": 0,
+          "model": null
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=2, tool_calls=['synthesize_my_thinking']",
+          "output": {
+            "final_response": "Good. I think I've got the shape of this. But I want to clarify one thing that came up in my synthesis:\n\n**When a CSM sees a red flag on their dashboard, what does the agent do next?** Does it just show them the flag and the signals, and they figure out what to do? Or does the agent also suggest specific interventions — like \"this account is red because exec sponsor is disengaged and usage is down; consider scheduling a QBR and looping in SoCo\"?\n\nIn other words: is the agent a *visibility* tool, or is it also a *guidance* tool?",
+            "tool_calls": [
+              {
+                "name": "synthesize_my_thinking",
+                "arguments": {},
+                "result_preview": "{\n  \"one_line_framing\": \"A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.\",\n  \"candidate_framing"
+              }
+            ],
+            "input_tokens": 12162,
+            "output_tokens": 195
+          },
+          "duration_ms": 16866,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Good. I think I've got the shape of this. But I want to clarify one thing that came up in my synthesis:\n\n**When a CSM sees a red flag on their dashboard, what does the agent do next?** Does it just show them the flag and the signals, and they figure out what to do? Or does the agent also suggest specific interventions — like \"this account is red because exec sponsor is disengaged and usage is down; consider scheduling a QBR and looping in SoCo\"?\n\nIn other words: is the agent a *visibility* tool, or is it also a *guidance* tool?",
+      "started_at": "2026-05-13T17:16:36.535816+00:00",
+      "ended_at": "2026-05-13T17:16:59.551074+00:00"
+    },
+    {
+      "turn_index": 13,
+      "customer_message": "I think we've covered enough. Let's wrap it up and see what the spec looks like.",
+      "events": [
+        {
+          "sub_agent": "triage",
+          "input_summary": "customer_msg=\"I think we've covered enough. Let's wrap it up and see what the spec looks like.\"",
+          "output": {
+            "label": "meta",
+            "reasoning": "The customer is signaling a procedural wrap-up ('let's wrap it up and see what the spec looks like') with no new facts, questions, or substantive content about the agent's behavior.",
+            "contradicted_topic": null,
+            "inferred_topic": null,
+            "escalation_target": null
+          },
+          "duration_ms": 3450,
+          "model": "claude-haiku-4-5"
+        },
+        {
+          "sub_agent": "mega_agent",
+          "input_summary": "completion_calls=2, tool_calls=['synthesize_my_thinking']",
+          "output": {
+            "final_response": "Here's what I'm hearing:\n\n**One-line framing:** A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.\n\n**The core shape:** Passive monitor + alert system. The agent watches four signals (tech sponsor change, exec disengagement, usage drop, procurement signals), flags accounts as red (2+ signals + <120 days to renewal) or yellow (either of the two high-signal ones + <60 days to renewal), and escalates mechanically if the CSM doesn't acknowledge or move the account. CSM owns the intervention entirely.\n\n**What's locked in:**\n- v1 signals: tech sponsor change, exec disengagement, usage drop, procurement signals (support sentiment is backlog)\n- Red/yellow thresholds: 2+ signals + <120 days = red; either high-signal + <60 days = yellow\n- Escalation: 48h no-ack → CSM Manager + AE; 14 days red + no progress → VP CS\n- Intervention types: structured menu (exec call, SoCo re-engagement, usage push, AE commercial, other)\n- Success metrics: churn <2, ack rate >X%, intervention efficacy, signal precision over recall\n- Anti-goals: no customer messaging, no commercial moves, no auto-downgrades, CSM is the only voice\n\n**One thing still open:** When the CSM sees a red flag, does the agent *suggest* next steps, or just show them the signals and let them decide? You said \"the agent surfaces, it doesn't act\" — I'm reading that as the latter, but I want to confirm that's right before we hand this off.\n\nDoes that match what you're building?",
+            "tool_calls": [
+              {
+                "name": "synthesize_my_thinking",
+                "arguments": {},
+                "result_preview": "{\n  \"one_line_framing\": \"A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.\",\n  \"candidate_framing"
+              }
+            ],
+            "input_tokens": 12495,
+            "output_tokens": 502
+          },
+          "duration_ms": 16447,
+          "model": "claude-haiku-4-5"
+        }
+      ],
+      "agent_message": "Here's what I'm hearing:\n\n**One-line framing:** A tiered escalation dashboard that surfaces at-risk accounts to CSMs 60-90 days pre-renewal, auto-escalates unacknowledged reds to CSM Manager at 48h, and rolls up team/company trends to leadership — with AE notification on commercial-trigger accounts.\n\n**The core shape:** Passive monitor + alert system. The agent watches four signals (tech sponsor change, exec disengagement, usage drop, procurement signals), flags accounts as red (2+ signals + <120 days to renewal) or yellow (either of the two high-signal ones + <60 days to renewal), and escalates mechanically if the CSM doesn't acknowledge or move the account. CSM owns the intervention entirely.\n\n**What's locked in:**\n- v1 signals: tech sponsor change, exec disengagement, usage drop, procurement signals (support sentiment is backlog)\n- Red/yellow thresholds: 2+ signals + <120 days = red; either high-signal + <60 days = yellow\n- Escalation: 48h no-ack → CSM Manager + AE; 14 days red + no progress → VP CS\n- Intervention types: structured menu (exec call, SoCo re-engagement, usage push, AE commercial, other)\n- Success metrics: churn <2, ack rate >X%, intervention efficacy, signal precision over recall\n- Anti-goals: no customer messaging, no commercial moves, no auto-downgrades, CSM is the only voice\n\n**One thing still open:** When the CSM sees a red flag, does the agent *suggest* next steps, or just show them the signals and let them decide? You said \"the agent surfaces, it doesn't act\" — I'm reading that as the latter, but I want to confirm that's right before we hand this off.\n\nDoes that match what you're building?",
+      "started_at": "2026-05-13T17:17:08.257783+00:00",
+      "ended_at": "2026-05-13T17:17:28.158763+00:00"
+    }
+  ]
+}

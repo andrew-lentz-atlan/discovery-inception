@@ -1,0 +1,323 @@
+{
+  "role_name": "Customer Success Manager (CSM)",
+  "role_summary": "The CSM owns the post-sale relationship with enterprise customers as the primary commercial point of contact and orchestrator of value realization. They are responsible for renewal motion, account health monitoring, and expansion identification for their book of business, while Solutions Consultants handle technical implementation and Account Executives close net-new deals.",
+  "primary_outcomes": [
+    "Net retention rate >115%",
+    "Logo retention >95%",
+    "Time-to-renewal-decision: closed at least 30 days before contract end",
+    "QBR completion rate: 100% of accounts have a QBR each quarter"
+  ],
+  "typical_workflows": [
+    {
+      "name": "Success plan ownership",
+      "purpose": "Define customer outcomes at kickoff and track progress against milestones",
+      "trigger": "Customer engagement begins post-sale",
+      "steps": [
+        "Define outcomes with the customer at kickoff",
+        "Track progress against milestones",
+        "Refresh quarterly"
+      ],
+      "typical_duration": null
+    },
+    {
+      "name": "Renewal management",
+      "purpose": "Secure contract renewal and manage at-risk accounts",
+      "trigger": "90 days before contract end",
+      "steps": [
+        "Forecast renewal 90 days out",
+        "Run renewal conversations",
+        "Escalate at-risk accounts to leadership"
+      ],
+      "typical_duration": null
+    },
+    {
+      "name": "Account health monitoring",
+      "purpose": "Detect and surface account risk early",
+      "trigger": "Ongoing, throughout customer lifecycle",
+      "steps": [
+        "Track usage, sentiment, and engagement",
+        "Surface risk early"
+      ],
+      "typical_duration": null
+    },
+    {
+      "name": "Quarterly business review (QBR)",
+      "purpose": "Align with customer executive sponsor on progress and strategy",
+      "trigger": "Quarterly cadence",
+      "steps": [
+        "Conduct QBR with customer's executive sponsor"
+      ],
+      "typical_duration": null
+    }
+  ],
+  "decision_criteria": [
+    {
+      "name": "Account health assessment",
+      "inputs": [
+        "Frequency and quality of executive sponsor engagement",
+        "Stability of the technical sponsor / power user",
+        "Sentiment from support tickets and recent product-usage trends",
+        "Whether the success plan is on track or slipping",
+        "Payment / billing health"
+      ],
+      "criteria": [
+        "CSMs build the picture from these signals",
+        "Different CSMs weight them differently"
+      ],
+      "is_judgment": true
+    },
+    {
+      "name": "Renewal risk escalation",
+      "inputs": [
+        "Account health signals",
+        "Renewal forecast status"
+      ],
+      "criteria": [
+        "Escalate at-risk accounts to leadership"
+      ],
+      "is_judgment": true
+    },
+    {
+      "name": "Expansion opportunity identification",
+      "inputs": [
+        "Account health",
+        "Customer usage patterns",
+        "Success plan progress"
+      ],
+      "criteria": [
+        "Identify expansion opportunities for AE involvement"
+      ],
+      "is_judgment": true
+    }
+  ],
+  "escalation_paths": [
+    {
+      "trigger": "Technical issue or implementation question",
+      "handoff_target": "Solutions Consultant (SoCo)",
+      "artifacts_passed": [
+        "Customer context",
+        "Technical issue details"
+      ]
+    },
+    {
+      "trigger": "Support ticket raised as a relationship issue or CSM involvement needed",
+      "handoff_target": "Support",
+      "artifacts_passed": [
+        "Ticket context",
+        "Relationship context"
+      ]
+    },
+    {
+      "trigger": "Expansion or commercial opportunity identified",
+      "handoff_target": "Account Executive (AE)",
+      "artifacts_passed": [
+        "Expansion context",
+        "Customer recommendations"
+      ]
+    },
+    {
+      "trigger": "Product roadmap request or feature escalation",
+      "handoff_target": "Product",
+      "artifacts_passed": [
+        "Customer request",
+        "Business justification"
+      ]
+    },
+    {
+      "trigger": "At-risk account or renewal slipping",
+      "handoff_target": "CSM Manager / Leadership",
+      "artifacts_passed": [
+        "Account health assessment",
+        "Risk indicators",
+        "Renewal status"
+      ]
+    },
+    {
+      "trigger": "Pricing, contract negotiation, or scope commitment needed",
+      "handoff_target": "Account Executive and CSM Manager",
+      "artifacts_passed": [
+        "Customer context",
+        "CSM recommendations"
+      ]
+    }
+  ],
+  "domain_vocabulary": {
+    "Customer Success Manager (CSM)": "Owns the post-sale relationship with enterprise customers. Primary commercial point of contact, orchestrator of value realization, and front-line owner of retention and growth for their book of business.",
+    "Solutions Consultant (SoCo)": "Technical implementer responsible for implementation; CSMs escalate technical issues and implementation questions to SoCo.",
+    "Account Executive (AE)": "Commercial closer responsible for net-new deals; CSMs escalate expansion opportunities and commercial matters to AE.",
+    "book of business": "The portfolio of customer accounts for which a CSM is responsible.",
+    "Success plan": "Document defining outcomes with the customer at kickoff, tracked against milestones and refreshed quarterly.",
+    "Renewal management": "Process of forecasting renewals 90 days out, running renewal conversations, and escalating at-risk accounts to leadership.",
+    "Account health": "Assessment of customer account status based on executive sponsor engagement, technical sponsor stability, support sentiment, success plan progress, and payment/billing health.",
+    "Net retention rate": "Metric measuring revenue retention; FinCo target is >115%.",
+    "Logo retention": "Metric measuring customer retention by count; FinCo target is >95%.",
+    "Time-to-renewal-decision": "Metric measuring when renewal is closed relative to contract end; FinCo target is closed at least 30 days before contract end.",
+    "QBR": "Quarterly business review conducted with the customer's executive sponsor to align on progress and strategy.",
+    "QBR completion rate": "Metric measuring percentage of accounts receiving a QBR each quarter; FinCo target is 100%.",
+    "Executive sponsor": "Customer's executive-level stakeholder engaged in quarterly business reviews and strategic alignment.",
+    "Technical sponsor": "Customer's technical point of contact or power user; stability of this role is a key account health signal.",
+    "Power user": "Customer's primary technical user; stability of this role is tracked as part of account health monitoring.",
+    "Expansion identification": "Process of identifying opportunities for customers to purchase additional products or services; CSM identifies and escalates to AE.",
+    "At-risk account": "Account showing leading indicators of churn or renewal risk; escalated to CSM Manager or leadership.",
+    "Churn": "Customer non-renewal or contract termination.",
+    "Leading indicators": "Early signals of account risk, including technical sponsor departing, usage decline, and executive sponsor disengagement.",
+    "Sentiment": "Qualitative assessment of customer satisfaction and engagement derived from support tickets and product usage trends.",
+    "Usage trends": "Patterns in customer product usage tracked as part of account health monitoring.",
+    "Support ticket": "Customer support request; CSM involvement triggered when ticket is raised as a relationship issue or escalation.",
+    "Tier-1 support": "First-level support tickets owned by Support team; CSM involvement limited to escalations or relationship issues.",
+    "CSM Manager": "Manager of CSM team; receives escalations for at-risk accounts, renewal risk, and pricing/contract decisions.",
+    "Scope commitment": "Promise to deliver specific work or features; CSM must involve AE and CSM Manager before making scope commitments to avoid commercial confusion.",
+    "Custom build": "Custom development or implementation work; requires AE and CSM Manager involvement before commitment.",
+    "Pricing and contract negotiation": "Commercial terms discussion; owned by AE and CSM Manager; CSM provides context and recommendations.",
+    "Payment / billing health": "Status of customer payment and billing; tracked as part of account health assessment.",
+    "Relationship-based assessment": "Account health evaluation method relying primarily on CSM's perception of relationship quality, supplemented by structured data signals.",
+    "Health score": "[INFERRED — please confirm] A single quantitative or composite measure of account health; the source notes that FinCo does not currently have a single health score and CSMs build the picture from multiple signals."
+  },
+  "common_edge_cases": [
+    {
+      "description": "CSM perceived relationship as healthy but missed leading indicators of churn (technical sponsor departing, usage decline, exec sponsor disengagement)",
+      "handling": "Monitor leading indicators systematically: track technical sponsor stability, usage trends, and executive engagement frequency; do not rely solely on relationship perception"
+    },
+    {
+      "description": "Renewal slipped until <30 days before contract end, leaving no time to intervene",
+      "handling": "Forecast renewals 90 days out and run renewal conversations early to ensure time for intervention"
+    },
+    {
+      "description": "CSM attempted to handle a technical escalation without looping in SoCo, resulting in a bad answer in front of the customer",
+      "handling": "Escalate technical issues to SoCo immediately; do not attempt to resolve technical matters directly"
+    },
+    {
+      "description": "CSM committed to scope (expansion, custom build) without AE involvement, causing commercial confusion",
+      "handling": "Involve AE and CSM Manager before committing to expansion or custom scope; provide context and recommendations but do not make commercial commitments unilaterally"
+    }
+  ],
+  "unwritten_rules": [
+    "When account health is ambiguous, weight executive sponsor engagement and technical sponsor stability as leading indicators—don't rely on 'feeling' the relationship is healthy.",
+    "Start renewal conversations early enough to close the decision at least 30 days before contract end; if you're under 30 days out, escalate immediately to leadership.",
+    "On technical questions or escalations in front of the customer, loop in SoCo first rather than attempting to answer directly.",
+    "When identifying expansion or custom scope opportunities, involve the AE early to avoid commercial misalignment later.",
+    "In account health reviews, build your assessment from multiple signals (exec engagement, technical sponsor stability, support sentiment, usage trends, success plan progress) rather than a single score or gut feeling."
+  ],
+  "confidence_per_field": {
+    "role_name": 1.0,
+    "role_summary": 0.95,
+    "primary_outcomes": 1.0,
+    "typical_workflows": 0.85,
+    "decision_criteria": 0.75,
+    "escalation_paths": 0.9,
+    "domain_vocabulary": 0.88,
+    "common_edge_cases": 0.95,
+    "unwritten_rules": 0.85,
+    "flagged_unknowns": 0.92
+  },
+  "flagged_unknowns": [
+    {
+      "field": "Success plan ownership — typical duration and refresh cadence",
+      "why_it_matters": "An agent needs to know how long a success plan typically takes to define, when to schedule refreshes, and how to prompt the CSM if a refresh is overdue; without this, the agent cannot proactively manage the workflow.",
+      "probe_suggestion": "How long does it typically take to define a success plan with a customer at kickoff? And when you refresh quarterly, how much time should the CSM block for that refresh conversation?"
+    },
+    {
+      "field": "Renewal management — specific renewal conversation structure and talking points",
+      "why_it_matters": "The extraction says 'run renewal conversations' but does not specify what topics, questions, or outcomes the CSM should cover; an agent cannot execute this workflow without knowing what success looks like in the conversation.",
+      "probe_suggestion": "Walk us through what a renewal conversation looks like. What are the 3–5 key topics or questions the CSM should cover to determine if the customer will renew?"
+    },
+    {
+      "field": "Account health assessment — weighting rules or decision thresholds",
+      "why_it_matters": "The extraction notes that 'different CSMs weight [signals] differently' but provides no guidance on how to weight them; an agent cannot make consistent account health decisions without explicit criteria or thresholds.",
+      "probe_suggestion": "If a customer has strong executive sponsor engagement and on-track success plan progress, but usage has declined 20% in the last quarter, would you flag that as at-risk? What combination of signals triggers an escalation?"
+    },
+    {
+      "field": "Renewal risk escalation — specific escalation triggers and timing",
+      "why_it_matters": "The extraction says escalate 'at-risk accounts' but does not define what makes an account at-risk or at what point in the renewal cycle the escalation must happen; an agent needs concrete thresholds to know when to escalate.",
+      "probe_suggestion": "Name the specific conditions that trigger a renewal risk escalation to leadership. For example: if renewal forecast is 'no decision' with <60 days to contract end, escalate immediately?"
+    },
+    {
+      "field": "Expansion opportunity identification — criteria and confidence threshold",
+      "why_it_matters": "The extraction lists expansion as a CSM responsibility but does not define what signals indicate a genuine expansion opportunity versus a one-off request; an agent cannot filter noise without clear criteria.",
+      "probe_suggestion": "What are the top 3 signals that tell you a customer is ready for an expansion conversation? And is there a minimum threshold—e.g., 'only escalate to AE if you're 80% confident the customer will engage'?"
+    },
+    {
+      "field": "Account health monitoring — specific metrics, thresholds, and monitoring frequency",
+      "why_it_matters": "The extraction says track 'usage, sentiment, and engagement' but does not specify which metrics, what constitutes a red flag, or how often the CSM should review them; an agent cannot monitor proactively without concrete definitions.",
+      "probe_suggestion": "Define 'usage decline' and 'low engagement' in concrete terms. For example: if a customer's monthly active users drop below 50% of their peak, or if there are no support tickets in 60 days, is that a red flag?"
+    },
+    {
+      "field": "QBR execution — agenda, preparation, and success criteria",
+      "why_it_matters": "The extraction requires 100% QBR completion rate but does not specify what a QBR should cover, how long it takes, or what preparation is needed; an agent cannot execute or schedule QBRs without this detail.",
+      "probe_suggestion": "What should a QBR agenda include? How much time should the CSM spend preparing? And what does a 'successful' QBR look like—e.g., customer commits to next quarter's outcomes, or executive sponsor attends?"
+    },
+    {
+      "field": "Technical escalation — criteria for when to loop in SoCo versus handling directly",
+      "why_it_matters": "The extraction warns against handling technical issues directly but does not define the boundary; an agent needs to know which questions are safe to answer and which require SoCo involvement.",
+      "probe_suggestion": "Give an example of a customer question that a CSM should answer directly, and an example that requires SoCo. What's the rule of thumb?"
+    },
+    {
+      "field": "Support ticket triage — criteria for CSM involvement versus Support ownership",
+      "why_it_matters": "The extraction says CSM gets involved on 'escalations or relationship issues' but does not define what qualifies; an agent cannot route tickets correctly without clear criteria.",
+      "probe_suggestion": "A customer raises a support ticket about a billing discrepancy. Is that a CSM escalation or does Support handle it? What if the customer says 'I'm thinking about not renewing because of this'?"
+    },
+    {
+      "field": "Pricing and contract negotiation — CSM's role and decision authority",
+      "why_it_matters": "The extraction says CSM provides 'context and recommendations' but does not specify what authority the CSM has, what recommendations are appropriate, or when to defer to AE/Manager; an agent needs to know its boundaries.",
+      "probe_suggestion": "A customer asks for a 10% discount on renewal. What should the CSM do? Can the CSM offer a discount, or must they escalate? What context or recommendations should the CSM provide?"
+    },
+    {
+      "field": "Executive sponsor engagement — definition and measurement",
+      "why_it_matters": "The extraction lists 'frequency and quality of executive sponsor engagement' as a health signal but does not define what 'quality' means or what frequency is healthy; an agent cannot assess this signal without concrete criteria.",
+      "probe_suggestion": "What does 'quality' executive sponsor engagement look like? Is it a monthly check-in, quarterly QBR, or something else? If an executive sponsor hasn't engaged in 90 days, is that a red flag?"
+    },
+    {
+      "field": "Technical sponsor stability — definition and monitoring",
+      "why_it_matters": "The extraction flags 'stability of the technical sponsor' as a leading indicator but does not define what instability looks like or how to detect it; an agent cannot monitor this without concrete signals.",
+      "probe_suggestion": "How do you know if a technical sponsor is unstable? Is it a change in contact, reduced responsiveness, or something else? How often should the CSM check in with the technical sponsor?"
+    },
+    {
+      "field": "Sentiment assessment — data sources and scoring method",
+      "why_it_matters": "The extraction mentions 'sentiment from support tickets' but does not specify how sentiment is measured, scored, or aggregated; an agent cannot assess sentiment without a defined method.",
+      "probe_suggestion": "How do you measure sentiment today? Do you read support tickets manually, use a sentiment tool, or track NPS? What sentiment score or trend would trigger a health concern?"
+    },
+    {
+      "field": "Success plan progress tracking — metrics and review cadence",
+      "why_it_matters": "The extraction says track 'whether the success plan is on track or slipping' but does not define what 'on track' means or how often progress is reviewed; an agent cannot assess this without clear criteria.",
+      "probe_suggestion": "How do you define 'on track' for a success plan? Are there specific milestones with dates, or is it more qualitative? How often should the CSM review progress with the customer?"
+    },
+    {
+      "field": "Payment and billing health — red flags and monitoring method",
+      "why_it_matters": "The extraction lists 'payment/billing health' as a health signal but does not specify what constitutes a red flag (late payment, disputed charges, etc.) or how the CSM accesses this data; an agent cannot monitor this without concrete definitions.",
+      "probe_suggestion": "What payment or billing issues would concern you as a CSM? For example: a payment 30 days late, a disputed invoice, or a failed payment attempt? How do you get visibility into billing status?"
+    },
+    {
+      "field": "Renewal forecast status — forecast categories and decision timeline",
+      "why_it_matters": "The extraction mentions 'renewal forecast status' as an input to escalation but does not define the forecast categories (e.g., 'likely,' 'at-risk,' 'no decision') or the timeline for each; an agent cannot interpret forecast status without these definitions.",
+      "probe_suggestion": "What renewal forecast categories do you use? For example: 'likely to renew,' 'at-risk,' 'no decision,' 'will not renew'? And at what point in each category should the CSM escalate to leadership?"
+    },
+    {
+      "field": "Expansion opportunity types — examples and escalation criteria",
+      "why_it_matters": "The extraction says identify 'expansion opportunities' but does not specify what types of expansion exist (upsell, cross-sell, new product, increased seats, etc.) or which ones warrant escalation; an agent cannot filter opportunities without examples.",
+      "probe_suggestion": "Give us 3 examples of expansion opportunities you've seen. What made each one worth escalating to the AE? Is there a minimum deal size or customer readiness threshold?"
+    },
+    {
+      "field": "Scope commitment — definition and approval process",
+      "why_it_matters": "The extraction warns against committing to scope without AE involvement but does not define what constitutes a 'scope commitment' or what approval process is required; an agent cannot avoid this mistake without clear boundaries.",
+      "probe_suggestion": "What counts as a 'scope commitment' that requires AE and CSM Manager approval? For example: if a customer asks for a custom report, can the CSM say yes, or must they escalate?"
+    },
+    {
+      "field": "CSM Manager escalation — decision authority and expected response time",
+      "why_it_matters": "The extraction lists CSM Manager as the escalation target for at-risk accounts and renewal risk but does not specify what decision authority the Manager has or how quickly they should respond; an agent needs to know what to expect.",
+      "probe_suggestion": "When a CSM escalates an at-risk account to you, what decision or action do you take? How quickly should the CSM expect a response?"
+    },
+    {
+      "field": "Book of business size and composition — typical account count and segment mix",
+      "why_it_matters": "The extraction does not specify how many accounts a CSM typically manages or what mix of account sizes/segments they handle; an agent needs to understand capacity constraints and prioritization.",
+      "probe_suggestion": "How many accounts does a typical CSM manage? Are they all enterprise, or is there a mix of sizes? Does account size or segment affect the CSM's priorities?"
+    },
+    {
+      "field": "Tools and systems — CRM, health score platform, usage tracking, and data access",
+      "why_it_matters": "The extraction does not name any tools or systems the CSM uses to track health, manage renewals, or access customer data; an agent cannot execute workflows without knowing what systems to query or update.",
+      "probe_suggestion": "What systems does the CSM use to track account health, manage renewals, and access customer usage data? For example: Salesforce, Gainsight, Looker, or something else?"
+    }
+  ],
+  "source_artifacts": [
+    "csm-finco-jd.md"
+  ]
+}
