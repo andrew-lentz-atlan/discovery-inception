@@ -1,0 +1,258 @@
+{
+  "name": "sales_analyst_50turn",
+  "description": "50-turn discovery for a Sales Pipeline Analyst Cortex Analyst agent at TechCo. Each customer turn carries either (a) a novel insight that would NEVER appear in a JD/wiki/runbook (only a senior RevOps veteran would know it), or (b) a texture move (relevance challenge, contradiction, hedge, redirect, off-topic riff) that exercises the architecture's failure modes. This script is the demo artifact for the CES bulk-repos-claude meeting — designed to produce a final spec that demonstrates what top-down interview-derived discovery captures BEYOND what bottom-up metadata scanning could.",
+  "use_case_seed": "we want a Sales Pipeline Analyst agent (Cortex Analyst flavor) at TechCo so RevOps, AE managers, VP of Sales, and CFO can ask plain-language questions about pipeline state and trust the answers",
+  "role_id": "sales-pipeline-analyst-techco",
+  "turns": [
+    {
+      "n": 1,
+      "customer": "We want a sales pipeline analyst agent at TechCo. The goal is RevOps, sales leadership, and the CFO can query pipeline state in plain language — 'where is coverage thin in EMEA strategic next quarter,' 'what's our real Q4 commit,' 'which deals are likely to slip' — without writing SQL or pinging me directly. Cortex Analyst flavor, sitting on top of our Snowflake sales views.",
+      "tests": "concrete opening — clear goal + concrete user surface"
+    },
+    {
+      "n": 2,
+      "customer": "Who consumes this matters more than the metrics. There are four distinct personas: RevOps analysts like me (we want deep slice-and-dice), AE managers (want their team's coverage broken out by sub-region), VP of Sales (wants forecast confidence intervals, not point estimates), and CFO's office (wants recognized revenue, not reported ARR). Each persona has views that actively hurt morale or cause compliance issues if shown to the wrong audience.",
+      "tests": "concrete persona breakdown + hint of unwritten access-control rules"
+    },
+    {
+      "n": 3,
+      "customer": "Data sources: Salesforce is the source of truth for opportunities, but it's not the source of reality. What's in Salesforce isn't what's actually closing. Snowflake has cleaned models nightly. We also pull Gong activity and Outreach sequence data. The agent needs to know that Salesforce alone is misleading — that's the most important thing for a builder to internalize.",
+      "tests": "concrete data sources + signposts a key insight (Salesforce ≠ reality)"
+    },
+    {
+      "n": 4,
+      "customer": "Here's an unwritten rule that's load-bearing: Q4 always has about 30% inflation in stage-3 deals because AEs push deals out to look better at the end-of-Q3 QBR. Any agent answering 'what's our Q4 pipeline' that just sums what's in Salesforce will be 30% too high. That number isn't a guess — it's what we model into our internal conservative forecast. Lisa in Sales Strategy maintains that adjustment.",
+      "tests": "NOVEL INSIGHT #1 (Q4 inflation) — would never appear in a JD"
+    },
+    {
+      "n": 5,
+      "customer": "Another one: when an AE marks a deal 'high confidence' two weeks before end of quarter, the deal is almost always NOT closing. It's a sweat signal — they're trying to convince themselves and their manager. Real high-confidence happens 4-6 weeks out. If you charted close rate by 'days from EOQ when high-confidence flag was set,' you'd see a U-shaped curve. We see this every quarter; it's not in any playbook.",
+      "tests": "NOVEL INSIGHT #2 (high-confidence flag inversion)"
+    },
+    {
+      "n": 6,
+      "customer": "'Stale' is a stage-aware concept. A discovery-stage deal sitting 21 days is healthy — that's normal exploration. A negotiation-stage deal sitting 21 days is dead. The data model treats them the same; the business reality is opposite. Every quarter someone asks me 'show me stale deals' and I have to ask 'stale how?' before the question is answerable.",
+      "tests": "NOVEL INSIGHT #3 (stage-aware staleness)"
+    },
+    {
+      "n": 7,
+      "customer": "Manager intervention is a strong signal. If any director-or-above has logged a call or email on a deal in the last 14 days, the deal is either being saved or killed by management. The AE's listed close date is meaningless during that window. The agent should set close-date confidence to zero for those 14 days and let the dust settle before re-trusting the AE's number.",
+      "tests": "NOVEL INSIGHT #4 (manager intervention pattern)"
+    },
+    {
+      "n": 8,
+      "customer": "Before we go further — explain to me how the next few questions are going to actually help me. I have a budget review in 90 minutes. I want to make sure we're capturing what matters, not just running through a script.",
+      "tests": "EARLY RELEVANCE CHALLENGE — should justify itself in goal-relevant terms"
+    },
+    {
+      "n": 9,
+      "customer": "Account-tier inflation has different cadences. Strategic AEs face quarterly coverage pressure because their VP gets quarterly board reviews. Mid-Market AEs face monthly pressure because their manager gets monthly. So Strategic accounts inflate quarterly (especially Q3 and Q4 of each year), Mid-Market inflates monthly. Same total inflation, different rhythms — and our existing reports collapse them into a single 'overall pipeline' view that obscures the patterns.",
+      "tests": "NOVEL INSIGHT #5 (account-tier inflation cadence)"
+    },
+    {
+      "n": 10,
+      "customer": "The procurement signal: any deal with someone whose title contains 'Procurement,' 'Sourcing,' 'Vendor Management,' or 'Commercial Operations' in the buying committee will slip at least one quarter beyond the AE's predicted close date. Doesn't matter what the AE says. The data is sitting in contact roles in Salesforce. We've measured this — it's about 70% slip rate on procurement-involved deals at average $1.2M ARR. Nobody connects it to forecasting today.",
+      "tests": "NOVEL INSIGHT #6 (procurement signal)"
+    },
+    {
+      "n": 11,
+      "customer": "Honestly the exact discount we apply for procurement-involved deals — I don't know the closed-form formula. That's Lisa's model. I know the pattern exists and roughly the magnitude, but the discount weighting itself is in a spreadsheet she maintains. You'd want to talk to her for the specific math. I can flag this as a gap.",
+      "tests": "out-of-scope-for-counterparty + flag a real gap"
+    },
+    {
+      "n": 12,
+      "customer": "The renewal masquerade: some deals that appear as 'new logo' in Salesforce are actually expansions or renewals recoded as new business — comp reasons. AEs sometimes get higher commission on new logo vs expansion, so there's an incentive to recode. The agent needs to cross-check parent account ID + customer-since date. About 8% of our 'new logo' deals are actually expansions in disguise based on the last analysis I ran.",
+      "tests": "NOVEL INSIGHT #7 (renewal masquerade)"
+    },
+    {
+      "n": 13,
+      "customer": "Critical anti-goal — bigger than any other: NEVER show individual-rep performance comparisons in views shared outside that rep's direct reporting line. This is HR-protected territory. We had two incidents in the past 18 months — one ended in a lawyer letter, one resulted in two AEs leaving. The agent can do per-rep analysis FOR the rep's own manager, but it must gate comparative views by reporting hierarchy. This is non-negotiable.",
+      "tests": "NOVEL INSIGHT #8 (anti-goal: rep comparison HR risk) — the kind of thing only learned from incidents"
+    },
+    {
+      "n": 14,
+      "customer": "Another anti-goal: never auto-update Salesforce fields based on the agent's analysis, even when the agent is right. Audit trail, compliance review, deal-team chain of custody — all break. Recommend; don't execute. Same with auto-sending emails or Slack messages on behalf of an AE. The agent suggests; humans act.",
+      "tests": "concrete anti_goal — auto-action prohibitions"
+    },
+    {
+      "n": 15,
+      "customer": "Persona-specific must-NOT-knows: AEs hate seeing peer comparisons. SDRs hate seeing ARR forecasting — they don't care, it's not their job. Sales Managers hate seeing roll-up summaries that don't break out by sub-region because their bonus structure is sub-regional and rolled-up views feel like they obscure their team's wins. CFOs hate seeing reported ARR because it overstates collectibility. Each role has views that hurt morale to show; the agent has to learn this.",
+      "tests": "NOVEL INSIGHT #9 (persona-specific must-NOT-knows)"
+    },
+    {
+      "n": 16,
+      "customer": "Biggest risk: agent confidently reports an inflated Q4 number and the CFO uses it for board guidance. We had an analyst get fired three years ago for less. If the agent doesn't know about the Q4 inflation patterns, the procurement slips, the manager-intervention signal — and it reports the raw Salesforce number with confidence — that's exactly the failure mode I'm trying to prevent. This thing is supposed to make me MORE confident, not give me a faster way to be wrong.",
+      "tests": "concrete risk — names the specific failure mode that motivates this work"
+    },
+    {
+      "n": 17,
+      "customer": "On geographic compliance: EU deals have stricter data restrictions. No cross-region data sharing, no individual-name disclosures in summaries shared with non-EU consumers. We have a `region` field in Salesforce that's reliable. The agent must use it as a gate before generating any summary or recommendation. If a CFO in the US asks 'show me the top 10 deals in EMEA,' the agent should either return aggregates only or refuse, depending on the asker's clearance.",
+      "tests": "concrete risk/anti-goal — GDPR / data residency edge case"
+    },
+    {
+      "n": 18,
+      "customer": "The contract-vs-cash gap: when the agent reports ARR, it has to pick a definition. 'Reported ARR' is what the AE stated at deal close — that's what's in Salesforce's amount field. 'Recognized revenue' is what Finance can actually collect this quarter, after factoring in ramps, billing cadences, and channel splits. They diverge by 8-15% on multi-year deals on average, up to 25% on multi-year multi-product deals with channel involvement. CFO wants the second number; AEs report the first. The agent must pick a side and be explicit about which.",
+      "tests": "NOVEL INSIGHT #10 (contract-vs-cash gap)"
+    },
+    {
+      "n": 19,
+      "customer": "On the contract-vs-cash gap — my recommendation: default to recognized revenue for any view that touches the CFO, finance, or board reporting. Default to reported ARR for any view that touches incentive comp, AE-facing dashboards, or sales contests. The agent should infer the audience from the requestor and surface a 'this is the AE number, finance shows X' note when they diverge by more than 10%.",
+      "tests": "concrete decision_point — audience-aware metric selection"
+    },
+    {
+      "n": 20,
+      "customer": "Multi-year deal handling needs careful treatment. Year-1 ARR is what hits THIS year's number. Year-2 and Year-3 commitments are pipeline for FUTURE quarters. Lots of agents take Salesforce's 'TCV' field at face value, which conflates committed future revenue with current bookings. We've seen this mistake from at least two vendor analytics tools we've evaluated. The agent has to disaggregate by year and the data is there if you join opportunity to revenue_schedule.",
+      "tests": "concrete edge case + workflow detail"
+    },
+    {
+      "n": 21,
+      "customer": "Channel partners: about 22% of our deals are co-sold with channel partners. The reported ARR in Salesforce is the AE's number but the recognized revenue is split with the channel — typically 70/30 or 80/20 depending on the partner tier. There's a `channel_partner` boolean in Salesforce that's about 85% correct. The agent needs to know channel deals exist and that the booking-vs-revenue gap can be 20-30% on those alone.",
+      "tests": "concrete edge case — channel partner economics"
+    },
+    {
+      "n": 22,
+      "customer": "Healthy pipeline coverage thresholds: Mid-Market needs 3.5x forecast for the quarter to be healthy. Strategic needs 5x because the deal sizes are bigger and the slip rate is higher. Below those thresholds the agent should auto-flag and prompt 'coverage gap in segment X.' Above 8x in either segment is also a flag — usually means stale junk that nobody's qualifying out. Both sides of the range matter.",
+      "tests": "concrete decision_point — coverage thresholds with both-sided sensitivity"
+    },
+    {
+      "n": 23,
+      "customer": "Escalation rules: if a deal $500K+ in ARR slips two quarters in a row, the alert should go to BOTH the AE's direct manager AND the CFO's office — not just to RevOps. We learned this the hard way when a $2M deal slipped four quarters straight and nobody flagged it until annual planning. For Tier-1 strategic accounts, the EBR lead (Executive Business Review lead) should see forecast changes BEFORE the AE does. That's a political relationship thing, not a process thing.",
+      "tests": "concrete escalation_rule — multi-stakeholder alerting + political dynamics"
+    },
+    {
+      "n": 24,
+      "customer": "Renewal-NPS interaction: renewal deals where the customer's NPS in the past 90 days is under 30 should auto-flag for Customer Success handoff BEFORE any forecasting. Their renewal status is suspect until CS weighs in. This is a hard rule we don't enforce today because NPS lives in a different system (Gainsight) and nobody has connected the dots. If the agent could join those datasets, that single rule would prevent maybe 3-5 renewal misses per quarter.",
+      "tests": "concrete decision_point — cross-system data joining"
+    },
+    {
+      "n": 25,
+      "customer": "I want to walk something back. Earlier I said the Q4 inflation is 30%. That's actually the 90th-percentile case in our worst years. Average across all quarters and segments is closer to 12-15%. The 30% number is what the CFO uses for conservative planning, not what's typical. I don't want to mislead the builder into hardcoding 30% — it varies. The agent should treat the inflation rate as a configurable parameter, not a constant.",
+      "tests": "CONTRADICTION + walked-back number — tests supersede mechanism"
+    },
+    {
+      "n": 26,
+      "customer": "If you were building this, what would you ask next? I'm curious what feels under-specified to you so far.",
+      "tests": "REDIRECT QUESTION — should redirect back without abandoning role"
+    },
+    {
+      "n": 27,
+      "customer": "VP of Sales specifically: she wants forecast confidence intervals refreshed weekly, not daily. Daily updates create noise and anxiety that she doesn't act on. Weekly is enough. She also wants to see week-over-week movement broken out by quarter (this quarter, next quarter, two quarters out) — not by total. Movement to the current quarter is one signal; movement to future quarters is a totally different signal and she reads them differently.",
+      "tests": "concrete persona detail — VP cadence + decomposition preferences"
+    },
+    {
+      "n": 28,
+      "customer": "Sales Managers: they need a 'where is my team thin' view broken out by sub-region. Their bonus is sub-regional, not rolled up. They want to know which territories are at risk of missing quota, with names of specific AEs, but ONLY for their direct reports. The agent has to enforce hierarchy-based access. If a Sales Manager asks 'show me the worst performer in the org,' the agent should refuse to show anyone outside their reporting line — and surface that as the reason for the refusal.",
+      "tests": "concrete persona detail — manager view + hierarchy access control"
+    },
+    {
+      "n": 29,
+      "customer": "AEs: they need 'what's the next-best action on each of my open opportunities.' Pure tactical. The agent should NEVER show them peer rankings, peer win rates, or comparative views with other AEs. That's the rep-comparison HR territory from before. Their dashboard is their own pipeline, their stage progression, their suggested next moves — that's it. Comparative analysis stays one layer up.",
+      "tests": "concrete persona detail — AE view + reinforces rep-comparison anti-goal"
+    },
+    {
+      "n": 30,
+      "customer": "CFO / Finance: they want recognized revenue with confidence intervals — not point estimates. They want to see the agent's reasoning, especially when it disagrees with the AE's stated number. Finance trusts transparent uncertainty over confident wrong answers. If the agent says 'this quarter's forecast is $42M ± $4M with 80% confidence, here's why we're discounting the AE numbers,' Finance can use that for the board. If it says '$42M' with no caveats, Finance can't.",
+      "tests": "concrete persona detail — CFO needs uncertainty + transparency"
+    },
+    {
+      "n": 31,
+      "customer": "Let me ground this with a specific quarter where the existing reporting failed. Q3 last year. We walked into the end-of-Q3 QBR with the dashboard showing $18M in committed pipeline for Q4. By the third week of Q4, we'd closed $11M. The dashboard was wrong by $7M. The reasons, all visible in the data with the right lens: two procurement-involved deals at $1.5M each that the AEs kept claiming would close — both slipped two quarters; three Strategic deals where managers had logged calls in the prior month — all three got killed by month-end; two deals that showed as 'new logo' were actually expansion plays we'd already booked under different account IDs. The CFO used the $18M for board reporting. We had to explain a $7M miss that should have been visible. None of those individual rep behaviors are anomalous — they're patterns we see every quarter. The dashboard was reading Salesforce as gospel and couldn't see them. That's exactly the failure mode this agent should make impossible.",
+      "tests": "LONG NARRATIVE / CASE STUDY (~250 words) — tests dense-content handling + carries multiple insights at once"
+    },
+    {
+      "n": 32,
+      "customer": "After that Q3 miss we ran a manual analysis project to identify which patterns were predictable from the data. We found about 14 distinct ones — the agent's job is to encode all of them so we don't lose them when people leave. About 8 of the 14 are things I've already mentioned today. The other 6 are smaller — things like 'deals with primary contact changes in the last 30 days have unreliable close dates,' 'multi-product deals close at higher win rates than single-product but have longer cycles by 18 days on average,' that kind of thing.",
+      "tests": "concrete + signals there's more we haven't covered"
+    },
+    {
+      "n": 33,
+      "customer": "If the agent had caught those three patterns in the Q4 example, it would have flagged the dashboard as 'high uncertainty' and recommended a $3M-$5M discount with reasoning. That'd have been the right answer. The CFO would have presented a $13-15M forecast with the patterns named explicitly — and we'd have hit the actual number with a known story.",
+      "tests": "concrete success criterion + worked example"
+    },
+    {
+      "n": 34,
+      "customer": "When the agent's uncertainty exceeds 20% of the headline forecast, it should refuse to give a single point estimate. Instead, show a range with named drivers of uncertainty. 'Don't pretend to know things you don't' is the core rule. We're not trying to replace judgment; we're trying to surface what's known and unknown more rigorously than the current dashboard does.",
+      "tests": "concrete decision_point — uncertainty handling"
+    },
+    {
+      "n": 35,
+      "customer": "On governance: when the agent surfaces a recommended discount (like the Q4 example), it must show its work. Which patterns triggered the discount, which deals were affected, what the magnitude was per deal. Finance won't trust a black-box number. If a board member asks 'why did we miss by $4M,' the agent's audit trail has to be auditable end-to-end.",
+      "tests": "concrete decision_point — transparency requirement"
+    },
+    {
+      "n": 36,
+      "customer": "We evaluated three vendor tools for this last year — Clari, Gong Forecast, and one internal-build prototype. All three missed the patterns we discussed today. Clari is good at AI-driven forecasting but it treats Salesforce as ground truth, so the inflation issues come through. Gong is great at activity analytics but doesn't connect activity patterns to forecast adjustments. Our internal prototype encoded two of the 14 patterns but wasn't extensible. So we know the bar — and we know what's missing in the market.",
+      "tests": "OFF-TOPIC RIFF — concrete fact about tooling landscape, not the asked probe"
+    },
+    {
+      "n": 37,
+      "customer": "Look — we've covered a lot. I'm starting to wonder if we have enough that a builder could actually start, or if you have more questions that would meaningfully change the spec. What do you think is still missing?",
+      "tests": "LATE RELEVANCE CHALLENGE — different from the early one"
+    },
+    {
+      "n": 38,
+      "customer": "Test questions for the agent — things that should work on day one: 'What's our real Q4 commit, accounting for the patterns we talked about?' 'Show me deals where management intervention happened in the last two weeks.' 'Which Strategic accounts have procurement-involved deals slipping?' 'What's our actual coverage by sub-region if we discount the inflation appropriately?' 'How does our recognized revenue forecast differ from reported ARR this quarter?' If the agent answers those five with traceable reasoning, it ships.",
+      "tests": "concrete test cases — directly seeds test_questions.csv for CES"
+    },
+    {
+      "n": 39,
+      "customer": "Failure modes that we should test against: agent reports the raw Salesforce Q4 number with no inflation adjustment. Agent shows a rep-by-rep comparison to a Director who's outside that reporting line. Agent treats reported ARR as recognized revenue for the CFO. Agent recommends auto-closing a stale deal without escalation. Each of those would be a 'critical bug' — the kind of thing where if it ever happened in production we'd pull the agent.",
+      "tests": "concrete risk / negative test cases"
+    },
+    {
+      "n": 40,
+      "customer": "On output format for me specifically as the RevOps analyst: I want the agent to default to surfacing its reasoning before its conclusion. 'Here's what I'm seeing: pattern A, pattern B, pattern C. Based on those, my recommended discount is $X. Here's the underlying data.' Not 'forecast is $42M' as the headline. Reasoning-first lets me catch when its analysis is wrong; conclusion-first hides errors.",
+      "tests": "concrete persona detail — RevOps wants reasoning-first output"
+    },
+    {
+      "n": 41,
+      "customer": "There's a workflow I haven't mentioned: weekly forecast lock with Finance. Every Monday afternoon Lisa and I sit with the CFO's deputy and lock in the quarterly forecast number for that week. The agent should support that workflow — generate the candidate forecast number with reasoning, let us interrogate it, then we lock the human-confirmed number. The agent's number becomes the starting point, not the final answer.",
+      "tests": "concrete workflow — human-in-the-loop pattern"
+    },
+    {
+      "n": 42,
+      "customer": "Things the agent should NOT do in the last 5 business days of a quarter: don't make stage-progression recommendations, don't suggest 'this deal might still close,' don't surface coverage gap alerts to AEs. There's enough pressure to fudge data already; we don't want to amplify it. The last week of a quarter is for execution, not for the agent to be helpful.",
+      "tests": "concrete anti_goal — temporal restriction"
+    },
+    {
+      "n": 43,
+      "customer": "Honestly on some of the patterns — like the procurement signal — I'm confident the pattern exists but I don't have a research-grade citation for the exact magnitude. We've observed it across maybe 200 deals. If a builder asks 'how confident is the 70% slip rate' I'd say medium-high. We should track this with the agent in production and update the magnitude as we get more data.",
+      "tests": "epistemic hedge with appropriate calibration — knows what it knows vs doesn't"
+    },
+    {
+      "n": 44,
+      "customer": "Sub-skill needed: the agent needs to know how to query Snowflake AND how to read activity data from Gong (which is in a separate schema with different join keys). Most analyst agents we've seen are single-source. This one has to cross schemas to be useful — Gong activity is what reveals manager-intervention signals, and Salesforce alone can't see it.",
+      "tests": "concrete dependency — cross-schema query capability"
+    },
+    {
+      "n": 45,
+      "customer": "Glossary: a few terms the builder needs to get right. 'Commit' = high-confidence forecasted closure this quarter. 'Best case' = optimistic but not committed. 'Pipeline coverage' = open pipeline ÷ remaining quarterly forecast. 'Stage 3' = post-discovery, pre-negotiation; we call it 'Eval.' 'Slippage' = a deal moving its close date out by at least one quarter. 'Push' = an AE-initiated slip. 'Pull' = a customer-initiated slip. Pulls are usually about budget; pushes are usually about qualification. The agent should distinguish.",
+      "tests": "concrete vocabulary — domain-specific terms a JD wouldn't cover"
+    },
+    {
+      "n": 46,
+      "customer": "Compliance edge: deals in the public-sector vertical (DOD, federal agencies, state contracts) have stricter access control and disclosure rules. We have a `vertical = 'PUBSEC'` flag in Salesforce. Anything the agent surfaces for those deals must run through an additional filter that strips agency names, classification levels, and contract numbers from non-cleared audiences. Different from EU GDPR but similar pattern.",
+      "tests": "concrete risk — vertical-specific compliance"
+    },
+    {
+      "n": 47,
+      "customer": "On the 14 patterns I mentioned — the full list lives in a Google Doc Lisa and I keep updated. I can share it after this. The agent's library of 'patterns to evaluate' should be loadable from that doc so we can update it without redeploying the agent. That's important — these patterns aren't static; they evolve as the business changes.",
+      "tests": "concrete operational requirement — extensibility / configurability"
+    },
+    {
+      "n": 48,
+      "customer": "If we shipped a v1 that nailed maybe 6 of the 14 patterns and got the audience-aware metric defaults right, I'd consider it a win. Diminishing returns after 6 — the long tail of patterns is harder to encode and contributes less to total accuracy. The CFO is happy if forecast accuracy goes from current 78% to maybe 87%. That's the bar — not perfection, just enough improvement that decisions get better.",
+      "tests": "concrete success_metric — pragmatic MVP definition"
+    },
+    {
+      "n": 49,
+      "customer": "Last operational thing: the agent should produce a weekly digest for me — 'here's what's changed since last week, here are the deals where the patterns have triggered new signals, here's the gap between AE-reported and agent-recommended forecast.' I'd read that Monday morning before forecast lock. Push notification, not pull. If I have to remember to query the agent every week, it won't actually change my workflow.",
+      "tests": "concrete delivery model — proactive vs reactive surface"
+    },
+    {
+      "n": 50,
+      "customer": "What would make this discovery successful from my side: I leave this with a clear enough picture that a builder doesn't have to come back to me with a hundred follow-up questions to ship v1. The unwritten patterns we discussed — the Q4 inflation, the procurement signal, the manager intervention, the renewal masquerade, the rep-comparison anti-goal, the contract-vs-cash gap — those have to be in the spec or the build is starting blind. Anything that's obvious from the Salesforce schema, a builder can figure out themselves. The discovery's job is to capture what's NOT in the schema. That's the test for me.",
+      "tests": "concrete meta-success criterion — the explicit ask back to the discovery process itself"
+    }
+  ]
+}

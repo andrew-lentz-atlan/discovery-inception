@@ -1,0 +1,351 @@
+{
+  "role_name": "Sales Pipeline Analyst",
+  "role_summary": "The Sales Pipeline Analyst provides reporting, forecasting, and analytical support for the Revenue Operations team, serving as the analytical backbone for sales leadership. The role ensures data-driven decision making across the sales organization through pipeline reporting, forecasting models, data quality monitoring, and ad-hoc analysis.",
+  "primary_outcomes": [
+    "Pipeline coverage maintained at 3x forecast target",
+    "Forecast accuracy measured at start, mid, and end of quarter",
+    "Weekly pipeline reports delivered to sales leadership",
+    "Data quality issues in Salesforce surfaced and resolved"
+  ],
+  "typical_workflows": [
+    {
+      "name": "Weekly pipeline review",
+      "purpose": "Provide current pipeline health and coverage metrics to the Revenue Operations and Sales Strategy teams",
+      "trigger": "Standing Monday meeting with Sales Strategy team",
+      "steps": [
+        "Extract pipeline data from Snowflake and Salesforce",
+        "Calculate coverage ratios, win rates, and stage progression metrics",
+        "Update Tableau dashboards",
+        "Present findings to Sales Strategy team"
+      ],
+      "typical_duration": null
+    },
+    {
+      "name": "Quarterly forecast preparation",
+      "purpose": "Deliver forecast to Finance and sales leadership combining bottom-up and top-down methodologies",
+      "trigger": "Quarterly forecast cycle initiation",
+      "steps": [
+        "Partner with Sales Strategy on forecast model setup",
+        "Collect bottom-up rep submissions from Salesforce",
+        "Build statistical baseline using historical data",
+        "Reconcile submissions with top-down baseline",
+        "Lock forecast with Finance on last business day of month"
+      ],
+      "typical_duration": null
+    },
+    {
+      "name": "Quarterly Business Review preparation",
+      "purpose": "Produce executive-ready pipeline analysis for board and leadership review",
+      "trigger": "Final 2 weeks of quarter",
+      "steps": [
+        "Build standard QBR deck with pipeline by stage, segment, and region",
+        "Validate data integrity across all dimensions",
+        "Prepare follow-up analysis templates for executive questions",
+        "Support QBR execution with real-time analysis"
+      ],
+      "typical_duration": "2 weeks"
+    },
+    {
+      "name": "Data quality monitoring",
+      "purpose": "Maintain integrity of Salesforce as the source of truth for pipeline data",
+      "trigger": "Continuous; nightly Snowflake refresh",
+      "steps": [
+        "Monitor deal stage progression patterns",
+        "Validate close date integrity",
+        "Verify account assignment accuracy",
+        "Surface anomalies to Revenue Operations team"
+      ],
+      "typical_duration": null
+    },
+    {
+      "name": "Ad-hoc analysis request",
+      "purpose": "Answer specific questions from leadership on deal, account, or segment performance",
+      "trigger": "Request from VP of Sales, CFO, Sales Manager, or Account Executive",
+      "steps": [
+        "Receive and clarify request scope",
+        "Query Salesforce and Snowflake data",
+        "Analyze and contextualize findings",
+        "Deliver response with supporting documentation"
+      ],
+      "typical_duration": null
+    }
+  ],
+  "decision_criteria": [
+    {
+      "name": "Forecast accuracy assessment",
+      "inputs": [
+        "Forecasted revenue at start, mid, and end of quarter",
+        "Actual closed revenue",
+        "Pipeline stage progression data"
+      ],
+      "criteria": [
+        "Compare forecasted to actual revenue; identify variance drivers in stage progression and win rates"
+      ],
+      "is_judgment": false
+    },
+    {
+      "name": "Data quality issue severity",
+      "inputs": [
+        "Type of data anomaly (stage progression, close date, account assignment)",
+        "Number of records affected",
+        "Impact on forecast or reporting accuracy"
+      ],
+      "criteria": [
+        "Determine whether issue requires immediate escalation or can be resolved in standard monitoring cycle"
+      ],
+      "is_judgment": true
+    },
+    {
+      "name": "Ad-hoc request prioritization",
+      "inputs": [
+        "Requester role (VP/CFO vs. Manager vs. AE)",
+        "Request complexity and data availability",
+        "Current workload"
+      ],
+      "criteria": [
+        "VP/CFO requests receive 24h response target; Manager requests 48h; AE requests handled within standard capacity"
+      ],
+      "is_judgment": true
+    }
+  ],
+  "escalation_paths": [
+    {
+      "trigger": "Significant data quality issues affecting forecast accuracy or pipeline reporting",
+      "handoff_target": "Senior Director of Revenue Operations",
+      "artifacts_passed": [
+        "Data quality issue summary",
+        "Affected records and dimensions",
+        "Recommended remediation steps"
+      ]
+    },
+    {
+      "trigger": "Forecast variance exceeds acceptable threshold or requires executive explanation",
+      "handoff_target": "VP of Sales and CFO's office",
+      "artifacts_passed": [
+        "Variance analysis",
+        "Stage progression and win rate drivers",
+        "Recommended forecast adjustment"
+      ]
+    },
+    {
+      "trigger": "Salesforce or Snowflake system issues preventing data availability",
+      "handoff_target": "IT / Data Engineering team",
+      "artifacts_passed": [
+        "System issue description",
+        "Impact on reporting and forecasting",
+        "Affected data sources and timeframe"
+      ]
+    }
+  ],
+  "domain_vocabulary": {
+    "Pipeline coverage": "Target ratio of pipeline value to forecast; standard target is 3x forecast",
+    "Win rate": "Percentage of opportunities closed won, tracked by stage, segment, and Account Executive",
+    "Average deal size": "Mean opportunity value, typically tracked by segment",
+    "Sales cycle length": "Duration from opportunity creation to close, tracked by stage",
+    "Ramp metrics": "Performance indicators tracking Account Executive productivity and quota attainment over time",
+    "QBR": "Quarterly Business Review; executive-level pipeline analysis covering pipeline by stage, segment, and region",
+    "Forecast accuracy": "Comparison of forecasted revenue to actual closed revenue, measured at start, mid, and end of quarter",
+    "Opportunity stage progression": "Movement of deals through defined sales stages; rates measure velocity and conversion between stages",
+    "Bottom-up rep submissions": "Forecast contributions submitted directly by sales representatives based on their individual pipeline",
+    "Top-down statistical baseline": "Forecast generated from historical data and statistical models, used to reconcile or validate bottom-up submissions",
+    "Forecast lock": "Final approval and commitment of revenue forecast to Finance, typically occurring on the last business day of the month",
+    "Deal stage progression": "Movement of opportunities through defined pipeline stages; monitored for anomalies such as backward movement or stage skipping",
+    "Close date integrity": "Validation that opportunity close dates are accurate and realistic; monitored as part of data quality checks",
+    "Account assignment": "Allocation of accounts and opportunities to specific Account Executives; verified for accuracy during data quality monitoring",
+    "Salesforce": "Source of truth system for opportunities, accounts, contacts, and activities",
+    "Snowflake": "Cleaned and modeled sales data warehouse, refreshed nightly from Salesforce; contains OPPORTUNITY, ACCOUNT, CONTACT, OPP_HISTORY, and REVENUE_RECOGNITION tables",
+    "Tableau": "Primary reporting and dashboard surface for pipeline and forecasting metrics",
+    "Outreach": "Activity data system integrated into Salesforce for tracking sales engagement",
+    "Gong": "Activity data system integrated into Salesforce for tracking sales engagement",
+    "Internal forecasting model": "Proprietary model built and maintained by the Sales Strategy team that combines bottom-up and top-down methodologies",
+    "Revenue Operations": "Organizational function responsible for sales operations, reporting, and forecasting support",
+    "Sales Strategy": "Team that partners with Sales Pipeline Analyst on forecast preparation and forecasting model maintenance",
+    "Account Executive": "Sales representative responsible for closing opportunities and managing customer accounts",
+    "Sales Development Rep": "Sales representative responsible for lead generation and lead-to-opportunity conversion",
+    "Sales Manager": "First-line manager overseeing Account Executives; receives team-level coverage and pipeline health reporting",
+    "MEDDIC": "Industry-standard sales qualification framework used in the organization",
+    "Stage-weighted forecast methodology": "Forecasting approach that applies probability weights to opportunities based on their current sales stage",
+    "ARR": "Annual Recurring Revenue; subscription business metric tracked for revenue recognition and forecasting",
+    "MRR": "Monthly Recurring Revenue; subscription business metric tracked for revenue recognition and forecasting",
+    "Churn": "Customer attrition rate; subscription business metric tracked for revenue forecasting",
+    "Expansion": "Growth of revenue from existing customers; subscription business metric tracked for forecasting",
+    "Data quality issue": "Anomaly or error in Salesforce data affecting pipeline reporting or forecasting accuracy, including deal stage progression errors, close date problems, or account assignment issues",
+    "Forecast variance": "Difference between forecasted revenue and actual closed revenue; analyzed to identify drivers in stage progression and win rates"
+  },
+  "common_edge_cases": [
+    {
+      "description": "Deal stage progression anomalies (e.g., deals moving backward in stage or skipping stages)",
+      "handling": "Surface to Revenue Operations team; investigate root cause in Salesforce configuration or rep behavior; recommend process correction"
+    },
+    {
+      "description": "Forecast lock deadline conflicts with incomplete rep submissions",
+      "handling": "Partner with Sales Strategy to apply statistical baseline for missing submissions; document assumptions in forecast lock communication"
+    },
+    {
+      "description": "Ad-hoc request requiring analysis across multiple data sources with conflicting values",
+      "handling": "Reconcile data sources using Snowflake as primary source of truth; document discrepancies and their causes in response"
+    },
+    {
+      "description": "Close date changes late in quarter affecting forecast accuracy",
+      "handling": "Track close date changes by deal and rep; incorporate into forecast variance analysis; flag patterns to Sales Managers"
+    }
+  ],
+  "unwritten_rules": [
+    "When responding to requests, prioritize VP and CFO inquiries with 24-hour turnaround over manager requests which get 48 hours.",
+    "Maintain Salesforce as the single source of truth for all opportunity and account data; use Snowflake as the cleaned analytical layer, not as a source of independent truth.",
+    "In forecast preparation, combine bottom-up rep submissions with top-down statistical baselines rather than relying on either approach alone.",
+    "Surface data quality issues proactively rather than waiting for stakeholders to discover them; monitor deal stage progression and close date integrity continuously."
+  ],
+  "confidence_per_field": {
+    "role_name": 1.0,
+    "role_summary": 0.95,
+    "primary_outcomes": 0.85,
+    "typical_workflows": 0.8,
+    "decision_criteria": 0.65,
+    "escalation_paths": 0.7,
+    "domain_vocabulary": 0.9,
+    "common_edge_cases": 0.5,
+    "unwritten_rules": 0.6,
+    "flagged_unknowns": 0.85
+  },
+  "flagged_unknowns": [
+    {
+      "field": "Forecast variance escalation threshold",
+      "why_it_matters": "The extraction lists 'forecast variance exceeds acceptable threshold' as an escalation trigger, but without a named threshold (e.g., ±5%, ±10%), an agent cannot decide when to escalate or flag variance as significant.",
+      "probe_suggestion": "What is the acceptable variance threshold for forecast accuracy? For example, if forecasted revenue is $10M and actual is $9.5M, does that trigger escalation? Provide the percentage or dollar threshold."
+    },
+    {
+      "field": "Data quality issue severity thresholds",
+      "why_it_matters": "The 'Data quality issue severity' decision lists inputs but not the actual thresholds—e.g., how many affected records trigger immediate escalation vs. standard monitoring cycle resolution.",
+      "probe_suggestion": "Give me concrete thresholds: at what number of affected records does a data quality issue require immediate escalation to Revenue Operations? For example, is it >50 records, >5% of pipeline, or something else?"
+    },
+    {
+      "field": "Weekly pipeline review typical duration",
+      "why_it_matters": "The workflow lists 'typical_duration: null' for the weekly pipeline review; without knowing how long this takes, an agent cannot schedule it, batch it with other work, or manage competing priorities.",
+      "probe_suggestion": "How long does the typical Monday pipeline review take from data extraction through presentation to the Sales Strategy team? Give a time range (e.g., 2–3 hours)."
+    },
+    {
+      "field": "Quarterly forecast preparation typical duration",
+      "why_it_matters": "The workflow lists 'typical_duration: null'; without knowing the total time investment, an agent cannot plan the forecast cycle or allocate capacity during the month.",
+      "probe_suggestion": "From forecast cycle initiation to final lock with Finance, how many days or hours does the entire quarterly forecast preparation typically take?"
+    },
+    {
+      "field": "Ad-hoc analysis request typical duration",
+      "why_it_matters": "The workflow lists 'typical_duration: null' and response SLAs (24h for VP/CFO, 48h for managers) but no typical analysis time; an agent needs to know if a request takes 30 minutes or 4 hours to estimate feasibility.",
+      "probe_suggestion": "For a typical ad-hoc analysis request (e.g., 'show me win rate by segment for Q3'), how long does it usually take from receipt to delivery?"
+    },
+    {
+      "field": "Data quality monitoring cadence and alert thresholds",
+      "why_it_matters": "The workflow says 'continuous; nightly Snowflake refresh' but does not specify what anomalies trigger an alert, how they are detected, or what constitutes a reportable issue vs. noise.",
+      "probe_suggestion": "When you monitor deal stage progression, close dates, and account assignments nightly, what specific anomalies or thresholds cause you to surface an issue to Revenue Operations? For example, do you flag any backward stage movement, or only if >X deals move backward?"
+    },
+    {
+      "field": "Forecast reconciliation decision criteria",
+      "why_it_matters": "The 'Quarterly forecast preparation' workflow mentions 'Reconcile submissions with top-down baseline' but does not specify the decision rule—e.g., when do you override rep submissions, when do you split the difference, or when do you escalate disagreement?",
+      "probe_suggestion": "When a rep's bottom-up submission differs from the statistical baseline, what decision rule do you use? For example, do you take the average, use the baseline if variance exceeds X%, or escalate to Sales Strategy?"
+    },
+    {
+      "field": "QBR follow-up analysis templates and scope",
+      "why_it_matters": "The workflow mentions 'Prepare follow-up analysis templates for executive questions' but does not specify what types of questions are anticipated or what analyses are pre-built, leaving an agent without guidance on what to prepare.",
+      "probe_suggestion": "What are the 3–5 most common follow-up questions executives ask during QBR that you prepare analysis templates for? For example, 'pipeline by geography,' 'win rate trend,' etc."
+    },
+    {
+      "field": "Salesforce data model and custom fields",
+      "why_it_matters": "The extraction references 'deal stage progression,' 'close date integrity,' and 'account assignment' but does not name the specific Salesforce fields, custom objects, or validation rules that define these concepts, making it hard for an agent to query or validate correctly.",
+      "probe_suggestion": "Name the key Salesforce fields and objects used for pipeline analysis: e.g., what field stores opportunity stage, what field stores close date, and are there custom fields for forecast category or deal probability?"
+    },
+    {
+      "field": "Snowflake data freshness and latency",
+      "why_it_matters": "The extraction states Snowflake is 'refreshed nightly from Salesforce' but does not specify the refresh time, latency, or whether intraday changes are visible—critical for understanding data staleness in reports.",
+      "probe_suggestion": "At what time each night does the Snowflake refresh complete? If a deal is updated in Salesforce at 2 PM, when is that change visible in Snowflake?"
+    },
+    {
+      "field": "Forecast lock approval workflow and sign-off",
+      "why_it_matters": "The workflow mentions 'Lock forecast with Finance on last business day of month' but does not specify who approves, what sign-off is required, or what happens if Finance and Sales disagree on the final number.",
+      "probe_suggestion": "Who has final sign-off authority on the forecast lock—Finance, VP of Sales, or both? If they disagree, who breaks the tie?"
+    },
+    {
+      "field": "Ad-hoc request intake and triage process",
+      "why_it_matters": "The workflow lists 'Receive and clarify request scope' but does not specify how requests arrive (email, Slack, form, meeting), who can submit them, or how scope is clarified and documented.",
+      "probe_suggestion": "How do ad-hoc analysis requests reach you? Do they come via email, Slack, a form, or direct conversation? Is there a standard template or process for clarifying scope?"
+    },
+    {
+      "field": "System downtime and fallback procedures",
+      "why_it_matters": "The extraction lists 'Salesforce or Snowflake system issues' as an escalation trigger but does not describe fallback reporting procedures, manual data sources, or how long the role can operate without these systems.",
+      "probe_suggestion": "If Salesforce or Snowflake is down for several hours, what is your fallback procedure for delivering weekly pipeline reports or responding to urgent ad-hoc requests?"
+    },
+    {
+      "field": "Forecast model maintenance and parameter updates",
+      "why_it_matters": "The extraction mentions 'maintain forecasting model parameters' but does not specify who owns the model, how often parameters are updated, what triggers a model refresh, or what the role's authority is to change parameters.",
+      "probe_suggestion": "Who owns the internal forecasting model—you or Sales Strategy? How often are model parameters (e.g., stage weights, historical win rates) updated, and what triggers a refresh?"
+    },
+    {
+      "field": "Tableau dashboard refresh cadence and SLA",
+      "why_it_matters": "The extraction mentions 'Update Tableau dashboards' but does not specify refresh frequency, whether it is automated or manual, or what SLA exists for dashboard availability.",
+      "probe_suggestion": "How often are Tableau dashboards refreshed—daily, after each Snowflake refresh, or on-demand? Is the refresh automated or manual?"
+    },
+    {
+      "field": "Segment and region definitions",
+      "why_it_matters": "The extraction references 'pipeline by segment' and 'pipeline by region' multiple times but does not define what segments or regions exist, making it impossible for an agent to correctly slice data.",
+      "probe_suggestion": "What are the defined segments (e.g., SMB, Mid-Market, Enterprise) and regions (e.g., North America, EMEA, APAC) used in pipeline reporting?"
+    },
+    {
+      "field": "Win rate calculation methodology",
+      "why_it_matters": "The extraction tracks 'win rate by stage, by segment, by AE' but does not specify the calculation—e.g., is it (closed won / closed won + closed lost), does it include withdrawn deals, or is it stage-specific?",
+      "probe_suggestion": "How is win rate calculated? For example, is it (closed won) / (closed won + closed lost), and does it include withdrawn or dead deals?"
+    },
+    {
+      "field": "Pipeline coverage calculation and target ratios",
+      "why_it_matters": "The extraction states 'Pipeline coverage maintained at 3x forecast target' but does not specify the calculation—e.g., is it total pipeline value / forecast, or only qualified pipeline / forecast?",
+      "probe_suggestion": "How is pipeline coverage calculated? For example, is it (total open pipeline value) / (forecast), or do you exclude certain stages or deal sizes?"
+    },
+    {
+      "field": "Forecast accuracy measurement methodology",
+      "why_it_matters": "The extraction measures 'forecast accuracy at start, mid, and end of quarter' but does not specify whether it is absolute variance, percentage variance, or a custom metric, making it hard for an agent to calculate or report it.",
+      "probe_suggestion": "How do you measure forecast accuracy? For example, is it the absolute difference between forecast and actual, percentage variance, or a custom accuracy score?"
+    },
+    {
+      "field": "Ramp metrics definition and calculation",
+      "why_it_matters": "The extraction lists 'ramp metrics' as a tracked metric but does not define what ramp metrics are measured (e.g., quota attainment %, time to productivity, deal velocity) or how they are calculated.",
+      "probe_suggestion": "What specific ramp metrics do you track? For example, do you measure time to first deal, quota attainment by month, or average deal size growth?"
+    },
+    {
+      "field": "Sales cycle length calculation and segmentation",
+      "why_it_matters": "The extraction tracks 'sales cycle length by stage' but does not specify whether it is measured from opportunity creation to close, or from stage entry to stage exit, or how it handles stalled deals.",
+      "probe_suggestion": "How is sales cycle length calculated? Is it from opportunity creation to close, or from entry to exit of a specific stage? How do you handle deals that stall or reopen?"
+    },
+    {
+      "field": "Escalation communication protocol",
+      "why_it_matters": "The extraction lists escalation targets but does not specify how escalations are communicated (email, meeting, ticket), what documentation is required, or what response time is expected from the escalation target.",
+      "probe_suggestion": "When you escalate a data quality issue or forecast variance to Revenue Operations or Finance, how do you communicate it? Is it email, a ticket, a meeting, or something else?"
+    },
+    {
+      "field": "Ad-hoc request rejection or deferral criteria",
+      "why_it_matters": "The extraction lists response SLAs but does not specify when a request can be rejected, deferred, or deprioritized—e.g., if workload is high or a request is out of scope.",
+      "probe_suggestion": "Are there circumstances where you defer or reject an ad-hoc request? For example, if you're in forecast lock week, do you defer non-urgent manager requests?"
+    },
+    {
+      "field": "Data reconciliation procedures for conflicting sources",
+      "why_it_matters": "The extraction mentions reconciling data sources but does not specify the hierarchy or procedure—e.g., when Salesforce and Snowflake disagree, which is authoritative, and how is the discrepancy resolved?",
+      "probe_suggestion": "When Salesforce and Snowflake data conflict, what is your reconciliation procedure? Is Snowflake always the source of truth, or do you investigate the root cause?"
+    },
+    {
+      "field": "Close date change tracking and reporting",
+      "why_it_matters": "The extraction mentions 'Track close date changes by deal and rep' as an edge case handling but does not specify how changes are detected, tracked, or reported to Sales Managers.",
+      "probe_suggestion": "How do you track close date changes? Do you have a report or dashboard showing which deals had close dates moved, by how many days, and by which rep?"
+    },
+    {
+      "field": "Forecast submission deadline and enforcement",
+      "why_it_matters": "The extraction mentions 'incomplete rep submissions' as an edge case but does not specify the submission deadline, reminder process, or enforcement mechanism.",
+      "probe_suggestion": "What is the deadline for reps to submit their bottom-up forecast? How do you handle late or missing submissions?"
+    },
+    {
+      "field": "System administration responsibilities and change control",
+      "why_it_matters": "The extraction mentions 'maintain Salesforce report templates, Snowflake views, and forecasting model parameters' but does not specify approval processes, testing procedures, or change windows.",
+      "probe_suggestion": "When you update a Salesforce report template or Snowflake view, is there a change control process, testing requirement, or approval needed before deployment?"
+    }
+  ],
+  "source_artifacts": [
+    "01_intake_artifact_sales_pipeline_analyst_role.md"
+  ]
+}
