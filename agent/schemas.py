@@ -219,6 +219,72 @@ class WorkingTheory(BaseModel):
         ...,
         description="High/medium/low — how settled is this theory? Bias low early.",
     )
+    internal_tensions: ListOfStr = Field(
+        default_factory=list,
+        description=(
+            "0-3 pairs of customer statements that are in implicit tension — "
+            "facts that don't obviously fit together. Surfaced by the synthesizer "
+            "as 'things a sharp FDE would catch in real time.' Each entry is "
+            "one sentence naming what's in tension; the synthesizer names them, "
+            "the next probe resolves them. Used by v0.8+ to drive sharper "
+            "questioning."
+        ),
+    )
+
+
+class TensionsResult(BaseModel):
+    """Output of the find_tensions sub-agent (v0.8+).
+
+    A focused readout of implicit contradictions across captured facts.
+    Distinct from the synthesizer's working_theory.internal_tensions in
+    that this sub-agent runs cheaply on demand without rebuilding the
+    full theory.
+    """
+
+    tensions: ListOfStr = Field(
+        default_factory=list,
+        description=(
+            "0-3 one-sentence statements naming a tension between two prior "
+            "facts the customer stated. Empty list is fine — most conversations "
+            "don't have many real tensions; padding is forbidden."
+        ),
+    )
+
+
+class SharpenerResult(BaseModel):
+    """Output of the probe-sharpener sub-agent (v0.8+).
+
+    Runs as a post-processor on every probe the mega-agent produces.
+    Either ships the draft as-is or rewrites it to be sharper.
+    """
+
+    scores: dict[str, int] = Field(
+        ...,
+        description=(
+            "Per-axis 1-5 scores for novelty / extension / provenance_pressure / "
+            "tension_surfacing. Sum into quality_score."
+        ),
+    )
+    quality_score: int = Field(
+        ...,
+        description="Sum of the four axis scores; max 20. <=10 = weak, 11-15 = acceptable, 16+ = sharp.",
+    )
+    weakness: str = Field(
+        ...,
+        description="One-sentence diagnosis of what's weak about the draft probe, or '(none — probe is sharp)'.",
+    )
+    ships_as_is: bool = Field(
+        ...,
+        description="True if quality_score >= 11. False = the rewritten_probe field is what should ship.",
+    )
+    rewritten_probe: str | None = Field(
+        None,
+        description="The sharpened probe text, or null if ships_as_is=True.",
+    )
+    rewritten_customer_facing_rationale: str | None = Field(
+        None,
+        description="Customer-facing rationale for the rewritten probe, or null if ships_as_is=True.",
+    )
 
 
 class Probe(BaseModel):

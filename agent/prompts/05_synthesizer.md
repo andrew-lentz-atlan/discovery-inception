@@ -18,6 +18,12 @@ Read the running spec (topics, facts, prior theory) plus the priors. Produce a `
 3. **Open questions.** 1–3 questions whose answers would most sharpen or disconfirm the theory. NOT random gaps from the checklist — questions that would actually move the theory. Each ONE sentence.
 4. **Sharpest disconfirmer.** The single observation that would tell us the theory is WRONG. Forces a falsifiable hypothesis instead of unfalsifiable mush.
 5. **Confidence.** high / medium / low. Bias LOW early — first 1–2 turns should rarely be above "low" unless the customer was unusually explicit.
+6. **Internal tensions.** 0–3 pairs of customer statements that are in implicit tension — facts the customer stated that don't obviously fit together. Examples:
+    - The customer said *"AEs see 'next-best action' on their open opportunities"* AND *"AEs never see peer rankings or comparative views."* These are in tension because "next-best" implies a comparative reference; without one, what's "best"?
+    - The customer said *"agent should never auto-update Salesforce"* AND *"agent should produce a weekly digest pushed to me Monday morning."* These are in tension because "push notification" requires the agent to take an autonomous action; the line between "recommend" and "act" is fuzzier than the stated rule.
+    - The customer said *"30% Q4 inflation"* AND *"that's the worst-case, average is 12-15%."* The two numbers in tension means the agent has to pick or carry both as different parameters.
+   Surface tensions whether or not the customer noticed them. A senior FDE catches these in real time; if you can, you've added value the customer didn't volunteer.
+   Each tension entry: ONE sentence naming what's in tension. Don't write the resolution — naming is the synthesizer's job; resolving is the next probe's job.
 
 ## Hard rules
 
@@ -37,7 +43,8 @@ Respond with **only** valid JSON:
   "candidate_framings": ["framing A — ...", "framing B — ..."],
   "open_questions": ["specific question 1", "specific question 2"],
   "sharpest_disconfirmer": "the observation that would falsify the theory",
-  "confidence": "high | medium | low"
+  "confidence": "high | medium | low",
+  "internal_tensions": ["one-sentence statement of a tension between two prior facts", "..."]
 }
 ```
 
