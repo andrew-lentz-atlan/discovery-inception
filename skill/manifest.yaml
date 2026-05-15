@@ -1,0 +1,138 @@
+# DESIGN DOC — not yet executed by code (v0.8 still uses agent/v08/ orchestrator)
+#
+# This is the v1.0 packaging target: the discovery-inception skill bundle's
+# manifest. Describes what a compliant runtime must provide in order to
+# execute this skill end-to-end. Anyone (CES, an internal tool, a new
+# language port) can implement a compatible runtime from this contract.
+
+name: discovery-inception
+version: 1.0.0-draft
+description: |
+  Top-down discovery agent. Interviews a customer to produce a structured
+  spec for an AI agent build. Complements bottom-up metadata-driven
+  discovery by capturing tacit knowledge (decision points, anti-goals,
+  unwritten rules, persona must-NOT-knows) that doesn't appear in wikis,
+  JDs, or runbooks.
+
+repo_type: agent_skill
+audience:
+  - FDEs running a discovery call with a customer
+  - Internal Atlan teams (CSM, RevOps) discovering new agent use cases
+  - Anyone consuming structured discovery output downstream (CES, builders)
+
+input_contract:
+  use_case_seed:
+    type: string
+    description: |
+      One-line description of what the customer wants to build.
+      Example: "we want a Sales Pipeline Analyst Cortex Analyst agent at
+      TechCo so RevOps and CFO can query pipeline state in plain language."
+    required: true
+  role_id:
+    type: string
+    description: |
+      Optional. Slug pointing to a RoleContext priors file at
+      skills/<role_id>/context.json. The runtime renders this into the
+      mega-agent's system prompt for vocabulary mirroring. If omitted,
+      discovery still works but won't mirror domain-specific terms.
+    required: false
+  initial_customer_artifact:
+    type: string
+    description: |
+      Optional. Raw text of a JD / runbook / transcript. If provided, the
+      runtime should pipe this through the intake/ pipeline first to
+      generate priors before starting the discovery session.
+    required: false
+
+output_contract:
+  spec:
+    schema: schemas/final_spec.json
+    description: |
+      The structured discovery output. Includes use_case_seed, topics +
+      facts, flagged_gaps, working_theory (with internal_tensions). This
+      is the file that downstream consumers (CES synthesis_agent, human
+      builders) read.
+  spec_markdown:
+    description: Human-readable rendering of the spec.
+  session_trace:
+    description: |
+      Full per-turn trace including every sub-agent call's inputs, outputs,
+      durations, and tool calls. Plain JSON.
+
+runtime_contract:
+  required_capabilities:
+    openai_compatible_llm:
+      description: |
+        Runtime must provide an OpenAI-shape chat completion endpoint
+        with tool calling. We default to Atlan's LiteLLM proxy at
+        llmproxy.atlan.dev, but any compatible endpoint works.
+      env_vars:
+        - LITELLM_BASE_URL  # or equivalent
+        - LITELLM_API_KEY   # or equivalent
+    prompt_template_substitution:
+      description: |
+        Read prompts/*.md, substitute {VARIABLE} placeholders with runtime-
+        provided values, send as user messages.
+    structured_output_validation:
+      description: |
+        Validate LLM responses against schemas/*.json. We use Pydantic
+        in our reference runtime; JSON Schema validators work too.
+    session_state_persistence:
+      description: |
+        Maintain a stateful session: topics + facts + working_theory +
+        gaps grow across turns. Reference runtime persists to local
+        sessions/<session_id>/session.json; production runtimes can use
+        S3, Postgres, etc.
+    tool_execution:
+      description: |
+        Execute the tools defined in tools/. Each tool is a function that
+        takes (session_handle, llm_client, args) and returns a string.
+        The runtime exposes these as OpenAI tool-calls to the mega-agent.
+
+  optional_capabilities:
+    retry_on_transient_failure:
+      description: |
+        LiteLLM-via-Bedrock occasionally returns stock "I'm ready to
+        triage. Please provide inputs..." prose instead of JSON. Our
+        reference runtime retries up to 3 times with backoff. Optional
+        but recommended for long sessions.
+    triage_fallback:
+      description: |
+        When all retries fail on a triage call, default to
+        label='concrete' and continue. Optional but recommended.
+
+default_models:
+  triage: claude-haiku-4-5
+  distill: claude-haiku-4-5
+  synthesizer: claude-haiku-4-5
+  mega_agent: claude-haiku-4-5
+  sharpener: claude-haiku-4-5
+  override_via_env:
+    - DISCOVERY_TRIAGE_MODEL
+    - DISCOVERY_DISTILL_MODEL
+    - DISCOVERY_SYNTHESIZER_MODEL
+    - DISCOVERY_AGENT_MODEL       # the mega-agent
+    - DISCOVERY_SHARPENER_MODEL
+
+architecture_summary: |
+  v0.8 (current research version): single mega-agent runs the conversation;
+  decomposed extractors (triage, distill, synthesizer) preprocess the
+  customer's message into structured state before the mega-agent's turn;
+  adversarial probe-sharpener reviews the mega-agent's output and
+  rewrites if quality is below threshold; deterministic synthesizer runs
+  once at session close to produce the final theory.
+
+  The architectural research that led here is documented in findings/.
+  Headline empirical findings:
+    - Decomposition is load-bearing for structured output, not conversation.
+    - Lazy synthesis (model-judged) beats eager synthesis (per-turn) on
+      cost AND quality for long conversations.
+    - Adversarial post-processing (sharpener) catches weak probes 55% of
+      the time on a 50-turn synthetic conversation.
+    - Free-form mega-agent output beats format-constrained output;
+      structure happens in extractors.
+
+  None of these findings are framework-specific. They survive porting
+  to any compliant runtime.
+
+  See findings/01..05 in the repo for the research notes.

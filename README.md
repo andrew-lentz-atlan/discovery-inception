@@ -1,70 +1,143 @@
 # discovery-inception
 
-A chained-agent system that interviews a customer to produce a structured spec for a new AI agent build. Inspired by ThoughtWorks Lean Inception, adapted to AI agent design. The tester plays the customer; the discovery agent plays the Forward Deployed Engineer.
+A chained-agent **discovery system** that interviews a customer to produce a structured spec for a new AI agent build. Inspired by ThoughtWorks Lean Inception, adapted to AI agent design. The tester (or FDE) plays customer; the discovery agent plays Forward Deployed Engineer.
 
-## Try it (the easy way)
+The premise: bottom-up context (metadata scans, RAG, descriptions) and top-down context (interview-derived tacit knowledge) are complementary. Most tools today do bottom-up. This project does **top-down** — the part that only emerges from sitting with a senior practitioner and asking the right questions.
 
-**Fastest** — drop the Claude skill into your installation and say "test discovery-inception for [your use case]":
+The output is a structured spec.json + human-readable spec.md that downstream consumers (Atlan's CES, a builder, an FDE) use to construct the actual customer agent.
+
+## Status
+
+- **2026-05-13** — v0.8 ships. Probe-sharpener post-processor + tensions surfacing. Beats v0.7 on quality (44 vs 38 facts captured, 4 vs 3 candidate framings, 3 internal tensions surfaced) on the same 50-turn script. [findings/05](findings/05-v08-probe-sharpener-and-tensions.md).
+- **2026-05-12** — v0.7 + deterministic close-out. Fixed recency-bias in v0.6's eager synthesis. [findings/04](findings/04-v07-deterministic-closeout.md).
+- **2026-05-11** — v0.7 ships. Lazy synthesis + free-form mega-agent. [findings/02](findings/02-v07-lazy-synthesis-and-free-form-output.md).
+- **2026-05-05** — v0.6 hybrid + first three-way comparison: chained vs mega-agent vs hybrid. [findings/01](findings/01-architecture-comparison.md).
+- **2026-05-04** — Closed loop demo: intake → priors → harness → agent uses priors. The architecture works end-to-end. [demos/closed-loop-sc.md](demos/closed-loop-sc.md).
+- **2026-05-03** — Project conceived. Intake pipeline built. First production run on the Solutions Consultant role.
+
+## Try it (three install paths, in order of friction)
+
+### Easiest — Claude skill (one curl)
+
+For colleagues who want to test on their own use case with zero engineering setup:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/andrew-lentz-atlan/discovery-inception/main/claude-skill/SKILL.md \
     -o ~/.claude/skills/discovery-inception.md
 ```
 
-Restart Claude Code or Claude Desktop. Then in any chat:
+Restart Claude Code / Desktop, then in any chat:
+
 > *"Use the discovery-inception skill — I want to test it for a renewal-risk agent for our CSM team at FinCo."*
 
-The skill handles repo cloning, dependency install, credential setup, and drives the discovery interview turn-by-turn until you wrap up. Output: a `spec.md` you could hand to a builder. See [`claude-skill/README.md`](claude-skill/README.md).
+Claude (following the skill) clones the repo, runs `uv sync`, prompts you for LITELLM credentials if needed, captures your use case + optional artifact, drives the discovery interview turn-by-turn, and exports a `spec.md` you could hand to a builder. See [`claude-skill/README.md`](claude-skill/README.md).
 
-**Or as an MCP server** if you want the discovery tools available across all Claude sessions: see [`agent/mcp_server/README.md`](agent/mcp_server/README.md) for the one-time config.
+### Recommended for ongoing use — MCP server in Claude Code/Desktop
 
-**Or from the terminal** if you don't use Claude Code/Desktop:
+If you'll run discovery on multiple use cases, install the MCP server once and the discovery tools become available across all Claude sessions. See [`agent/mcp_server/README.md`](agent/mcp_server/README.md).
+
+### Headless — CLI
+
+For terminal users or scripting:
+
 ```bash
 git clone https://github.com/andrew-lentz-atlan/discovery-inception.git
 cd discovery-inception && uv sync
 # add LITELLM_BASE_URL + LITELLM_API_KEY to .env
-uv run python -m agent.cli list-priors
-uv run python -m agent.cli start-session --use-case-seed "..."
-# (continue with submit-turn → state → finalize)
+
+uv run python -m agent.cli generate-priors --role-id <slug> --artifact-file <path>
+uv run python -m agent.cli start-session --use-case-seed "<one-liner>" --role-id <slug>
+# (continue with submit-turn, state, finalize)
 ```
 
-## What this project is
+## Architecture (briefly)
 
-> The thing we discovered: filling AI tools with raw context isn't enough. The bottleneck is *decomposition* — translating fuzzy human processes into structured steps a model can execute. That skill has always been the heart of software engineering. The medium just changed.
+Discovery-inception is an **agent system**, not a single LLM-call wrapper. Per customer turn, five sub-agents run in sequence:
 
-This project tests that thesis by building the tool that does decomposition for a customer use case, end to end. It is the practical artifact that proves (or disproves) the worldview.
+```
+customer message
+        │
+        ▼
+  triage  →  distill (if concrete)  →  mega-agent (with tools)  →  sharpener (if probe)
+                       │                       │                          │
+                       ▼                       ▼                          ▼
+                  fact captured       conversational response       weak probe rewritten
+                                      (may invoke synthesis,
+                                       find_tensions tools)
+```
 
-## Where to start
+At session close, a deterministic synthesizer runs once over the full conversation to produce the final working theory (closes a recency-bias failure mode we caught in earlier versions — see [findings/04](findings/04-v07-deterministic-closeout.md)).
 
-| Read this | When |
-|---|---|
-| [00-vision-and-glossary.md](plans/00-vision-and-glossary.md) | First. The thesis, design principles, and terminology we landed on. |
-| [01-architecture.md](plans/01-architecture.md) | When you want the system shape. Pipeline stages, how it sits on top of `../harness/`, and the closed loop with the trace layer. |
-| [02-intake-agent.md](plans/02-intake-agent.md) | When you're ready to build the first concrete piece. This is the smallest scoped experiment that pressure-tests the most novel idea (CaaS). |
-| [03-stages-deep-dive.md](plans/03-stages-deep-dive.md) | When you need the per-stage detail. Hard parts, prompting notes, sub-agents per stage. |
-| [04-future-considerations.md](plans/04-future-considerations.md) | When you've got an MVP and need to think about output format, evals, scale. Parking lot for things that aren't on the critical path now. |
-| [demos/closed-loop-sc.md](demos/closed-loop-sc.md) | When you want to *see* the closed loop work. End-to-end recipe + verbatim agent transcripts proving the priors actually shape behavior. The artifact to share with anyone asking "does this thing actually work?" |
+Each sub-agent has its own focused prompt + structured Pydantic output. They share session state (working theory, captured facts, gaps) maintained by the orchestrator. The orchestrator is ~500 lines of Python — small enough to read in one sitting.
 
-## Status
+**The deeper architecture explanation** (skill bundle + runtimes + contract) is at [`skill/README.md`](skill/README.md). That's the v1.0 packaging target — separating the durable IP (prompts, schemas, orchestration spec) from the runtime that interprets it.
 
-- **2026-05-04 — Closed loop closed.** First end-to-end demo working. The discovery system produces a `RoleContext`, `scripts/role_to_prompt.py` renders it as a system prompt, the harness consumes it, and the agent uses the priors — *including* refusing to fabricate when it hits a gap marker and probing the user instead. See [`demos/closed-loop-sc.md`](demos/closed-loop-sc.md) for the recipe and verbatim transcripts of the four test questions.
-- 2026-05-03: Project conceived. Planning docs drafted. Intake agent built. First successful production run on the SC role (see [`skills/solutions-consultant/context.json`](skills/solutions-consultant/context.json)).
+## Why we didn't use LangChain / LangGraph / CrewAI / AutoGen
+
+At research stage, framework opinions about orchestration would have entangled with the architectural variables we were measuring (decomposed-vs-mega-agent, lazy-vs-eager synthesis, free-form-vs-structured output). Frameworks have orchestration patterns baked in — adopting any of them would have meant our findings were partly findings about *the framework*, not the architecture.
+
+We use proven libraries (OpenAI SDK, Pydantic, FastAPI, MCP SDK, python-dotenv) that do one thing each. We don't use agent frameworks that impose orchestration mental models.
+
+The architectural findings are framework-independent. Anyone wanting to re-implement on LangGraph or another stack can take the patterns directly — the skill bundle (prompts + schemas + orchestration spec) is portable. See `skill/manifest.yaml` for the contract.
 
 ## Companion: the harness
 
-- [andrew-lentz-atlan/harness](https://github.com/andrew-lentz-atlan/harness) — a minimal, fully-inspectable LLM agent harness. This is what consumes the `RoleContext` outputs we produce and runs the actual agent. Its trace view is the introspection layer that closes the discovery → build → trace → feedback loop:
+The standalone [andrew-lentz-atlan/harness](https://github.com/andrew-lentz-atlan/harness) is a minimal, fully-inspectable LLM agent runtime supporting both LiteLLM and llama-server backends. We used it for the [closed-loop demo](demos/closed-loop-sc.md) on May 4 to prove that structured priors actually shape agent behavior, with full per-step trace as evidence. The discovery agent built since is a **separate runtime** — same "no black-box, full trace" philosophy, but with its own purpose-built orchestrator for multi-agent pipeline shape (the harness is single-agent ReAct shape). They're companion tools that share a philosophy, not nested systems. The harness remains useful as a sandbox for testing arbitrary agents against priors.
+
+## Repository layout
 
 ```
-discovery-inception produces context repo
-        │
-        ▼
-harness consumes it and runs the agent
-        │
-        ▼
-harness's trace tab reveals which steps had bad context
-        │
-        ▼
-feedback patches the discovery output
+discovery-inception/
+│
+├── agent/                        ← current implementation (v0.8)
+│   ├── prompts/                  ← sub-agent system prompts (markdown templates)
+│   ├── schemas.py                ← Pydantic models for structured outputs
+│   ├── state.py                  ← session state + checklist evaluation
+│   ├── v05.. v08/                ← research iterations (v0.8 is current)
+│   ├── orchestrator.py           ← v0.5 chained (legacy, kept for comparison)
+│   ├── mcp_server/               ← MCP server runtime
+│   ├── cli.py                    ← CLI runtime
+│   └── baselines/                ← comparison runners + scripts + results
+│
+├── skill/                        ← v1.0 packaging target (design doc, not yet executed)
+│   ├── manifest.yaml             ← runtime contract
+│   ├── orchestration.yaml        ← declarative per-turn pipeline
+│   └── README.md                 ← contract for compliant runtimes
+│
+├── intake/                       ← separate pipeline: priors generation from artifacts
+│
+├── findings/                     ← research notes (the empirical case for v0.8 architecture)
+│   ├── 01-architecture-comparison.md
+│   ├── 02-v07-lazy-synthesis-and-free-form-output.md
+│   ├── 03-v07-25-turn-validation.md
+│   ├── 04-v07-deterministic-closeout.md
+│   ├── 05-v08-probe-sharpener-and-tensions.md
+│   └── data-collection-roadmap.md
+│
+├── demos/                        ← reference outputs (what good looks like)
+│   ├── closed-loop-sc.md         ← May 4 harness demo
+│   └── finco_sales_analyst/      ← 50-turn TechCo demo for the CES meeting
+│
+├── claude-skill/                 ← installable Claude skill (the curl-one-liner option)
+│
+├── plans/                        ← original design docs (mostly historical now)
+├── scripts/                      ← role_to_prompt.py + comparison helpers
+└── skills/                       ← generated RoleContext priors (per role_id)
 ```
 
-Currently the harness is llama-server-only. The next step (in flight) is to add a LiteLLM proxy backend so anyone with proxy creds can run it without a local model — see `plans/04-future-considerations.md` for the integration plan.
+## Where to start reading
+
+| Read this | When |
+|---|---|
+| **[`skill/README.md`](skill/README.md)** | If you want to understand the architecture as a portable system, not as the current research code |
+| **[`findings/05-v08-probe-sharpener-and-tensions.md`](findings/05-v08-probe-sharpener-and-tensions.md)** | The most recent research note. Where v0.8 came from. |
+| **[`findings/01-architecture-comparison.md`](findings/01-architecture-comparison.md)** | The first big empirical finding. Three architectures, one comparison. |
+| **[`demos/finco_sales_analyst/02_spec_v08.md`](demos/finco_sales_analyst/02_spec_v08.md)** | A real spec from a 50-turn discovery run. What the output actually looks like. |
+| **[`demos/finco_sales_analyst/03_ces_meeting_handout.md`](demos/finco_sales_analyst/03_ces_meeting_handout.md)** | How discovery-inception's output composes with Atlan's CES pipeline |
+| **[`plans/00-vision-and-glossary.md`](plans/00-vision-and-glossary.md)** | The original project framing (mostly historical now; the findings supersede the plans) |
+
+## Note on the planning docs
+
+The `plans/` directory holds the original design docs from early May. They're mostly **historical now** — the research findings (`findings/`) reflect what we actually validated, which differs in places from the original plans. Read plans for context on how the project was conceived; read findings for what we now believe.
+
+The biggest revision: the original plans framed discovery as a four-stage pipeline (First Principles → Gap Iteration → Validator → Build Bridge). The actual v0.8 implementation fuses Stages 1–3 into a single conversational agent with multi-sub-agent extraction. Stage 4 (Build Bridge) is now reframed as a downstream consumer (CES, or anyone consuming our spec.json) rather than something we build ourselves. See [`demos/finco_sales_analyst/03_ces_meeting_handout.md`](demos/finco_sales_analyst/03_ces_meeting_handout.md) for the integration story.

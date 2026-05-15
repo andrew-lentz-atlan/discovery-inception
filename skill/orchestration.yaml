@@ -1,0 +1,126 @@
+# DESIGN DOC — not yet executed by code (v0.8 still uses agent/v08/ orchestrator)
+#
+# Per-turn pipeline for the discovery-inception skill, declarative form.
+# A compliant runtime interprets this file to drive the discovery session.
+
+per_turn:
+
+  # Step 1 — Triage. Always runs. Classifies the customer's last message.
+  - id: triage
+    type: sub_agent
+    always_run: true
+    prompt: prompts/triage.md
+    inputs:
+      LAST_PROBE: ${session.last_agent_message}
+      CUSTOMER_MESSAGE: ${turn.customer_message}
+      TOPIC_SUMMARY: ${session.topic_summary}
+    output_schema: schemas/triage_result.json
+    on_failure: fallback_to_concrete_label  # see manifest's optional_capabilities
+
+  # Step 2 — Distill (conditional). Extracts a structured fact when the
+  # customer gave a concrete answer (or one of the variants).
+  - id: distill
+    type: sub_agent
+    condition: triage.label in [concrete, concrete_off_topic, out_of_scope_for_counterparty]
+    prompt: prompts/distill.md
+    inputs:
+      LAST_PROBE: ${session.last_agent_message}
+      TARGET_TOPIC: ${triage.inferred_topic || session.last_probe_target_topic}
+      CUSTOMER_MESSAGE: ${turn.customer_message}
+      RELEVANT_PRIORS: ${session.relevant_priors}
+    output_schema: schemas/distilled_fact.json
+    on_success:
+      - record_fact_in_session(distill.output)
+      - if triage.label == out_of_scope_for_counterparty:
+          flag_gap(question=session.last_agent_message,
+                   escalation_target=triage.escalation_target)
+
+  # Step 3 — Phase advance (deterministic, no LLM).
+  - id: phase_advance_check
+    type: deterministic
+    condition: |
+      session.phase == 'lay_of_the_land' AND
+      count(distinct canonical_topics_with_facts) >= 5
+    action: set session.phase = 'drilling'
+
+  # Step 4 — Mega-agent. Runs the conversation. ONE LLM call (plus tool
+  # iterations) per turn. Free-form output. Uses tools the model can call
+  # for orientation and reflection.
+  - id: mega_agent
+    type: conversational
+    always_run: true
+    system_prompt: prompts/mega_agent.md
+    inputs:
+      USE_CASE_SEED: ${session.use_case_seed}
+      PRIORS: ${session.relevant_priors}
+    tools:
+      - get_current_spec_state    # cheap state read
+      - get_checklist_progress    # cheap state read
+      - synthesize_my_thinking    # EXPENSIVE — runs synthesizer sub-agent on demand
+      - find_tensions             # EXPENSIVE — runs tensions detector on demand
+    output_handling: free_form  # no JSON schema; mega-agent emits prose
+
+  # Step 5 — Probe-sharpener post-processor. Adversarial review of the
+  # mega-agent's response. Runs on most turns; can rewrite weak probes.
+  - id: probe_sharpener
+    type: sub_agent
+    condition: |
+      mega_agent.response contains '?' AND
+      length(mega_agent.response) > 80
+    prompt: prompts/sharpener.md
+    inputs:
+      DRAFT_PROBE: ${mega_agent.response}
+      DRAFT_RATIONALE: "(no separate rationale — mega-agent integrates)"
+      CUSTOMER_MESSAGE: ${turn.customer_message}
+      SPEC_STATE_SUMMARY: ${session.spec_state_summary}
+      USE_CASE_SEED: ${session.use_case_seed}
+      RECENT_FACTS: ${session.recent_facts(n=10)}
+    output_schema: schemas/sharpener_result.json
+    on_success:
+      - if not sharpener.ships_as_is:
+          replace_mega_agent_response(sharpener.rewritten_probe)
+
+# Session-level orchestration (not per-turn).
+session_lifecycle:
+
+  on_start:
+    - if input.initial_customer_artifact:
+        run_intake_pipeline(input.initial_customer_artifact)
+        # produces priors, saved to skills/<role_id>/context.json
+    - initialize_session_state()
+
+  on_close:
+    # Deterministic final synthesis. Runs the synthesizer once with full
+    # conversation in scope. Guarantees a clean final theory regardless of
+    # whether the mega-agent invoked synthesize_my_thinking during the
+    # conversation. Closes v0.6's recency-bias failure mode.
+    - id: final_synthesis
+      type: sub_agent
+      prompt: prompts/synthesizer.md
+      inputs:
+        USE_CASE_SEED: ${session.use_case_seed}
+        SPEC_STATE_SUMMARY: ${session.spec_state_summary}
+        CUSTOMER_MESSAGE: "(SESSION-CLOSE — produce a final working theory that integrates everything captured. Don't bias toward most recent turn.)"
+        PRIOR_THEORY: ${session.working_theory}
+        RELEVANT_PRIORS: ${session.relevant_priors}
+      output_schema: schemas/working_theory.json
+      on_success:
+        - set session.working_theory = output
+
+    # Export the deliverables.
+    - id: export_spec
+      type: deterministic
+      action: render_and_persist(spec.md, spec.json)
+
+# Notes for runtime implementers:
+#
+# - All ${...} placeholders are evaluated against the session and turn
+#   context. A runtime needs to provide values for these.
+# - sub_agent steps make a single LLM call against the prompt template,
+#   validate the response against the schema, and produce a structured
+#   output. Retries on transient failures recommended.
+# - conversational steps run the OpenAI tool-call loop — the model can
+#   call any of its declared tools; the runtime dispatches and feeds
+#   results back until the model emits a final response.
+# - This file describes WHAT runs. The runtime decides HOW (sync vs async,
+#   parallel where possible, etc.). Our reference runtime is sequential.
