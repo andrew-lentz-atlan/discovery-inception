@@ -1,4 +1,23 @@
-"""Orchestrator — runs the per-turn pipeline.
+"""Orchestrator — v0.5 chained pipeline AND shared utility module.
+
+> **Heads up:** despite the bare name "orchestrator.py", this module is
+> NOT the live runtime. The user-facing entry point (MCP server / CLI /
+> Claude skill) runs v0.8 via `agent/v08/orchestrator.py`. This module
+> serves two narrower purposes:
+>
+> 1. The v0.5 chained baseline (`run_turn`) used by `agent/server.py`'s
+>    FastAPI app + `agent/baselines/run_comparison.py` for the three-way
+>    comparison documented in `findings/01-architecture-comparison.md`.
+>    Kept around so that comparison stays reproducible.
+>
+> 2. Shared helpers — `load_prompt`, `call_sub_agent`, `_relevant_priors`,
+>    `_spec_state_summary`, `_topic_summary`, `_last_probe_text`,
+>    `_last_probe_target_topic`, `SUB_AGENT_MODELS` — imported by
+>    v06/v07/v08. Moving this file without splitting helpers out first
+>    breaks those imports. Splitting them is queued for v1.0 packaging.
+>
+> If you're trying to understand "the live agent," go read
+> `agent/v08/orchestrator.py` instead.
 
 Two-phase design (v0.5):
 

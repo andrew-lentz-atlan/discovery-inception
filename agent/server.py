@@ -1,16 +1,19 @@
-"""Minimal FastAPI server for the discovery agent.
+"""FastAPI server for the **v0.5 chained baseline** of the discovery agent.
+
+> **Heads up:** this is NOT the user-facing entry point. The MCP server
+> (`agent/mcp_server/server.py`) is what the CLI and Claude skill drive,
+> and that one runs v0.8. This file exists only for the architecture
+> comparison harness (`agent/baselines/run_comparison.py`), which speaks
+> to the v0.5 chained pipeline over HTTP. See
+> `findings/01-architecture-comparison.md` for what gets compared.
 
 Endpoints:
   POST /sessions                       — start a new discovery session
-  POST /sessions/{session_id}/turn     — submit a customer turn, get the agent's probe back
-  GET  /sessions/{session_id}          — fetch full session state (spec, messages, trace)
+  POST /sessions/{session_id}/turn     — submit a customer turn (v0.5 chained)
+  GET  /sessions/{session_id}          — fetch full session state
   GET  /sessions                       — list known sessions
 
-This server stands alone (separate from harness/). Same model proxy, same
-trace-friendly per-turn structure, but the discovery loop runs its own
-multi-call pipeline per turn rather than the harness's single ReAct loop.
-
-Run:
+Run (only for baseline comparison, not for real use):
     cd discovery-inception
     uv run uvicorn agent.server:app --reload --port 8010
 """

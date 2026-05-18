@@ -54,9 +54,23 @@ If any of those are present, note them and skip the corresponding prompt later. 
 
 2. If found, ask the user: *"I see you already have discovery-inception at `<path>`. Use that, or clone fresh elsewhere?"* Default to using what's there.
 
-3. If not found, ask: *"Where should I clone discovery-inception? Default: `~/Desktop/discovery-inception`."* Then clone:
+3. If not found, ask: *"Where should I clone discovery-inception? Default: `~/Desktop/discovery-inception`."* Then clone and pin to the latest released tag so the user gets a known-good version (not a half-finished reorg on `main`):
    ```bash
    git clone https://github.com/andrew-lentz-atlan/discovery-inception.git <path>
+   cd <path>
+   # Pin to the latest discovery-inception tag (e.g. v0.8). If git tag has none,
+   # it's fine to stay on main — that means the project hasn't tagged a release
+   # yet, OR the user explicitly wants bleeding edge.
+   latest_tag=$(git tag -l 'v*' --sort=-v:refname | head -1)
+   if [ -n "$latest_tag" ]; then
+     echo "checking out $latest_tag"
+     git checkout "$latest_tag"
+   fi
+   ```
+
+   If the user already had a clone (step 2), offer to update them to the latest tag too:
+   ```bash
+   cd "$REPO" && git fetch --tags && latest=$(git tag -l 'v*' --sort=-v:refname | head -1) && [ -n "$latest" ] && git checkout "$latest"
    ```
 
 4. From now on, refer to the chosen path as `$REPO`. Every Bash command in subsequent phases should `cd "$REPO"` first.

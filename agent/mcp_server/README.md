@@ -1,6 +1,8 @@
 # discovery-inception MCP server
 
-Wraps the v0.7 discovery agent + the intake (priors) pipeline as tools Claude Code or Claude Desktop can invoke.
+Wraps the v0.8 discovery agent + the intake (priors) pipeline as tools Claude Code or Claude Desktop can invoke.
+
+> **Version pinning:** This is the canonical user-facing entry point — the CLI and the Claude skill both drive it. The MCP server is currently wired to `agent.v08.orchestrator` (sharpener + tensions + deterministic close-out). The version every external user sees is whatever `agent/mcp_server/server.py` imports.
 
 **The user plays the CUSTOMER. The discovery agent plays the FDE interviewer.** You feed in a job description / runbook / transcript first to build priors, then drive a discovery interview as the customer, and the final spec gets exported as `spec.md`.
 
