@@ -73,6 +73,35 @@ def load_prompt(name: str, **substitutions: str) -> str:
     return text
 
 
+def use_case_orientation(use_case: str | None) -> str:
+    """Build the orientation block injected into oriented prompts (steps 2, 4, 5).
+
+    When `use_case` is provided, the block tells the extractor to target the
+    persona of the agent's user — not the artifact's speakers / narrators /
+    incidentally-named roles. When None, returns a passive line that keeps
+    behavior identical to pre-orientation runs (backward compatible).
+    """
+    if not use_case or not use_case.strip():
+        return (
+            "## Target use case orientation\n\n"
+            "*(No target use case specified — extract the role most clearly "
+            "described in the artifact.)*"
+        )
+    return (
+        "## Target use case orientation\n\n"
+        "You are extracting priors for an agent being built for this target use case:\n\n"
+        f"> {use_case.strip()}\n\n"
+        "The artifact you're reading may contain people other than the target user "
+        "— e.g., this could be a scoping conversation where the target user isn't "
+        "speaking. Extract the persona, workflows, decisions, and rules of the "
+        "**target user of the agent**, NOT of the artifact's speakers, narrators, "
+        "or roles mentioned in passing.\n\n"
+        "If the artifact doesn't contain enough information about the target user, "
+        "leave fields empty and flag them in `flagged_unknowns`. Do NOT fill gaps "
+        "with details about non-target roles."
+    )
+
+
 def parse_json_response(content: str) -> dict | list:
     """Pull JSON out of a model response, tolerating ```json fences."""
     s = (content or "").strip()
@@ -157,10 +186,16 @@ async def step_classify(client: AsyncOpenAI, artifact: str) -> ClassificationRes
 
 
 async def step_extract(
-    client: AsyncOpenAI, artifact: str, artifact_type: str
+    client: AsyncOpenAI,
+    artifact: str,
+    artifact_type: str,
+    use_case: str | None = None,
 ) -> ExtractionResult:
     prompt = load_prompt(
-        "02_extractor.md", ARTIFACT_TEXT=artifact, ARTIFACT_TYPE=artifact_type
+        "02_extractor.md",
+        ARTIFACT_TEXT=artifact,
+        ARTIFACT_TYPE=artifact_type,
+        USE_CASE_CONTEXT=use_case_orientation(use_case),
     )
     return await call_step(
         client, user_prompt=prompt, output_model=ExtractionResult, max_tokens=6000
@@ -181,21 +216,29 @@ async def step_normalize_vocabulary(
 
 
 async def step_sniff_unwritten_rules(
-    client: AsyncOpenAI, artifact: str
+    client: AsyncOpenAI, artifact: str, use_case: str | None = None
 ) -> UnwrittenRulesResult:
-    prompt = load_prompt("04_unwritten_rules_sniffer.md", ARTIFACT_TEXT=artifact)
+    prompt = load_prompt(
+        "04_unwritten_rules_sniffer.md",
+        ARTIFACT_TEXT=artifact,
+        USE_CASE_CONTEXT=use_case_orientation(use_case),
+    )
     return await call_step(
         client, user_prompt=prompt, output_model=UnwrittenRulesResult, max_tokens=3000
     )
 
 
 async def step_report_gaps(
-    client: AsyncOpenAI, artifact: str, combined: dict
+    client: AsyncOpenAI,
+    artifact: str,
+    combined: dict,
+    use_case: str | None = None,
 ) -> GapReport:
     prompt = load_prompt(
         "05_gap_reporter.md",
         ARTIFACT_TEXT=artifact,
         COMBINED_EXTRACTION_JSON=json.dumps(combined, indent=2),
+        USE_CASE_CONTEXT=use_case_orientation(use_case),
     )
     return await call_step(
         client, user_prompt=prompt, output_model=GapReport, max_tokens=4000
@@ -219,16 +262,24 @@ async def step_score_confidence(
 # Pipeline
 # ---------------------------------------------------------------------------
 
-async def run_intake(artifact_text: str, source_filename: str) -> RoleContext:
+async def run_intake(
+    artifact_text: str,
+    source_filename: str,
+    use_case: str | None = None,
+) -> RoleContext:
     client = _client()
     try:
+        if use_case:
+            print(f"→ Target use case: {use_case}")
         print("→ Step 1/6: classifying artifact...")
         classification = await step_classify(client, artifact_text)
         print(f"   type={classification.artifact_type} (confidence={classification.confidence:.2f})")
         print(f"   rationale: {classification.rationale}")
 
         print("→ Step 2/6: extracting structure...")
-        extraction = await step_extract(client, artifact_text, classification.artifact_type)
+        extraction = await step_extract(
+            client, artifact_text, classification.artifact_type, use_case=use_case
+        )
         print(
             f"   role={extraction.role_name}; workflows={len(extraction.typical_workflows)}; "
             f"decisions={len(extraction.decision_criteria)}; "
@@ -240,7 +291,7 @@ async def run_intake(artifact_text: str, source_filename: str) -> RoleContext:
         print(f"   terms={len(vocab.domain_vocabulary)}; merges={len(vocab.synonyms_collapsed)}")
 
         print("→ Step 4/6: sniffing unwritten rules...")
-        unwritten = await step_sniff_unwritten_rules(client, artifact_text)
+        unwritten = await step_sniff_unwritten_rules(client, artifact_text, use_case=use_case)
         print(f"   rules captured: {len(unwritten.rules)}")
 
         combined = {
@@ -250,7 +301,7 @@ async def run_intake(artifact_text: str, source_filename: str) -> RoleContext:
         }
 
         print("→ Step 5/6: reporting gaps...")
-        gaps = await step_report_gaps(client, artifact_text, combined)
+        gaps = await step_report_gaps(client, artifact_text, combined, use_case=use_case)
         print(f"   gaps flagged: {len(gaps.flagged_unknowns)}")
 
         ctx = RoleContext(
@@ -265,6 +316,7 @@ async def run_intake(artifact_text: str, source_filename: str) -> RoleContext:
             unwritten_rules=unwritten.rules,
             flagged_unknowns=gaps.flagged_unknowns,
             source_artifacts=[source_filename],
+            target_use_case=use_case,
         )
 
         print("→ Step 6/6: scoring confidence...")
@@ -300,6 +352,19 @@ def main() -> None:
         default=PROJECT_ROOT / "skills",
         help="Where to write the produced skill (default: discovery-inception/skills).",
     )
+    parser.add_argument(
+        "--use-case",
+        default=None,
+        help=(
+            "Optional one-liner describing the agent being built. When provided, the "
+            "extractor / unwritten-rules sniffer / gap reporter orient toward the target "
+            "user of that agent rather than anchoring on whichever role is most "
+            "explicitly named in the artifact. Use when the artifact is a meta-document "
+            "(scoping call, design doc, transcript) rather than the target user's own "
+            "runbook. Example: --use-case \"Brand analyst agent that answers questions "
+            "like 'Why did Gain lose share at Target?' using AOS market share data.\""
+        ),
+    )
     args = parser.parse_args()
 
     artifact_path: Path = args.artifact.resolve()
@@ -315,7 +380,13 @@ def main() -> None:
     (out_dir / "source").mkdir(exist_ok=True)
     shutil.copy(artifact_path, out_dir / "source" / artifact_path.name)
 
-    ctx = asyncio.run(run_intake(artifact_text, source_filename=artifact_path.name))
+    ctx = asyncio.run(
+        run_intake(
+            artifact_text,
+            source_filename=artifact_path.name,
+            use_case=args.use_case,
+        )
+    )
 
     out_path = out_dir / "context.json"
     out_path.write_text(ctx.model_dump_json(indent=2))

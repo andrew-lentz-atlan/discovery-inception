@@ -1,0 +1,405 @@
+{
+  "role_name": "Fabric and Home Care Partner Success Leader",
+  "role_summary": "Emily Lash ensures that the Fabric and Home Care business unit understands and leverages all centrally-provided capabilities from the DNA (Data & AI) platform. The role bridges central platform offerings with business unit needs, ensuring alignment on AI use cases like the decision engine and facilitating adoption of data and analytics tools across the organization.",
+  "primary_outcomes": [
+    "Fabric and Home Care business unit adoption of centrally-provided DNA capabilities",
+    "Successful scoping and deployment of decision engine use case for brand analysis",
+    "Alignment between central data governance and business unit-specific context needs"
+  ],
+  "typical_workflows": [
+    {
+      "name": "Use Case Scoping and Validation",
+      "purpose": "To understand, document, and validate a new AI/analytics use case before development begins, ensuring mutual alignment between the business unit and central platform teams.",
+      "trigger": "A new use case is identified as a priority by central leadership (e.g., decision engine for fabric care)",
+      "steps": [
+        "Receive detailed use case documentation from the business unit",
+        "Conduct scoping call with business unit stakeholders and platform partners",
+        "Replay back understanding of the use case, data flows, and requirements",
+        "Identify gaps, pain points, and current state limitations",
+        "Validate understanding with business unit and refine scope",
+        "Align on architecture, tooling, and next steps for development"
+      ],
+      "typical_duration": "2-3 weeks from initial scoping to development readiness"
+    },
+    {
+      "name": "Capability Awareness and Adoption",
+      "purpose": "To communicate and educate the Fabric and Home Care team on new or existing DNA platform capabilities so they can evaluate and adopt them.",
+      "trigger": "A new capability is released or an existing capability is underutilized by the business unit",
+      "steps": [
+        "Identify capability gaps or adoption opportunities within Fabric and Home Care",
+        "Coordinate with central platform teams to understand capability details",
+        "Present capability to business unit stakeholders",
+        "Gather feedback and identify barriers to adoption",
+        "Work with central teams to address adoption blockers"
+      ],
+      "typical_duration": null
+    }
+  ],
+  "decision_criteria": [
+    {
+      "name": "Use Case Prioritization",
+      "inputs": [
+        "Central leadership priorities (e.g., decision engine as top AI priority)",
+        "Business unit size and impact potential",
+        "Existing data maturity and infrastructure readiness",
+        "Stakeholder alignment and commitment"
+      ],
+      "criteria": [
+        "Use cases aligned with central DNA priorities are prioritized",
+        "Larger business units (e.g., fabric care vs. smaller units) are selected as lead use cases",
+        "Use cases with clear business questions and defined success metrics are preferred"
+      ],
+      "is_judgment": true
+    },
+    {
+      "name": "Scope Definition for Agent/Workflow",
+      "inputs": [
+        "Business question (e.g., 'Why is brand X declining at retailer Y?')",
+        "Available data sources and tables",
+        "Current analysis workflows and tools in use",
+        "Stakeholder personas and consumption preferences"
+      ],
+      "criteria": [
+        "Start with a specific, well-defined question rather than boiling the ocean",
+        "Limit initial scope to a small set of tables and data sources",
+        "Focus on analyst-first rollout before expanding to business users or executives",
+        "Ensure data is available in centralized systems (BigQuery, Databricks, Unity Catalog)"
+      ],
+      "is_judgment": true
+    },
+    {
+      "name": "Data Governance Ownership",
+      "inputs": [
+        "Whether data is centrally owned (e.g., in Unity Catalog) or business unit-specific",
+        "Whether business unit has added local attributes or customizations to central tables",
+        "Whether metric definitions exist in central pipelines or only in local systems"
+      ],
+      "criteria": [
+        "Central data pipelines own and maintain core table and column definitions",
+        "Business units can add their own context, naming conventions, and business logic on top of central definitions",
+        "Avoid duplication of governance between central and business unit teams",
+        "Business unit voice and terminology should be preserved even when leveraging central definitions"
+      ],
+      "is_judgment": false
+    }
+  ],
+  "escalation_paths": [
+    {
+      "trigger": "Use case requires capabilities or data not available in current DNA platform or Fabric and Home Care environment",
+      "handoff_target": "Central DNA platform team or central data pipelines team",
+      "artifacts_passed": [
+        "Detailed use case documentation",
+        "List of required data sources and tables",
+        "Identified gaps in current platform capabilities",
+        "Business impact and timeline requirements"
+      ]
+    },
+    {
+      "trigger": "Business unit needs to adopt a new central capability or tool (e.g., Atlan for metadata management)",
+      "handoff_target": "Central platform team (e.g., DNA platforms team, data discovery & AI-ready data team)",
+      "artifacts_passed": [
+        "Business unit requirements and use cases",
+        "Current tooling and data infrastructure",
+        "Adoption blockers or concerns identified"
+      ]
+    },
+    {
+      "trigger": "Data quality or governance issues are discovered that affect the use case",
+      "handoff_target": "Central data pipelines team or DevOps team",
+      "artifacts_passed": [
+        "Specific data quality issues identified",
+        "Tables and columns affected",
+        "Impact on use case timeline and quality"
+      ]
+    }
+  ],
+  "domain_vocabulary": {
+    "DNA": "Data & AI platform — the centralized platform providing capabilities to business units like Fabric and Home Care",
+    "decision engine": "An AI use case prioritized by central DNA leadership to analyze brands and understand why metrics are increasing or decreasing; the primary use case for Fabric and Home Care",
+    "Fabric and Home Care (F&HC)": "One of P&G's largest business units; the lead use case for the decision engine",
+    "business unit (BU)": "A division within P&G (e.g., Fabric and Home Care, Home Care); each BU has its own analysis approaches and business context",
+    "partner success leader": "Role responsible for ensuring a business unit understands and adopts centrally-provided DNA capabilities",
+    "use case scoping": "The process of understanding, documenting, and validating a new AI or analytics use case before development, ensuring alignment between business unit and platform teams",
+    "minimum viable experiment (MVE)": "Early-stage testing phase to determine what is technically feasible before moving to a full proof of concept (PoC)",
+    "production-grade": "Ready for production deployment; meeting quality, governance, and accuracy requirements for end-user consumption",
+    "question parser": "Step in the agent workflow that parses the user's question to extract intent, filters, and context",
+    "market share analysis": "Phase one of the decision engine workflow; analyzes how a brand or product is performing relative to the market at different granularity levels (category, manufacturer, brand)",
+    "granularity": "Level of detail in analysis; examples include category level, category-manufacturer level, or category-manufacturer-brand level",
+    "business view": "The lens through which data is analyzed; examples include VBB (Victor Bravo Bravo) for general business analysis or DCOM for digital commerce",
+    "VBB": "Victor Bravo Bravo — a business view representing how P&G analyzes the business in a generic sense; can be broken down into more specific business contexts like DCOM",
+    "DCOM": "Digital commerce business view; used for analyzing digital/online business separately from traditional retail",
+    "trade panel": "A data source under the VBB business view; contains retail sales and market data",
+    "HHP": "[INFERRED — please confirm] Likely another data source under the VBB business view, similar to trade panel",
+    "detail analyzer": "Phase two of the decision engine workflow; performs deeper diagnosis on specific metrics and conditions to understand the 'why' behind market movements",
+    "above and below the line": "Analysis approach that examines context above (market-level factors) and below (product/brand-level factors) the specific question being asked",
+    "AOS": "All Outlets Share — a metric or data source representing market share across all retail outlets",
+    "metric definitions": "Formal definitions of business metrics (e.g., ACV, distribution points) stored in JSON files or data systems; used to provide context to the LLM",
+    "table details": "Metadata about data tables including column names, descriptions, and relationships; stored in JSON files or data systems",
+    "SQL templates": "Pre-defined SQL query patterns used to generate queries for different analysis scenarios; stored in constants files",
+    "LLM": "Large Language Model — the AI model powering the agent to reason about questions, generate SQL, and produce analysis",
+    "LangGraph": "The preferred agent framework used by P&G for building agents; supports skills and workflow orchestration",
+    "skills": "Expertise or 'how-to' instructions for the agent; define best practices for specific tasks (e.g., how to do market share analysis, how to write SQL, how to write in P&G voice)",
+    "tools": "Hands and legs of the agent; deterministic functions or API calls that allow the agent to execute actions (e.g., run queries, call APIs, pull metadata from Atlan)",
+    "knowledge layer": "Centralized repository of business facts, data, metadata, metrics, and definitions; in this context, Atlan serves as the knowledge layer",
+    "MCP": "Model Context Protocol — a protocol for connecting agents to external systems and data sources (e.g., BigQuery, Databricks, Atlan)",
+    "context engineering": "The discipline of building and maintaining the context (skills, tools, knowledge) that agents use to reason and act",
+    "context repo": "Repository of all context needed by an agent, including skills, tools, and knowledge; analogous to a GitHub repo but for context instead of code",
+    "ontology": "Formal representation of business concepts, entities, metrics, and their relationships; auto-generated by Atlan based on data lineage and metadata",
+    "metric map": "Graph representation showing how different metrics relate to and derive from each other; enables agents to navigate between related metrics",
+    "lineage": "The path of data from source to destination, showing how tables and columns are created and transformed; includes both data lineage and metric lineage",
+    "Unity Catalog": "Centralized metadata and data governance layer in Databricks; stores centrally-owned data pipelines and tables",
+    "Databricks": "Data platform used by P&G for data processing and storage; one of the primary data sources for the decision engine",
+    "BigQuery": "Google's data warehouse platform; alternative to Databricks for storing and querying data",
+    "Power BI": "Microsoft's business intelligence and reporting tool; used by P&G for dashboards and analysis",
+    "Looker": "Data visualization and business intelligence tool used by P&G for reporting and analysis",
+    "Atlan": "Metadata management and data governance platform; serves as the knowledge layer and context repository for agents",
+    "Glean": "Search and discovery tool used to retrieve and index information from various sources",
+    "Nielsen IQ": "External data source providing consumer and market insights; accessed via web interface",
+    "Samantha": "P&G's alerting capability that can automatically generate questions or insights based on monitored metrics",
+    "analyst toolkit": "Centralized repository (currently on SharePoint) of analysis recipes, methodologies, and best practices for market analysis; source of potential skills",
+    "DPSM": "[INFERRED — please confirm] Likely refers to Display, Price, Shelf, Merchandising — key diagnostic metrics for retail analysis",
+    "product granularities": "Different levels at which products can be analyzed (e.g., by sub-brand, form, size); varies by brand",
+    "market definitions": "Standardized definitions of markets (e.g., total target, DCOM target, total USA) used to filter and segment data",
+    "business context": "Domain-specific knowledge about how a business operates, including analysis approaches, metric definitions, and terminology; varies by brand and business unit",
+    "BU voice": "Business unit-specific language, terminology, and analysis style; distinct from company-wide voice",
+    "brand voice": "The specific way a brand (e.g., Gain, Tide) prefers to be analyzed and discussed; includes terminology, attributes, and analysis approaches",
+    "governance layer": "Processes and systems for managing context, ensuring accuracy, and maintaining consistency as the agent scales across use cases and business units",
+    "context ownership": "Responsibility for maintaining and updating specific pieces of context; can be centralized (central data team) or distributed (business unit)",
+    "AI-ready data": "Data that is well-documented, properly lineaged, and structured in a way that makes it easy for AI agents to discover and use",
+    "data quality": "Accuracy, completeness, and consistency of data; critical for ensuring agent outputs are reliable",
+    "context quality": "Accuracy and relevance of metadata, descriptions, and business definitions; critical for ensuring agents reason correctly",
+    "evaluation": "Process of assessing whether agent outputs are accurate and meet quality thresholds before sharing with end users",
+    "persona": "User type or role (e.g., analyst, executive, brand manager); affects how the agent should tailor its responses",
+    "analyst-first rollout": "Strategy of deploying the agent to technical analysts first before expanding to business users or executives",
+    "executive persona": "High-level business leader who needs summary-level insights and quick answers",
+    "business user persona": "Non-technical user who needs simple, direct answers to business questions",
+    "analyst persona": "Technical user who can ask complex, multi-step questions and navigate detailed analysis",
+    "multimodal": "Ability to interact with the agent through multiple modes (e.g., chat, reports, automated alerts)",
+    "chat interface": "Conversational interface allowing users to ask questions and receive answers in real-time",
+    "report generation": "Ability to create formatted reports or documents based on agent analysis",
+    "automated questions": "Questions or insights generated automatically by systems like Samantha based on monitored metrics",
+    "go-live": "Date when a use case or capability is deployed to production and made available to end users",
+    "Cincinnati": "Location of planned in-person working session in 2-3 weeks to align on architecture and begin development",
+    "DevOps": "Role responsible for infrastructure, data pipelines, and technical operations; in this context, Kim Bushfield manages DevOps for Fabric Care commercial",
+    "embedded data scientist": "Data scientist embedded within a business unit (e.g., Emily Vu in Fabric Care) to support analysis and modeling",
+    "DNA platforms team": "Central team responsible for data discovery, AI-ready data, and platform capabilities",
+    "central data pipelines": "Centrally-owned and maintained data infrastructure providing standardized data to business units",
+    "OU": "[INFERRED — please confirm] Likely abbreviation for Organizational Unit; refers to business units or divisions within P&G",
+    "CSA": "[INFERRED — please confirm] Likely abbreviation for Customer Solutions Architect or Customer Success Architect; in this context, Tim is a CSA at Atlan",
+    "PM": "[INFERRED — please confirm] Product Manager; Deb is a staff PM in Atlan's new product organization",
+    "account director": "Atlan role responsible for managing customer relationships and engagement",
+    "customer experience group": "Atlan team led by Himanshu focused on helping customers succeed with AI",
+    "go to market": "Strategy and execution for bringing a product or capability to market",
+    "cross the chasm": "Transition from early adopters to mainstream adoption; refers to navigating the challenges of scaling AI solutions",
+    "skills as a first class citizen": "Treating skills as reusable, versioned, and managed components that can be shared across multiple agents",
+    "reasoning": "The LLM's ability to think through a problem step-by-step and decide which skills or tools to use",
+    "routing": "The process of directing the agent to the appropriate skill or tool based on the question or context",
+    "follow-up queries": "Additional queries the agent generates to gather more context or validate findings",
+    "simulation": "Running the agent on sample data to test accuracy and improve performance before production deployment"
+  },
+  "common_edge_cases": [
+    {
+      "description": "Business unit has built local context (JSON files, metric definitions, product hierarchies) that was created ad-hoc using LLMs without validation, leading to terminology or definitions that don't match central standards or business reality.",
+      "handling": "Work with business unit to validate and correct local context before scaling. Identify which context should be centralized vs. business unit-specific. Establish governance process for maintaining context accuracy going forward. Consider using Atlan or similar tools to auto-generate and validate context from structured data sources."
+    },
+    {
+      "description": "Multiple business units or teams have different naming conventions, business logic, or analysis approaches for the same metric or data concept (e.g., 'granules' vs. 'unit dose' vs. 'tile').",
+      "handling": "Document the different interpretations and establish a mapping between them. Preserve business unit voice and terminology in local context while maintaining lineage back to central definitions. Use metadata tools (e.g., Atlan) to capture these relationships and make them visible to agents and analysts."
+    },
+    {
+      "description": "Use case is in early-stage experimentation (minimum viable experiment) and not yet ready for production, but stakeholders or leadership expect production deployment.",
+      "handling": "Set clear expectations on maturity level and timeline. Define what 'production-ready' or 'production-grade' means for this use case (e.g., accuracy thresholds, governance requirements, evaluation criteria). Establish realistic milestones and communicate progress transparently. Focus on working backwards from the agent to show value incrementally."
+    },
+    {
+      "description": "Data ecosystem is messy and complex with multiple partitions of the same data, different data sources (Power BI, Looker, Nielsen IQ, Excel), and inconsistent metadata across systems.",
+      "handling": "Start with a narrow set of tables and data sources for the initial use case rather than trying to catalog everything. Use automated metadata discovery and AI-generated descriptions as a starting point, then validate and correct. Establish data readiness criteria before scaling. Work with central data teams to improve data quality and governance incrementally."
+    },
+    {
+      "description": "Agent or workflow output lacks the 'voice' or terminology of a P&G analyst, sounding generic or vague instead of business-specific.",
+      "handling": "Incorporate brand voice and business unit-specific language into agent skills and prompts. Use PDF uploads or documentation (e.g., analyst toolkit) to teach the agent P&G-specific jargon and analysis approaches. Implement human-in-the-loop review for output quality before sharing with end users."
+    }
+  ],
+  "unwritten_rules": [
+    "When building agents, start with the agent first rather than starting with skills or infrastructure, because working backwards from an agent that delivers value is more effective than building components that may not be used correctly.",
+    "Default to leveraging existing centrally-owned data and context rather than having each business unit maintain duplicate definitions of the same tables, even if local customization is needed on top.",
+    "When in doubt about whether to put something in production, frame it as 'production grade' or 'production ready' rather than committing to full production, to avoid unrealistic timelines and leadership expectations.",
+    "Start with the smallest viable set of tables or assets rather than attempting to scan or process millions of assets at once; narrow the scope first.",
+    "When context is messy or chaotic, test the agent against it early rather than waiting for perfect data preparation, to understand how the system actually behaves.",
+    "Prefer working in parallel on multiple workstreams (e.g., skills extraction, data preparation, agent building) rather than strictly sequential phases, to accelerate learning.",
+    "Always verify what can be shared externally (analyst toolkit, workflows, etc.) before committing to share it, due to NDA and security constraints.",
+    "When different business units have different naming conventions or terminology for the same concept, document and preserve those differences rather than forcing standardization, because the meaning can change by context.",
+    "Ensure connectivity and integration testing between components (e.g., how skills plug into LangGraph, how atlan connects to agents) happens early, not as an afterthought."
+  ],
+  "confidence_per_field": {
+    "role_name": 0.95,
+    "role_summary": 0.85,
+    "primary_outcomes": 0.8,
+    "typical_workflows": 0.75,
+    "decision_criteria": 0.7,
+    "escalation_paths": 0.65,
+    "domain_vocabulary": 0.8,
+    "common_edge_cases": 0.6,
+    "unwritten_rules": 0.55,
+    "flagged_unknowns": 0.7
+  },
+  "flagged_unknowns": [
+    {
+      "field": "Escalation trigger specificity for 'use case requires unavailable capabilities'",
+      "why_it_matters": "The agent won't know when to escalate to the central DNA platform team if the conditions that define 'unavailable' aren't explicit (e.g., is it a missing data source, a missing analytical capability, a performance constraint?).",
+      "probe_suggestion": "When you say a use case 'requires capabilities not available in the current DNA platform,' what are 3-5 concrete examples of things that would trigger that escalation? For instance: 'we need real-time streaming data' or 'we need a predictive model we don't have'?"
+    },
+    {
+      "field": "Adoption blocker resolution SLA and ownership",
+      "why_it_matters": "The escalation path says 'work with central teams to address adoption blockers,' but without knowing who owns the resolution, how long it takes, or what 'resolved' looks like, the agent can't track progress or know when to follow up.",
+      "probe_suggestion": "When adoption blockers are identified (e.g., 'tool X is too hard to use'), who owns fixing it—the central platform team or the business unit? And what's a realistic timeline to resolve one?"
+    },
+    {
+      "field": "Data quality issue severity thresholds",
+      "why_it_matters": "The escalation path mentions data quality issues, but without knowing which issues are critical enough to halt a use case versus which can be worked around, the agent can't prioritize or decide whether to escalate.",
+      "probe_suggestion": "Give me an example of a data quality issue that would block a use case from moving forward, and an example of one that wouldn't. What's the difference?"
+    },
+    {
+      "field": "Success metrics for 'alignment between central data governance and business unit-specific context needs'",
+      "why_it_matters": "This is listed as a primary outcome, but without measurable criteria, the agent can't evaluate whether alignment has been achieved or when to declare the outcome complete.",
+      "probe_suggestion": "How will you know that central data governance and business unit context are 'aligned'? What does that look like in practice—e.g., a signed agreement, a shared metadata layer, a governance charter?"
+    },
+    {
+      "field": "Adoption readiness criteria before rollout",
+      "why_it_matters": "The role mentions 'analyst-first rollout' but doesn't specify what conditions must be met before rolling out to analysts, business users, or executives. The agent needs to know when a use case is ready to move to the next persona tier.",
+      "probe_suggestion": "Before you roll out the decision engine to analysts, what has to be true? For example: accuracy threshold, documentation completeness, support team readiness, or something else?"
+    },
+    {
+      "field": "Scope definition decision inputs for 'analyst-first rollout'",
+      "why_it_matters": "The decision criteria say 'focus on analyst-first rollout before expanding to business users or executives,' but the agent needs to know which analysts, how many, and what feedback triggers expansion to the next tier.",
+      "probe_suggestion": "When you say 'analyst-first rollout,' how many analysts are we talking about? And what feedback or metrics would tell you it's time to expand to business users?"
+    },
+    {
+      "field": "Governance ownership decision triggers",
+      "why_it_matters": "The decision criteria for 'Data Governance Ownership' describe the principles but not the decision process—when does Emily or the team actually decide whether a piece of context is centrally owned vs. business unit-owned?",
+      "probe_suggestion": "Walk me through a specific example: you have a metric definition for 'market share.' How do you decide: is this owned by the central data pipelines team, or does Fabric and Home Care own it?"
+    },
+    {
+      "field": "Context quality validation process and acceptance criteria",
+      "why_it_matters": "The edge case about 'local context created ad-hoc using LLMs without validation' is identified, but there's no process described for how Emily validates context before it's used by the agent or shared with stakeholders.",
+      "probe_suggestion": "When you discover that context (like metric definitions or product hierarchies) was generated by an LLM without validation, what's your process for correcting it? Who validates it, and what does 'correct' mean?"
+    },
+    {
+      "field": "Agent output quality evaluation criteria and thresholds",
+      "why_it_matters": "The role mentions ensuring outputs 'sound like a P&G analyst' and are accurate, but without specific evaluation criteria or thresholds, the agent can't know when output quality is acceptable for sharing with end users.",
+      "probe_suggestion": "You mentioned agent outputs don't sound like a P&G analyst. What are 2-3 specific things that would make an output sound more like a P&G analyst? And how would you measure accuracy—e.g., comparison to human analysis, business impact?"
+    },
+    {
+      "field": "Minimum viable experiment (MVE) vs. production-grade definition and transition criteria",
+      "why_it_matters": "The role is currently in MVE phase, but there's no clear definition of what 'production-grade' means or what conditions must be met to transition from MVE to production-grade. The agent needs these criteria to track progress.",
+      "probe_suggestion": "You mentioned the project is in 'minimum viable experiment' phase and you want to move to 'production-grade.' What are the 3-5 things that have to be true for you to call it production-grade?"
+    },
+    {
+      "field": "Feedback loop and context update cadence",
+      "why_it_matters": "The role mentions maintaining a 'feedback loop' so the agent doesn't 'lose its' accuracy, but there's no cadence or process for how often context is reviewed, updated, or validated.",
+      "probe_suggestion": "How often do you expect to review and update the context (skills, metric definitions, product hierarchies) that the agent uses? Weekly, monthly, quarterly? And who owns that review?"
+    },
+    {
+      "field": "Stakeholder alignment and commitment measurement",
+      "why_it_matters": "The decision criteria for 'Use Case Prioritization' include 'stakeholder alignment and commitment,' but there's no way to measure or verify this. The agent needs to know what 'aligned' and 'committed' look like.",
+      "probe_suggestion": "When you say stakeholders are 'aligned and committed' to a use case, what evidence would you point to? For example: a signed charter, attendance at meetings, budget allocation, or something else?"
+    },
+    {
+      "field": "Data readiness assessment criteria and process",
+      "why_it_matters": "The edge case about 'messy and complex data ecosystem' mentions 'establish data readiness criteria,' but these criteria aren't defined. The agent needs to know what makes data 'ready' for a use case.",
+      "probe_suggestion": "What does 'data ready' mean for the decision engine use case? For example: all tables in BigQuery/Databricks, all columns documented, lineage mapped, or something else?"
+    },
+    {
+      "field": "Central vs. business unit context ownership decision framework",
+      "why_it_matters": "The unwritten rule says 'default to leveraging existing centrally-owned data,' but the agent needs explicit criteria to decide when to override this default and allow business unit-specific context.",
+      "probe_suggestion": "You said 'default to centrally-owned data, but allow business unit customization on top.' Give me an example of when you'd allow Fabric and Home Care to create their own version of a central definition, and when you'd say 'no, use the central one.'"
+    },
+    {
+      "field": "Analyst toolkit content scope and governance",
+      "why_it_matters": "The analyst toolkit is mentioned as a potential source of skills, but there's no clarity on what content is in it, who maintains it, or what subset is relevant to the decision engine use case.",
+      "probe_suggestion": "The analyst toolkit is a SharePoint site with analysis recipes. How many recipes are in there? Which ones are relevant to the decision engine? And who decides what gets added or updated?"
+    },
+    {
+      "field": "Brand voice and terminology capture process",
+      "why_it_matters": "The edge case about 'agent output lacking P&G voice' is identified, but there's no process for how Emily captures brand-specific language and terminology to teach the agent.",
+      "probe_suggestion": "How do you plan to capture and codify the 'P&G voice' or 'Fabric and Home Care voice' so the agent can use it? For example: a style guide, example outputs, or something else?"
+    },
+    {
+      "field": "Metric lineage and relationship mapping completeness",
+      "why_it_matters": "The role mentions building 'metric maps' to show how metrics relate to each other, but there's no definition of what 'complete' looks like or how to prioritize which relationships to map first.",
+      "probe_suggestion": "For the decision engine, which metrics are most critical to map relationships for? For example: ACV, distribution points, market share? And how many relationships do you expect to map?"
+    },
+    {
+      "field": "Connectivity and integration testing scope",
+      "why_it_matters": "The unwritten rule says 'ensure connectivity testing happens early,' but there's no list of which systems need to be tested (e.g., LangGraph + Atlan, Databricks + Atlan, etc.) or what 'working' means.",
+      "probe_suggestion": "What are the 3-4 critical integrations that need to be tested early? For example: LangGraph pulling skills from Atlan, Atlan querying Databricks, etc.?"
+    },
+    {
+      "field": "Scope narrowing criteria for initial use case",
+      "why_it_matters": "The unwritten rule says 'start with the smallest viable set of tables,' but there's no explicit criteria for how Emily decides which tables to include in the initial scope.",
+      "probe_suggestion": "For the Gain + Target use case, how many tables are you planning to start with? And what's your criteria for deciding which ones to include?"
+    },
+    {
+      "field": "External sharing constraints and approval process",
+      "why_it_matters": "The unwritten rule mentions 'verify what can be shared externally due to NDA and security,' but there's no process for how Emily gets approval or what the constraints are.",
+      "probe_suggestion": "What content (analyst toolkit, workflows, results) do you need to share with Atlan, and what's your process for getting security/legal approval to share it?"
+    },
+    {
+      "field": "Naming convention and terminology mapping maintenance",
+      "why_it_matters": "The edge case about 'different naming conventions across business units' says to 'document and preserve differences,' but there's no process for how Emily maintains this mapping or ensures the agent uses the right terminology.",
+      "probe_suggestion": "You mentioned that 'granules' is called 'unit dose' or 'tile' in different contexts. How do you plan to maintain a mapping of these synonyms so the agent knows they're the same thing?"
+    },
+    {
+      "field": "Production deployment readiness checklist",
+      "why_it_matters": "The role mentions moving toward 'production-grade' deployment, but there's no checklist or gate criteria that Emily uses to verify readiness before going live.",
+      "probe_suggestion": "Before you deploy the decision engine to production, what's your checklist? For example: accuracy validation, documentation complete, support team trained, stakeholder sign-off, etc.?"
+    },
+    {
+      "field": "Persona-specific output customization rules",
+      "why_it_matters": "The role mentions different personas (analyst, executive, business user) will consume output differently, but there are no rules defined for how the agent should tailor output by persona.",
+      "probe_suggestion": "If an executive asks 'Why is Gain declining at Target?' versus an analyst asking the same question, how should the agent's response differ? Give me an example of each."
+    },
+    {
+      "field": "Multimodal consumption interface requirements",
+      "why_it_matters": "The role mentions the agent should support chat, reports, and automated alerts, but there's no specification of which interface is primary, how they interact, or what data flows between them.",
+      "probe_suggestion": "You mentioned chat, reports, and automated alerts (Samantha). Which one should the agent prioritize first? And how should they work together—e.g., can an alert trigger a chat conversation?"
+    },
+    {
+      "field": "Cincinnati working session deliverables and success criteria",
+      "why_it_matters": "The call mentions a Cincinnati working session in 2-3 weeks to 'align on architecture and begin development,' but there's no definition of what deliverables are expected or what success looks like.",
+      "probe_suggestion": "What do you want to walk out of the Cincinnati session with? For example: a finalized architecture diagram, a working prototype, a skills library, or something else?"
+    },
+    {
+      "field": "Central data pipelines team coordination and SLA",
+      "why_it_matters": "The role coordinates with the central data pipelines team, but there's no SLA or process for how quickly they respond to requests or how Emily escalates if they're blocked.",
+      "probe_suggestion": "When you escalate a data quality issue or request for a new table to the central data pipelines team, what's the expected turnaround time? And what do you do if they're blocked?"
+    },
+    {
+      "field": "Embedded data scientist (Emily Vu) collaboration model and decision rights",
+      "why_it_matters": "Emily Vu is mentioned as the embedded data scientist in Fabric Care, but there's no clarity on how Emily Lash and Emily Vu collaborate, who makes final decisions, or how conflicts are resolved.",
+      "probe_suggestion": "How do you and Emily Vu divide responsibilities? For example: who decides on the scope of the use case, who validates the agent output, who owns the skills?"
+    },
+    {
+      "field": "DevOps infrastructure and deployment process",
+      "why_it_matters": "Kim Bushfield is DevOps for Fabric Care commercial, but there's no description of the deployment process, infrastructure requirements, or how the agent will be hosted and scaled.",
+      "probe_suggestion": "What's the deployment process for getting the agent into production? For example: who deploys it, what infrastructure does it run on, how is it monitored?"
+    },
+    {
+      "field": "Atlan integration and MCP server setup requirements",
+      "why_it_matters": "The call discusses using Atlan as the knowledge layer and MCP servers to connect to it, but there's no specification of what setup is needed, who owns it, or what the timeline is.",
+      "probe_suggestion": "To integrate Atlan with the agent via MCP, what needs to happen first? For example: Atlan instance setup, data crawling, metadata enrichment? And who owns each step?"
+    },
+    {
+      "field": "Skills versioning and rollback strategy",
+      "why_it_matters": "The role mentions treating 'skills as a first class citizen,' but there's no process for versioning skills, testing new versions, or rolling back if a skill breaks the agent.",
+      "probe_suggestion": "If you update a skill and it breaks the agent, how do you roll back? Do you version skills like code? And how do you test a new skill before deploying it?"
+    },
+    {
+      "field": "Simulation and testing process before production",
+      "why_it_matters": "The domain vocabulary mentions 'simulation' as a way to test accuracy, but there's no process described for how Emily runs simulations, what data is used, or what thresholds trigger a pass/fail.",
+      "probe_suggestion": "Before deploying the agent to production, how do you simulate it? What sample data do you use, and what accuracy threshold has to be met to move forward?"
+    }
+  ],
+  "source_artifacts": [
+    "p-and-g-fhc-scoping-call.md"
+  ]
+}

@@ -2,6 +2,8 @@
 
 You are reading a structured extraction of a role and explicitly identifying what is **missing** from it. These gaps will be passed to a downstream discovery agent that will probe the customer to fill them.
 
+{USE_CASE_CONTEXT}
+
 ## Your job
 
 Look at the extraction. Find things that a discovery agent would need to know to design an AI agent for this role, but which aren't covered by the source. Be specific.

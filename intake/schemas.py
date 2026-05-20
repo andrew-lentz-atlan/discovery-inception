@@ -117,6 +117,16 @@ class RoleContext(BaseModel):
         default_factory=list,
         description="Filenames or URLs of the source artifacts this context was extracted from.",
     )
+    target_use_case: str | None = Field(
+        default=None,
+        description=(
+            "Optional one-liner describing the agent being built. When provided, the "
+            "extractor / unwritten-rules sniffer / gap reporter orient toward the "
+            "target user of that agent rather than anchoring on whichever role is most "
+            "explicitly named in the artifact. Self-documents the orientation that "
+            "produced these priors. None = un-oriented run (default behavior)."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -2,6 +2,8 @@
 
 You are looking for the **most valuable extractions** in this whole intake process: the implicit heuristics, soft rules, and informal norms that shape how the role actually operates. These are the things experienced practitioners do automatically that the formal sections rarely capture.
 
+{USE_CASE_CONTEXT}
+
 ## What you're looking for
 
 Hunt for statements that suggest:

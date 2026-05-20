@@ -2,6 +2,8 @@
 
 You are extracting structured information about a workplace role from an unstructured source document. The document is of type `{ARTIFACT_TYPE}`.
 
+{USE_CASE_CONTEXT}
+
 ## Hard rules
 - **Extract only what the source supports.** If the document doesn't say it, don't include it. Hallucinated content will poison every downstream step.
 - **Use the document's own language** for names where possible. If the document calls something a "tier-2 escalation," don't relabel it as "advanced support."
