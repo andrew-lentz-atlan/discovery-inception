@@ -134,10 +134,18 @@ discovery-inception/
 | **[`findings/01-architecture-comparison.md`](findings/01-architecture-comparison.md)** | The first big empirical finding. Three architectures, one comparison. |
 | **[`demos/finco_sales_analyst/02_spec_v08.md`](demos/finco_sales_analyst/02_spec_v08.md)** | A real spec from a 50-turn discovery run. What the output actually looks like. |
 | **[`demos/finco_sales_analyst/03_ces_meeting_handout.md`](demos/finco_sales_analyst/03_ces_meeting_handout.md)** | How discovery-inception's output composes with Atlan's CES pipeline |
-| **[`plans/00-vision-and-glossary.md`](plans/00-vision-and-glossary.md)** | The original project framing (mostly historical now; the findings supersede the plans) |
+| **[`plans/00-vision-and-glossary.md`](plans/00-vision-and-glossary.md)** | The original project framing (`plans/00`–`04`; mostly historical now) |
+| **[`plans/05-technical-thread-discovery.md`](plans/05-technical-thread-discovery.md)** | The forward roadmap starts here. Adds a technical/data/context-aware thread to discovery. |
+| **[`plans/06-atlan-context-integration.md`](plans/06-atlan-context-integration.md)** | Bidirectional flow with Atlan — read tenant context to skip known questions; capture gaps to feed back |
+| **[`plans/07-patterns-knowledge-base.md`](plans/07-patterns-knowledge-base.md)** | The "Karpathy wiki" for agentic patterns. Externalizes opinion out of prompts. |
+| **[`plans/08-inception-agent.md`](plans/08-inception-agent.md)** | The inception half — skill / architecture / runtime proposers + scaffold writer |
+| **[`plans/09-context-debt-migration-backlog.md`](plans/09-context-debt-migration-backlog.md)** | What's still baked into prompts that should migrate to patterns. Read before touching any prompt. |
 
 ## Note on the planning docs
 
-The `plans/` directory holds the original design docs from early May. They're mostly **historical now** — the research findings (`findings/`) reflect what we actually validated, which differs in places from the original plans. Read plans for context on how the project was conceived; read findings for what we now believe.
+The `plans/` directory holds two distinct things:
 
-The biggest revision: the original plans framed discovery as a four-stage pipeline (First Principles → Gap Iteration → Validator → Build Bridge). The actual v0.8 implementation fuses Stages 1–3 into a single conversational agent with multi-sub-agent extraction. Stage 4 (Build Bridge) is now reframed as a downstream consumer (CES, or anyone consuming our spec.json) rather than something we build ourselves. See [`demos/finco_sales_analyst/03_ces_meeting_handout.md`](demos/finco_sales_analyst/03_ces_meeting_handout.md) for the integration story.
+- **`plans/00`–`04`** — the original design docs from early May. They're mostly **historical now** — the research findings (`findings/`) reflect what we actually validated, which differs in places from the original plans. Read for project conception; read findings for what we now believe.
+- **`plans/05`–`09`** — the v1.0+ roadmap. Five docs covering the forward work: extending discovery with a technical-concern thread, integrating with Atlan as the bottom-up context layer, externalizing prompt opinions into a queryable patterns knowledge base, building the inception half (skill / architecture / runtime proposers), and tracking the context-debt migration backlog. These define the next major version.
+
+The biggest revision in the historical plans: discovery was framed as a four-stage pipeline (First Principles → Gap Iteration → Validator → Build Bridge). The actual v0.8 implementation fuses Stages 1–3 into a single conversational agent with multi-sub-agent extraction. Stage 4 (Build Bridge) is now reframed: it lives in `plans/08-inception-agent.md` as the explicit "agent that helps build other agents" half of the project. See [`demos/finco_sales_analyst/03_ces_meeting_handout.md`](demos/finco_sales_analyst/03_ces_meeting_handout.md) for the CES integration story.
