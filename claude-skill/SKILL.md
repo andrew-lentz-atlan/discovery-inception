@@ -135,26 +135,37 @@ If any of those are present, note them and don't re-ask in later phases.
 
    Verify: `python -c "from dotenv import dotenv_values; v=dotenv_values('$REPO/.env'); assert v.get('LITELLM_API_KEY'); print('ok')"`
 
-4. **(Optional)** If the user mentioned an Atlan tenant in Phase 0, also add:
-
-   ```bash
-   cat >> "$REPO/.env" <<'EOF'
-   ATLAN_BASE_URL=https://<their-tenant>.atlan.com
-   ATLAN_API_KEY=<their_atlan_api_key>
-   EOF
-   ```
-
-   Atlan integration is optional — discovery degrades gracefully when it's absent. Don't push it; just offer when they've already named a tenant.
-
 ---
 
-## Phase 3 — Use case + artifact collection
+## Phase 3 — Use case + artifact collection + Atlan context
 
 1. **Confirm the use case** (one-line description of what the customer wants to build):
 
    > What use case are we working on? One line, e.g. *"a SoCo coordinator agent for new-customer onboarding at TechCo"* or *"a renewal-risk agent for our CSM team at FinCo"*.
 
-2. **Collect artifacts** — this is the recommended path:
+2. **Always ask about Atlan context** (this is load-bearing — most agents being built will eventually read from a customer's Atlan tenant; priming discovery with what's already cataloged sharpens probes immediately):
+
+   > Quick context-priming question: do you have an Atlan tenant we should prime discovery from? Naming the tenant + scope lets discovery skip questions Atlan already knows the answer to (glossary terms, table schemas, lineage, ownership, governance tags, business domains).
+   >
+   > Three answers work:
+   > - **Yes, here are the details:** name the tenant (e.g. `ces.atlan.com`) + at least one of: glossary name, list of table QNs, list of DataDomain names. If you can paste an `ATLAN_API_KEY` with read scope right now, even better; if not, name the scope anyway and we'll surface the gap in the gap list.
+   > - **Yes but I don't have credentials handy right now:** we'll proceed without it; you can re-run later with `--atlan-tenant`.
+   > - **No tenant for this use case** (e.g., prospect / pre-sale / generic exploration): we'll proceed with the artifact-first flow and the technical thread will probe via questioning.
+   >
+   > Which?
+
+   If the user provides Atlan creds, append to `.env`:
+
+   ```bash
+   cat >> "$REPO/.env" <<'EOF'
+   ATLAN_BASE_URL=https://<their-tenant>
+   ATLAN_API_KEY=<their_atlan_api_key>
+   EOF
+   ```
+
+   Capture whatever they named (tenant + glossary + tables + domains) so the ingest command in step 4 can pass them as flags. If they only name partial scope (tenant + glossary but no tables), still pass what they have — partial scope priming is better than none.
+
+3. **Collect artifacts** — this is the recommended path:
 
    > Do you have any artifacts to feed in? Things that count:
    > - Call transcripts (raw text or paraphrased notes)
@@ -168,7 +179,7 @@ If any of those are present, note them and don't re-ask in later phases.
    >
    > *If you genuinely have nothing*, say "no artifacts" and we'll go to interview-first mode.
 
-3. **If the user provides artifacts**, write each one to a temp file (so long ones don't shell-escape badly), then run multi-artifact ingest:
+4. **If the user provides artifacts**, write each one to a temp file (so long ones don't shell-escape badly), then run multi-artifact ingest. Pass the Atlan scope flags from step 2 if they named any:
 
    ```bash
    cd "$REPO" && uv run python -m agent.cli ingest \
@@ -176,12 +187,15 @@ If any of those are present, note them and don't re-ask in later phases.
        --role-id "<kebab-case slug, e.g. soco-techco>" \
        --artifact /path/to/artifact-1.txt \
        --artifact /path/to/artifact-2.md \
-       # ... one --artifact per file
+       # Pass these only if the user named them in step 2:
+       --atlan-tenant ces.atlan.com \
+       --atlan-glossary Fabric_Care_Analytics \
+       --atlan-tables "default.aos,default.ddm"
    ```
 
-   This takes ~30-60 seconds (intake + fact extraction run in parallel per artifact). The CLI prints JSON with `session_id`, `n_facts_captured`, `n_topics_covered`, `n_flagged_unknowns`, `gap_list_path`. **Capture the `session_id`** — every subsequent command needs it.
+   This takes ~30-60 seconds (intake + fact extraction run in parallel per artifact). If Atlan flags were passed, the established-context fetch runs at session start (read-only). The CLI prints JSON with `session_id`, `n_facts_captured`, `n_topics_covered`, `n_flagged_unknowns`, `gap_list_path`. **Capture the `session_id`** — every subsequent command needs it.
 
-4. **Read the gap_list.md** and surface a summary:
+5. **Read the gap_list.md** and surface a summary:
 
    ```bash
    cat "$REPO/sessions/<session_id>/gap_list.md"
@@ -203,7 +217,7 @@ If any of those are present, note them and don't re-ask in later phases.
    > 3. **Hybrid** — chat-fill what you know, interview what you don't
    > 4. **Already enough** — finalize and produce spec.md
 
-5. **If the user said "no artifacts"** in step 2, skip ingest and start an interview-only session:
+6. **If the user said "no artifacts"** in step 3, skip ingest and start an interview-only session:
 
    ```bash
    cd "$REPO" && uv run python -m agent.cli start-session \
@@ -323,24 +337,26 @@ This is the second half of the product. The discovery spec is the input; the out
    > - **Workload:** `<interaction_shape> / <decision_complexity> / <data_intensity>` — the shape of the work the agent will do
    > - **Architecture:** `<selected_pattern_slug>` (e.g. `single-agent-react`, `chained-pipeline`, `inner-pipeline-skill`)
    > - **Runtime:** `<runtime> + <model_family>` (e.g. `claude-agent-sdk + claude-opus-4-7`)
-   > - **Scaffold:** `agent_starter/<id>/` — orchestrator.py + N skills + design_rationale.md + eval seed + judge harness
+   > - **Scaffold:** `agent_starter/<id>/` — architecture.md + orchestrator.py + N skills + design_rationale.md + eval seed + judge harness
 
-3. Read the key files for the user (don't dump everything; surface the ones that explain the design):
+3. Read the key files for the user. **Start with `architecture.md`** — it has two Mermaid diagrams (skill graph + execution flow) that render inline and give the 30-second mental model. Then `design_rationale.md` for the why:
 
    ```bash
    ls -la "$REPO/agent_starter/<id>/"
+   cat "$REPO/agent_starter/<id>/architecture.md"
    cat "$REPO/agent_starter/<id>/design_rationale.md"
    ```
 
-   Walk the user through `design_rationale.md` — it's the human-readable explanation of why this pipeline picked these skills + architecture + runtime. Surface the open questions section (places where the design has tradeoffs the user should validate).
+   Walk the user through the architecture diagrams first (they're the fastest way to grok the agent's shape), then the design_rationale.md for the audit trail. Surface the open questions section of the rationale (places where the design has tradeoffs the user should validate).
 
 4. Point them at the rest:
 
-   > The starter is at `agent_starter/<id>/`. Look at:
-   > - `orchestrator.py` — the runnable entry point. Sketch + types; not production-tuned.
-   > - `skills/<name>/SKILL.md` — one per proposed skill; each one has a prompt template, input/output schemas, and example calls.
-   > - `eval/questions.json` — seed evaluation cases (10–20 generated questions specific to your use case).
-   > - `eval/judge.py` — LLM-as-judge harness for grading the agent's responses on those cases.
+   > The starter is at `agent_starter/<id>/`. Reading order:
+   > 1. `architecture.md` — Mermaid diagrams + summary. **Start here** — fastest path to understanding the shape.
+   > 2. `design_rationale.md` — why each decision was made, with citations into `patterns/`.
+   > 3. `orchestrator.py` — the runnable entry point. Sketch + types; not production-tuned.
+   > 4. `skills/<name>/SKILL.md` — one per proposed skill; each one has a prompt template, input/output schemas, and example calls.
+   > 5. `eval/questions.json` + `eval/judge.py` — seed eval cases + LLM-as-judge harness for grading the agent's responses.
    >
    > This isn't a working agent yet — it's a defensible starter the builder can pressure-test. The whole point is to compress iteration time from "weeks figuring out what to build" to "days iterating on a candidate design."
 

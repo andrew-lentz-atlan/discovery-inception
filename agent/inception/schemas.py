@@ -682,6 +682,63 @@ class JudgeHarness(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Step 5f: Architecture diagram generation
+# ---------------------------------------------------------------------------
+
+
+class ArchitectureDiagram(BaseModel):
+    """Output of `generate_architecture_diagram`. Single call producing a
+    Mermaid-rendered architecture.md that lets a builder skim the agent's
+    shape in 30 seconds.
+
+    Two diagrams in one file:
+      - `skill_graph_mermaid`: flowchart showing which skills exist, their
+        types (LLM / inner-pipeline / deterministic), and the typical
+        dependency/data-flow between them
+      - `execution_flow_mermaid`: sequence diagram showing the orchestrator's
+        per-turn behavior — which skills get invoked in which order, where
+        escalation gates fire, where the loop exits
+
+    Plus a 2-paragraph summary that frames the diagrams for someone who's
+    never seen this kind of agent.
+
+    Architecture-aware: single-agent-react gets a ReAct loop shape;
+    chained-pipeline gets a linear stages shape; adversarial-decomposition
+    gets producer + critic. The prompt is given the architecture's slug so
+    it can adapt.
+    """
+
+    skill_graph_mermaid: str = Field(
+        ...,
+        description=(
+            "Mermaid `graph TD` (or `flowchart TD`) source showing the skill "
+            "graph. One node per skill, labeled with name + type tag (LLM / "
+            "inner-pipeline / deterministic). Edges show typical invocation "
+            "order or data dependency. Wrap in mermaid fence is NOT needed — "
+            "the renderer adds fences when writing to disk."
+        ),
+    )
+    execution_flow_mermaid: str = Field(
+        ...,
+        description=(
+            "Mermaid `sequenceDiagram` source showing one full agent turn "
+            "from user input to final response. Includes the orchestrator, "
+            "the skills it invokes, conditional branches (e.g., escalation "
+            "gates), and where the loop ends. Wrap in mermaid fence is NOT "
+            "needed — the renderer adds fences."
+        ),
+    )
+    summary_md: str = Field(
+        ...,
+        description=(
+            "2-paragraph markdown summary framing what the agent does, the "
+            "shape of one turn, and where the key judgment moments live. "
+            "Reads before the diagrams in architecture.md."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Prior iteration feedback (intra-session learning)
 # ---------------------------------------------------------------------------
 #

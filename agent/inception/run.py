@@ -27,6 +27,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
 
 from agent.inception.schemas import (  # noqa: E402
+    ArchitectureDiagram,
     ArchitectureProposal,
     DesignRationale,
     EvalSeed,
@@ -498,6 +499,41 @@ async def step_generate_judge_harness(
     )
 
 
+async def step_generate_architecture_diagram(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+) -> ArchitectureDiagram:
+    """Generate a Mermaid-rendered architecture.md.
+
+    Step 5f. Runs in parallel with 5a-5d (no inter-dependencies — consumes
+    only the upstream Pydantic outputs). Produces two diagrams + a 2-paragraph
+    summary that a builder can skim in 30s to understand the agent's shape
+    before reading orchestrator.py + N SKILL.md files.
+
+    Architecture-aware: the prompt is given the selected pattern's slug so
+    the diagram shape matches the runtime behavior (single-agent-react =
+    ReAct loop; chained-pipeline = linear; adversarial-decomposition =
+    producer+critic).
+    """
+    prompt = load_prompt(
+        "05f_architecture_diagram.md",
+        SELECTED_ARCHITECTURE_SLUG=architecture.selected_pattern_slug,
+        WORKLOAD_JSON=workload.model_dump_json(indent=2),
+        SKILLS_JSON=skills.model_dump_json(indent=2),
+        ARCHITECTURE_JSON=architecture.model_dump_json(indent=2),
+        RUNTIME_JSON=runtime.model_dump_json(indent=2),
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=ArchitectureDiagram,
+        max_tokens=4096,  # 2 mermaid diagrams + 2-paragraph summary
+    )
+
+
 async def step_scaffold_writer(
     client: AsyncOpenAI,
     workload: WorkloadClassification,
@@ -554,14 +590,18 @@ async def step_scaffold_writer(
     (output_dir / "meta" / "role_context_consumed.json").write_text(role_context_json)
     print("       ✓ meta/ (6 artifacts persisted before risky LLM steps)")
 
-    # ---- 1. Run 5a/5b/5c/5d in parallel; tolerate per-sub-step failures ----
+    # ---- 1. Run 5a/5b/5c/5d/5f in parallel; tolerate per-sub-step failures ----
     # Without return_exceptions=True, any one sub-step failure (truncation on
     # OrchestratorStub, JSON-escape glitch on SkillMdContent, etc.) tanks the
     # whole parallel gather and we lose the successful outputs of the others.
     # With it, each sub-step lands or fails independently; partial scaffolds
     # are useful (skills/ written even if orchestrator.py failed, etc.) and
     # the response surfaces what was missed.
-    print(f"  [5a/5b/5c/5d] generating SKILL.md × {len(skills.skills)} + orchestrator + rationale + eval seed (parallel)...")
+    #
+    # 5f (architecture diagram) joins the parallel gather since it depends on
+    # the same four upstream outputs everyone else does. 5e (judge harness)
+    # still runs sequentially after 5d since it needs eval_seed.
+    print(f"  [5a/5b/5c/5d/5f] generating SKILL.md × {len(skills.skills)} + orchestrator + rationale + eval seed + architecture diagram (parallel)...")
     skill_md_tasks = [
         step_generate_skill_md(client, skill, workload, architecture, runtime, role_context_json)
         for skill in skills.skills
@@ -571,6 +611,7 @@ async def step_scaffold_writer(
         step_generate_orchestrator_stub(client, skills, architecture, runtime),
         step_generate_design_rationale(client, workload, skills, architecture, runtime, spec_md),
         step_generate_eval_seed(client, workload, skills, architecture, spec_md, role_context_json),
+        step_generate_architecture_diagram(client, workload, skills, architecture, runtime),
         return_exceptions=True,
     )
 
@@ -625,6 +666,17 @@ async def step_scaffold_writer(
         eval_seed = results[3]
         (output_dir / "eval" / "questions.json").write_text(eval_seed.model_dump_json(indent=2))
         print(f"       ✓ eval/questions.json ({len(eval_seed.questions)} seed questions)")
+
+    # 5f — architecture diagram (independent of 5a-5d; runs in same parallel gather)
+    diagram: ArchitectureDiagram | None = None
+    if isinstance(results[4], BaseException):
+        scaffold_errors.append(f"architecture.md: {type(results[4]).__name__}: {str(results[4])[:200]}")
+        _write_architecture_diagram_fallback(output_dir, skills, architecture, runtime, str(results[4])[:300])
+        print("       ! architecture.md failed; wrote a deterministic fallback (no diagrams, just a list).")
+    else:
+        diagram = results[4]
+        (output_dir / "architecture.md").write_text(_render_architecture_md(diagram, architecture, runtime))
+        print(f"       ✓ architecture.md (2 mermaid diagrams + summary, {architecture.selected_pattern_slug})")
 
     # ---- 2. judge harness (depends on eval_seed; skipped if 5d failed) ----
     judge: JudgeHarness | None = None
@@ -692,9 +744,70 @@ async def step_scaffold_writer(
         "eval_questions": len(eval_seed.questions) if eval_seed else 0,
         "judge_dimensions": judge.dimensions if judge else [],
         "judge_generation_error": judge_error,  # None on success; str on graceful failure
+        "architecture_diagram_generated": diagram is not None,
         "scaffold_errors": scaffold_errors,
         "meta_artifacts": 6,
     }
+
+
+def _render_architecture_md(
+    diagram: ArchitectureDiagram,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+) -> str:
+    """Wrap the LLM's diagram source in fenced mermaid blocks + header/footer."""
+    return (
+        f"# Architecture — {architecture.selected_pattern_slug}\n\n"
+        f"**Runtime:** {runtime.selected_runtime} + {runtime.selected_model_family}  \n"
+        f"**Architecture pattern:** `{architecture.selected_pattern_slug}` ({architecture.selected_pattern_title})\n\n"
+        f"{diagram.summary_md.strip()}\n\n"
+        f"## Skill graph\n\n"
+        f"What skills the agent has and how they relate. Each node shows the skill's name and type (LLM / inner-pipeline / deterministic).\n\n"
+        f"```mermaid\n{diagram.skill_graph_mermaid.strip()}\n```\n\n"
+        f"## Execution flow (one turn)\n\n"
+        f"What happens from the user's input to the agent's response. Conditional branches (escalation gates, retries) are shown where relevant.\n\n"
+        f"```mermaid\n{diagram.execution_flow_mermaid.strip()}\n```\n\n"
+        f"---\n\n"
+        f"*Read [`design_rationale.md`](./design_rationale.md) for the audit trail of why these decisions were made (with citations into `patterns/`).*\n"
+    )
+
+
+def _write_architecture_diagram_fallback(
+    output_dir: Path,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+    failure_reason: str,
+) -> None:
+    """Write a deterministic architecture.md when the LLM diagram step failed.
+
+    No diagrams — just a textual skeleton built from the upstream Pydantic
+    outputs. Same information, lossier presentation. Builder can re-run
+    inception or hand-draft a mermaid diagram from the skill list.
+    """
+    skill_lines = "\n".join(
+        f"- **`{s.name}`** ({s.suggested_body_shape}): {s.purpose}"
+        for s in skills.skills
+    )
+    body = (
+        f"# Architecture — {architecture.selected_pattern_slug} (FALLBACK)\n\n"
+        f"**Runtime:** {runtime.selected_runtime} + {runtime.selected_model_family}  \n"
+        f"**Architecture pattern:** `{architecture.selected_pattern_slug}` ({architecture.selected_pattern_title})\n\n"
+        f"LLM-side generation of the architecture diagram failed in this run. "
+        f"This file is a deterministic fallback assembled from the upstream "
+        f"Pydantic outputs — same content, no visual diagrams. To regenerate "
+        f"diagrams, re-run inception (`agent.cli inception --session-id <sid>` "
+        f"— the upstream meta/ checkpoints will skip the LLM cost of steps 1-4).\n\n"
+        f"**Failure detail:** {failure_reason}\n\n"
+        f"---\n\n"
+        f"## Skills\n\n"
+        f"{skill_lines}\n\n"
+        f"## Where to go next\n\n"
+        f"- `orchestrator.py` shows the runtime wiring\n"
+        f"- `design_rationale.md` explains why each decision was made (with citations)\n"
+        f"- `skills/<name>/SKILL.md` describes each skill's contract\n"
+    )
+    (output_dir / "architecture.md").write_text(body)
 
 
 def _write_orchestrator_stub_fallback(
@@ -812,12 +925,16 @@ def _starter_readme(
         f"Expected first-pass quality: ~75/100 on LLM-as-judge eval. The builder iterates from here. For an empirical receipt of "
         f"what a 97/100 endpoint looks like with this architectural shape, see the public reference build at "
         f"https://github.com/bladata1990/pg-brand-analyst-agent.\n\n"
-        f"**Read `design_rationale.md` before iterating.** It explains every decision made, with citations.\n\n"
+        f"**Reading order:**\n"
+        f"1. `architecture.md` — Mermaid diagrams + 2-paragraph summary. 30-second overview of the agent's shape.\n"
+        f"2. `design_rationale.md` — why each decision was made, with citations into `patterns/`. Read before iterating.\n"
+        f"3. `skills/<name>/SKILL.md` per skill — start with the one whose body you're about to implement.\n\n"
         f"## Structure\n\n"
         f"```\n"
         f"agent_starter/\n"
         f"├── README.md            ← this file\n"
-        f"├── design_rationale.md  ← audit trail (READ FIRST)\n"
+        f"├── architecture.md      ← Mermaid diagrams (READ FIRST)\n"
+        f"├── design_rationale.md  ← audit trail (READ SECOND)\n"
         f"├── orchestrator.py      ← runnable stub; skill bodies are TODOs\n"
         f"├── skills/              ← SKILL.md per skill\n"
         f"├── eval/                ← questions.json (seed) + judge.py (LLM-as-judge harness)\n"
@@ -833,13 +950,14 @@ def _starter_readme(
         f"### Environment variables\n\n"
         f"{env_vars_list}\n\n"
         f"## How to iterate\n\n"
-        f"1. Read `design_rationale.md`\n"
-        f"2. Read each SKILL.md and implement the skill body (replace the TODO markers)\n"
-        f"3. Run the orchestrator end-to-end against synthetic data\n"
-        f"4. Add eval questions once the agent boots; an LLM-as-judge harness is the recommended methodology "
-        f"(see Bala's repo for the canonical pattern — 5 dimensions: accuracy, root-cause classification, "
+        f"1. Read `architecture.md` for the 30-second mental model\n"
+        f"2. Read `design_rationale.md` for the audit trail\n"
+        f"3. Read each SKILL.md and implement the skill body (replace the TODO markers)\n"
+        f"4. Run the orchestrator end-to-end against synthetic data\n"
+        f"5. Add eval questions once the agent boots; an LLM-as-judge harness is the recommended methodology "
+        f"(see the canonical pattern — 5 dimensions: accuracy, root-cause classification, "
         f"hallucination, reasoning quality, actionability)\n"
-        f"5. Iterate from initial pass to target quality\n\n"
+        f"6. Iterate from initial pass to target quality\n\n"
         f"## Provenance\n\n"
         f"`meta/01_workload_classification.json`, `meta/02_skill_proposal.json`, `meta/03_architecture_proposal.json`, "
         f"`meta/04_runtime_proposal.json` contain the structured outputs of each inception step. `meta/spec_consumed.md` "

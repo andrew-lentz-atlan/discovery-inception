@@ -476,10 +476,12 @@ async def tool_run_inception(
     if result.get("scaffold_output"):
         s = result["scaffold_output"]
         judge_err = s.get("judge_generation_error")
+        diagram_ok = s.get("architecture_diagram_generated", False)
         summary["scaffold"] = {
             "output_dir": s.get("output_dir"),
             "n_skills_written": len(s.get("skills_written") or []),
             "files": [
+                "architecture.md" + (" (Mermaid diagrams + summary)" if diagram_ok else " (deterministic fallback — LLM diagram failed)"),
                 "orchestrator.py",
                 "design_rationale.md",
                 "skills/<name>/SKILL.md (one per skill)",
