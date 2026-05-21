@@ -26,7 +26,7 @@ from pydantic import BaseModel
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
 
-from agent.inception.schemas import WorkloadClassification  # noqa: E402
+from agent.inception.schemas import SkillProposalResult, WorkloadClassification  # noqa: E402
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 MODEL = os.environ.get("INCEPTION_MODEL", "claude-haiku-4-5")
@@ -138,9 +138,24 @@ async def step_workload_classifier(
 # Steps 2-6: STUBS
 # ---------------------------------------------------------------------------
 
-async def step_skill_proposer(*args: Any, **kwargs: Any) -> Any:
-    raise NotImplementedError(
-        "skill_proposer: reads workload + spec; proposes N skills with provenance."
+async def step_skill_proposer(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    spec_md: str,
+    role_context_json: str,
+) -> SkillProposalResult:
+    """Propose the agent's skills given workload + spec + RoleContext."""
+    prompt = load_prompt(
+        "02_skill_proposer.md",
+        WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        SPEC_MD=spec_md,
+        ROLE_CONTEXT_JSON=role_context_json,
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=SkillProposalResult,
+        max_tokens=8192,
     )
 
 
@@ -207,13 +222,35 @@ async def run_inception(spec_md: str, role_context_json: str) -> dict:
                 print(f"     - {q}")
 
         print()
-        print("→ Steps 2-6: NOT YET IMPLEMENTED.")
-        print("   Next: skill_proposer (+ critic) will consume this workload classification")
-        print("   plus the spec to propose N skills with explicit RoleContext provenance.")
+        print("→ Step 2/6: skill_proposer...")
+        proposal = await step_skill_proposer(
+            client, classification, spec_md, role_context_json
+        )
+        print(f"   skills proposed:        {len(proposal.skills)}")
+        for i, s in enumerate(proposal.skills, 1):
+            shape = s.suggested_body_shape
+            decisions = ", ".join(s.owned_decisions) or "—"
+            print(f"   [{i}] {s.name}  ({shape})")
+            print(f"       purpose:    {s.purpose}")
+            print(f"       decisions:  {decisions}")
+            if s.provenance.role_context_decisions:
+                print(f"       provenance (decisions): {s.provenance.role_context_decisions}")
+        if proposal.orchestrator_level_concerns:
+            print(f"   orchestrator-level concerns: {len(proposal.orchestrator_level_concerns)}")
+            for c in proposal.orchestrator_level_concerns:
+                print(f"     - {c}")
+        print(f"   rationale:              {proposal.rationale}")
+        print(f"   granularity_argument:   {proposal.granularity_argument}")
+
+        print()
+        print("→ Steps 3-6: NOT YET IMPLEMENTED.")
+        print("   Next: architecture_proposer will consume the workload + skills to filter")
+        print("   patterns/architectures/ and pick an architectural shape with citation.")
 
         return {
             "classification": classification.model_dump(),
-            "next_step": "step_skill_proposer (not yet implemented)",
+            "skill_proposal": proposal.model_dump(),
+            "next_step": "step_architecture_proposer (not yet implemented)",
         }
     finally:
         await client.close()

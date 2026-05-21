@@ -8,7 +8,7 @@ Downstream sub-agents' schemas will be added as they are implemented.
 """
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -102,11 +102,164 @@ class WorkloadClassification(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Subsequent steps' schemas will be added here as they are implemented:
-#   - SkillProposal       (skill_proposer)
-#   - SkillCritique       (skill_critic)
-#   - ArchitectureProposal
-#   - ArchitectureCritique
-#   - RuntimeProposal
-#   - ScaffoldArtifact (the agent_starter/ contents)
+# Step 2: skill_proposer
+# ---------------------------------------------------------------------------
+
+
+class SkillProvenance(BaseModel):
+    """Why this skill exists — cites specific evidence from the spec / RoleContext.
+
+    Required for every proposed skill. The audit-trail principle: a builder
+    reviewing the starter design should be able to trace any skill back to
+    the source facts that justified it.
+    """
+
+    role_context_decisions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Names of decision_criteria from the RoleContext this skill encapsulates "
+            "(e.g., 'Market Selection', 'Product Granularity Selection'). Pulled "
+            "verbatim from RoleContext.decision_criteria[].name."
+        ),
+    )
+    role_context_workflows: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Names of typical_workflows / workflow step indices this skill implements "
+            "(e.g., 'Brand Market Share Diagnostic step 2-3')."
+        ),
+    )
+    role_context_facts: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Specific facts from RoleContext.primary_outcomes / unwritten_rules / "
+            "vocabulary that motivate this skill. Quote the source fact verbatim."
+        ),
+    )
+    flagged_gaps_addressed: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Names of flagged_unknowns this skill is designed to address (the gap-handling "
+            "logic). E.g., 'Question Parsing Ambiguity Resolution' for a question_parser skill."
+        ),
+    )
+
+
+class ProposedSkill(BaseModel):
+    """One skill in the proposed agent design."""
+
+    name: str = Field(..., description="Short snake_case name (e.g., 'market_share_analyzer').")
+    purpose: str = Field(
+        ...,
+        description=(
+            "1-2 sentence statement of what the skill does. Specific, not generic. "
+            "'Analyze AOS to compute weekly brand share at chosen granularities' beats "
+            "'Handles market share analysis'."
+        ),
+    )
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Input parameter name → type / description. Value can be a string "
+            "(simple shape) or a nested dict (structured shape). E.g., "
+            "{'parsed_question': 'structured query from question_parser'} or "
+            "{'context': {'brand': 'string', 'market': 'string', 'time_window': 'string'}}"
+        ),
+    )
+    outputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Output field name → type / description. Value can be a string (simple "
+            "shape) or a nested dict (structured shape). The structured result this "
+            "skill returns; the downstream scaffold_writer will generate concrete "
+            "Pydantic models from these descriptions."
+        ),
+    )
+    data_sources: list[str] = Field(
+        default_factory=list,
+        description=(
+            "External systems / tables / APIs this skill queries. E.g., "
+            "'Databricks: default.aos', 'Atlan glossary: Fabric_Care_Analytics'."
+        ),
+    )
+    owned_decisions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Which judgment-loaded decisions this skill encapsulates. Cross-references "
+            "provenance.role_context_decisions but in operational framing."
+        ),
+    )
+    suggested_body_shape: Literal[
+        "single-llm-call",      # one model call inside the skill
+        "inner-pipeline",       # multiple LLM calls (Bala's pattern)
+        "deterministic",        # no LLM call (pure Python utility)
+        "adversarial-pair",     # producer + critic inside the skill
+    ] = Field(
+        default="single-llm-call",
+        description=(
+            "How the skill should be implemented internally. inner-pipeline (Bala's "
+            "pattern) for skills that generate SQL → execute → interpret. "
+            "single-llm-call for simple lookups + reasoning. deterministic for pure "
+            "data shaping. adversarial-pair for skills with quality-critical output."
+        ),
+    )
+    provenance: SkillProvenance = Field(
+        ...,
+        description="Audit trail — what RoleContext entries justify this skill.",
+    )
+    open_questions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Aspects of this skill's design the spec doesn't fully settle. Flag "
+            "explicitly so the builder can choose or so a follow-up discovery probe "
+            "can ask the customer."
+        ),
+    )
+
+
+class SkillProposalResult(BaseModel):
+    """Output of step 2 — skill_proposer.
+
+    A complete proposed skill set for the agent, with explicit provenance per skill
+    and one cross-cutting concern that doesn't fit inside any single skill (e.g.,
+    'Analysis Path Routing' lives at the orchestrator level, not inside a skill).
+    """
+
+    skills: list[ProposedSkill] = Field(
+        ...,
+        description="The proposed skills, in suggested invocation order.",
+    )
+    orchestrator_level_concerns: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Concerns that DON'T belong inside any single skill — they live at the "
+            "agent's orchestrator level (e.g., 'decide which skills to invoke based on "
+            "the question shape'). These shape the architecture decision (step 3)."
+        ),
+    )
+    rationale: str = Field(
+        ...,
+        description=(
+            "1-3 sentences explaining the cut. Specifically: why this number of skills "
+            "(not more, not fewer)? Why these decompositions? Cite the workload axes "
+            "from step 1's classification."
+        ),
+    )
+    granularity_argument: str = Field(
+        ...,
+        description=(
+            "Why this granularity is right for this workload. Anchored in workload "
+            "classification axes (e.g., 'judgment-heavy decision_complexity favors "
+            "finer skill cuts so each judgment can be tested in isolation')."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Subsequent steps' schemas will be added as implemented:
+#   - SkillCritique         (skill_critic)
+#   - ArchitectureProposal  (architecture_proposer)
+#   - ArchitectureCritique  (architecture_critic)
+#   - RuntimeProposal       (runtime_proposer)
+#   - ScaffoldArtifact      (scaffold_writer — the agent_starter/ contents)
 # ---------------------------------------------------------------------------
