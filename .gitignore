@@ -55,6 +55,17 @@ agent_starter/
 docs/internal/
 research/
 
+# Example outputs — gitignored as a guardrail. Any architecture.md or other
+# pipeline output from a real customer use case contains customer-domain
+# vocabulary (brand names, retailers, taxonomies, glossary names) that
+# identifies the customer to anyone scanning the repo. Pipeline outputs are
+# generated locally under agent_starter/ (already gitignored) and that's
+# where they stay. If we want to ship example artifacts publicly in the
+# future, the path is: build a synthetic-only example-generation flow that
+# produces outputs with fictional vocabulary, sanitized by construction —
+# then explicitly carve that path out of this rule.
+docs/examples/
+
 # Patterns curator audit-trail artifacts — useful locally for inspecting
 # `promote` runs, but accumulate noise over time. The `.candidate.md` files
 # (one per promoted cluster) ARE tracked so humans can review + commit
