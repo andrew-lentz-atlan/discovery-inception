@@ -484,10 +484,35 @@ async def run_ingest(
     if not artifact_paths:
         raise ValueError("run_ingest: at least one --artifact is required")
 
-    # Validate paths up front so we fail fast.
+    # Validate paths up front so we fail fast — directories, missing files,
+    # and empty files all surface clean errors instead of crashing mid-pipeline.
     for p in artifact_paths:
-        if not p.exists() or not p.is_file():
-            raise FileNotFoundError(f"Artifact not found: {p}")
+        if not p.exists():
+            raise FileNotFoundError(
+                f"Artifact not found: {p}\n"
+                f"Pass an absolute or relative path to a readable text file."
+            )
+        if p.is_dir():
+            raise IsADirectoryError(
+                f"Artifact path is a directory, not a file: {p}\n"
+                f"Pass each artifact as a separate --artifact <file>. "
+                f"To ingest every file in a directory, expand it in shell first: "
+                f"`for f in {p}/*; do … --artifact \"$f\"; done` (or similar)."
+            )
+        try:
+            content = p.read_text()
+        except UnicodeDecodeError as exc:
+            raise ValueError(
+                f"Artifact is not valid text (binary file?): {p}\n"
+                f"Decode error: {exc}. discovery-inception only accepts text "
+                f"artifacts (markdown, txt, transcripts). Convert PDFs / docx first."
+            ) from exc
+        if not content.strip():
+            raise ValueError(
+                f"Artifact is empty: {p}\n"
+                f"Skipping empty files would silently shrink the corpus, so we error "
+                f"loudly instead. Remove the --artifact flag for this file, or fill it."
+            )
 
     client_base_url = os.environ.get("LITELLM_BASE_URL", "").strip()
     client_api_key = os.environ.get("LITELLM_API_KEY", "").strip()

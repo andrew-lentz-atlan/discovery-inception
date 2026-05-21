@@ -56,6 +56,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 from agent.atlan_client import fetch_bounded_context  # noqa: E402
 from agent.baselines.mega_agent import MegaAgentSession  # noqa: E402
+from agent.ingest import run_ingest  # noqa: E402
 from agent.schemas import DiscoverySpec, WorkingTheory  # noqa: E402
 from agent.state import DiscoverySession  # noqa: E402
 from agent.v08.orchestrator import run_v08_turn, run_final_synthesis  # noqa: E402
@@ -356,6 +357,25 @@ async def tool_finalize_discovery_session(session_id: str) -> dict[str, Any]:
     }
 
 
+async def tool_ingest_artifacts(
+    use_case_seed: str,
+    artifact_paths: list[str],
+    role_id: str | None = None,
+) -> dict[str, Any]:
+    """Multi-artifact ingest: read N artifacts → produce a populated
+    DiscoverySession + gap_list.md. The recommended starting tool for any
+    use case where the user already has artifacts in hand.
+
+    Each artifact is read as text from its path on disk. For pasted content
+    the caller should write to a temp file first (avoids shell-escaping pain
+    and keeps the ingest pipeline path-based)."""
+    return await run_ingest(
+        use_case_seed=use_case_seed,
+        artifact_paths=[Path(p).resolve() for p in artifact_paths],
+        role_id=role_id,
+    )
+
+
 def tool_list_sessions() -> dict[str, Any]:
     """List existing discovery sessions on disk."""
     SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -530,6 +550,43 @@ server = Server("discovery-inception")
 async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
+            name="ingest_artifacts",
+            description=(
+                "**The recommended starting tool.** Multi-artifact ingest: "
+                "feed N artifact paths (call transcripts, runbooks, JDs, slack "
+                "threads, docs) — produces a populated DiscoverySession with "
+                "facts captured + a gap_list.md the FDE acts on. Each artifact "
+                "is read as text from disk; for pasted content, write to a "
+                "temp file first.\n\n"
+                "Most flows: ingest_artifacts → read gap_list.md → "
+                "submit_customer_turn with no_probe=true to chat-fill known "
+                "gaps → submit_customer_turn (interview mode) for gaps that "
+                "need a real customer answer → finalize_discovery_session "
+                "to export spec.md.\n\n"
+                "Use start_discovery_session instead only when you have zero "
+                "artifacts and want to interview from a blank slate."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "use_case_seed": {
+                        "type": "string",
+                        "description": "One-line description of what the customer wants to build.",
+                    },
+                    "artifact_paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of paths to artifact files (markdown, txt, transcripts). Each is read as text.",
+                    },
+                    "role_id": {
+                        "type": "string",
+                        "description": "Optional kebab-case slug. When set, the merged RoleContext is written to skills/<role_id>/context.json for reuse.",
+                    },
+                },
+                "required": ["use_case_seed", "artifact_paths"],
+            },
+        ),
+        types.Tool(
             name="generate_priors",
             description=(
                 "Run the 6-step intake pipeline on a customer artifact (job "
@@ -684,7 +741,9 @@ async def list_tools() -> list[types.Tool]:
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
     try:
-        if name == "generate_priors":
+        if name == "ingest_artifacts":
+            result = await tool_ingest_artifacts(**arguments)
+        elif name == "generate_priors":
             result = await tool_generate_priors(**arguments)
         elif name == "list_priors":
             result = tool_list_priors()
