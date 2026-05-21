@@ -4,6 +4,25 @@ Append-only record of additions, edits, status changes, and deprecations. Hand-m
 
 ---
 
+## 2026-05-20 (evening — body-shape diversity)
+
+Andrew flagged: the existing 5 seed entries are all the same variety (operational-decision: Use when / Don't use when / Gotchas / Empirical anchor). The curator agent trained on these would pattern-match a single body shape and lose the convention-loosening benefit — never produce comparative surveys, code-pattern entries, theoretical foundations, etc.
+
+Added 2 entries with deliberately distinct body shapes to give the curator real variety to learn from:
+
+- **CREATE** `patterns/skill-design/inner-pipeline.md` — code-pattern body shape: Pattern (with ascii diagram) → Canonical example (code excerpts) → Variants → Anti-pattern callouts → Cost/latency profile → Empirical anchor. Heavy on code blocks, less narrative. Fills the most-referenced gap in the existing seed entries (3 of 5 cross-referenced inner-pipeline as if it existed). Source: Bala's repo (market_share_skill.py, root_cause_skill.py).
+
+- **CREATE** `patterns/harnesses/landscape-2026-may.md` — comparative-survey body shape: TL;DR observation → 15-harness summary table → Five-that-matter → Decision tree → Cross-cutting observation → When to revisit. Tables + multi-item analysis, not bullet sections. Adds a `snapshot_date` field to the frontmatter (survey entries date faster than operational-decision entries — explicit dating helps lint). Source: internal Atlan harness research doc.
+
+Both entries demonstrate that the loosened conventions hold — frontmatter stayed standardized, body shape adapted to what the knowledge actually is.
+
+Updates:
+- **EDIT** `patterns/_index.md` — added rows for both new entries; added `Body shape` column to surface variety; updated coverage summary (7 entries, 4 categories, 3 distinct body shapes)
+
+Coverage now: 7 entries across 4 active categories (`architectures/` 3, `anti-patterns/` 2, `skill-design/` 1, `harnesses/` 1). Body-shape diversity: 5 operational-decision + 1 code-pattern + 1 comparative-survey. Curator-validation set is meaningfully more diverse than before.
+
+---
+
 ## 2026-05-20 (evening — convention loosening)
 
 Two rules in the previous afternoon refactor were over-prescriptive on second-pass review:

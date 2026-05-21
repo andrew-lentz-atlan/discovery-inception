@@ -23,11 +23,15 @@ Auto-discoverable list of entries with status + last-updated. Hand-maintained du
 
 ## skill-design/
 
-*(none yet)*
+| Entry | Status | Last updated | Body shape | Reference companion? |
+|---|---|---|---|---|
+| [inner-pipeline](skill-design/inner-pipeline.md) | validated | 2026-05-20 | code-pattern | — |
 
 ## harnesses/
 
-*(none yet — to be seeded from the team's harness research doc)*
+| Entry | Status | Last updated | Body shape | Reference companion? |
+|---|---|---|---|---|
+| [landscape-2026-may](harnesses/landscape-2026-may.md) | validated | 2026-05-20 | comparative-survey | — |
 
 ## decision-guides/
 
@@ -37,7 +41,8 @@ Auto-discoverable list of entries with status + last-updated. Hand-maintained du
 
 ## Coverage summary
 
-- **5 entries** across 2 of 5 active categories (`architectures/`, `anti-patterns/`)
-- **4 validated**, 1 deprecated
+- **7 entries** across 4 of 5 active categories (`architectures/`, `anti-patterns/`, `skill-design/`, `harnesses/`)
+- **6 validated**, 1 deprecated
 - **1 reference companion** (`chained-pipeline.reference.md`) — the only seeded entry with substantive non-source-resident content
-- All 5 entries have empirical receipts cited in frontmatter (`source_findings` or `source_external`)
+- All 7 entries have empirical receipts cited in frontmatter (`source_findings` or `source_external`)
+- **Body-shape diversity:** 5 operational-decision entries + 1 code-pattern + 1 comparative-survey. The curator agent has three distinct shapes to learn from, not one.
