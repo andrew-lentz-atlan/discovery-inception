@@ -28,6 +28,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 from agent.inception.schemas import (  # noqa: E402
     ArchitectureProposal,
+    RuntimeProposal,
     SkillProposalResult,
     WorkloadClassification,
 )
@@ -233,10 +234,30 @@ async def step_architecture_critic(*args: Any, **kwargs: Any) -> Any:
     )
 
 
-async def step_runtime_proposer(*args: Any, **kwargs: Any) -> Any:
-    raise NotImplementedError(
-        "runtime_proposer: matches architecture to a harness from patterns/harnesses/; "
-        "estimates cross-runtime calibration cost."
+async def step_runtime_proposer(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+) -> RuntimeProposal:
+    """Pick a runtime + model family that preserves the architectural shape.
+
+    Reads patterns/harnesses/ (bundled into the prompt) and the upstream
+    steps' outputs. Selects one harness, rejects alternatives, estimates
+    cross-boundary calibration cost.
+    """
+    prompt = load_prompt(
+        "04_runtime_proposer.md",
+        WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
+        ARCHITECTURE_PROPOSAL_JSON=architecture.model_dump_json(indent=2),
+        HARNESS_PATTERNS=load_pattern_category("harnesses"),
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=RuntimeProposal,
+        max_tokens=4096,
     )
 
 
@@ -317,15 +338,37 @@ async def run_inception(spec_md: str, role_context_json: str) -> dict:
                 print(f"     - {v}")
 
         print()
-        print("→ Steps 4-6: NOT YET IMPLEMENTED.")
-        print("   Next: runtime_proposer will consume the architecture choice to filter")
-        print("   patterns/harnesses/ and pick a runtime that preserves the architectural shape.")
+        print("→ Step 4/6: runtime_proposer...")
+        runtime = await step_runtime_proposer(client, classification, proposal, architecture)
+        print(f"   selected:     {runtime.selected_runtime}")
+        print(f"   model:        {runtime.selected_model_family}")
+        print(f"   confidence:   {runtime.confidence:.2f}")
+        print(f"   rationale:    {runtime.selection_rationale}")
+        if runtime.rejected_alternatives:
+            print(f"   rejected ({len(runtime.rejected_alternatives)}):")
+            for r in runtime.rejected_alternatives:
+                print(f"     - {r.runtime_name}: {r.reason}")
+        if runtime.constraints_respected:
+            print(f"   constraints respected: {runtime.constraints_respected}")
+        if runtime.constraints_violated:
+            print(f"   ⚠ constraints VIOLATED: {runtime.constraints_violated}")
+        print(f"   calibration cost:")
+        print(f"     same runtime family:        {runtime.calibration_cost.same_runtime_family}")
+        print(f"     cross-runtime same provider: {runtime.calibration_cost.cross_runtime_same_provider}")
+        print(f"     cross-provider:              {runtime.calibration_cost.cross_provider}")
+
+        print()
+        print("→ Steps 5-6: NOT YET IMPLEMENTED.")
+        print("   Next: scaffold_writer will produce the agent_starter/ directory with")
+        print("   SKILL.md files per skill, orchestrator stub, eval seed, judge harness,")
+        print("   and design_rationale.md citing every decision back to its source.")
 
         return {
             "classification": classification.model_dump(),
             "skill_proposal": proposal.model_dump(),
             "architecture_proposal": architecture.model_dump(),
-            "next_step": "step_runtime_proposer (not yet implemented)",
+            "runtime_proposal": runtime.model_dump(),
+            "next_step": "step_scaffold_writer (not yet implemented)",
         }
     finally:
         await client.close()

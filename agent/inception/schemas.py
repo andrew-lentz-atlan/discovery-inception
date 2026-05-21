@@ -364,9 +364,128 @@ class ArchitectureProposal(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Step 4: runtime_proposer
+# ---------------------------------------------------------------------------
+
+
+class RejectedRuntime(BaseModel):
+    """A harness/runtime that was considered and rejected."""
+
+    runtime_name: str = Field(
+        ..., description="Name of the rejected harness (e.g., 'LangGraph', 'CrewAI', 'Mastra')."
+    )
+    reason: str = Field(
+        ...,
+        description=(
+            "Why this runtime was rejected for this workload + architecture. Cite specific "
+            "evidence from the harness landscape entry (per-harness 'when to use', "
+            "constraints, lock-in concerns) AND the architecture choice (does it preserve "
+            "the architectural shape with few impositions?)."
+        ),
+    )
+
+
+class CalibrationCostEstimate(BaseModel):
+    """Estimate of what porting the agent across runtime boundaries would cost.
+
+    Cross-boundary moves (architecture / model / runtime) trigger prompt re-tuning per
+    the empirical finding documented in findings/08 (cheap-cascade gpt-4o-mini didn't
+    pan out) and plans/10 (anti-patterns: prompt-flavor portability blindness).
+    """
+
+    same_runtime_family: str = Field(
+        default="trivial",
+        description=(
+            "If swapping to a different model within the same runtime family (e.g., "
+            "Haiku → Sonnet on Claude Agent SDK), what's the calibration cost? "
+            "Typical answer: 'trivial — model swap'."
+        ),
+    )
+    cross_runtime_same_provider: str = Field(
+        default="moderate",
+        description=(
+            "Porting to a different runtime in the same model-provider ecosystem "
+            "(e.g., Claude Agent SDK → Claude Managed Agents). Typical: 'moderate — "
+            "API surface differs but prompts mostly portable'."
+        ),
+    )
+    cross_provider: str = Field(
+        default="high",
+        description=(
+            "Porting across model providers (e.g., Anthropic → OpenAI). Typical: "
+            "'high — prompts need re-tuning (see findings/08); behavior calibration "
+            "required even though structure ports cleanly'."
+        ),
+    )
+
+
+class RuntimeProposal(BaseModel):
+    """Output of step 4 — runtime_proposer."""
+
+    selected_runtime: str = Field(
+        ...,
+        description=(
+            "Name of the selected harness/runtime (e.g., 'Claude Agent SDK', "
+            "'Anthropic SDK direct', 'Pydantic AI'). Should match a harness named in "
+            "patterns/harnesses/landscape-*.md."
+        ),
+    )
+    selected_model_family: str = Field(
+        ...,
+        description=(
+            "The model family the runtime is paired with (e.g., 'claude-opus-4-7', "
+            "'claude-haiku-4-5', 'gpt-5.4'). If the workload's spec doesn't settle a "
+            "specific model, propose the simplest sufficient model and flag in open_questions."
+        ),
+    )
+    selection_rationale: str = Field(
+        ...,
+        description=(
+            "Why this runtime preserves the architectural shape with the fewest "
+            "impositions. Cites both the harness pattern entry and the architecture "
+            "choice from step 3. Quotes specific evidence."
+        ),
+    )
+    rejected_alternatives: list[RejectedRuntime] = Field(
+        default_factory=list,
+        description=(
+            "Other runtimes considered and rejected, each with reasoning. Should rule "
+            "out at least the top-5 plausible alternatives for this architecture+workload."
+        ),
+    )
+    constraints_respected: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Tech-stack constraints from the spec the chosen runtime respects (e.g., "
+            "'team has standardized on Anthropic SDK; runtime choice honors this'). "
+            "If the spec has no technical-thread section, this can be empty."
+        ),
+    )
+    constraints_violated: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Stated constraints the chosen runtime CANNOT meet, with explanation. "
+            "Should be empty in most cases; if non-empty, this is a critical flag for "
+            "the human builder reviewing the starter."
+        ),
+    )
+    calibration_cost: CalibrationCostEstimate = Field(
+        default_factory=CalibrationCostEstimate,
+        description=(
+            "Cross-boundary porting cost estimates. Used by the human builder to "
+            "understand future-portability tradeoffs."
+        ),
+    )
+    open_questions: list[str] = Field(
+        default_factory=list,
+        description="Aspects the spec doesn't settle (e.g., specific model choice, hosted vs self-hosted).",
+    )
+    confidence: float = Field(..., ge=0.0, le=1.0, description="0.0–1.0; how settled is this runtime choice.")
+
+
+# ---------------------------------------------------------------------------
 # Subsequent steps' schemas will be added as implemented:
 #   - SkillCritique         (skill_critic)
 #   - ArchitectureCritique  (architecture_critic)
-#   - RuntimeProposal       (runtime_proposer)
 #   - ScaffoldArtifact      (scaffold_writer — the agent_starter/ contents)
 # ---------------------------------------------------------------------------
