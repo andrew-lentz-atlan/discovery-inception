@@ -28,7 +28,11 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 from agent.inception.schemas import (  # noqa: E402
     ArchitectureProposal,
+    DesignRationale,
+    OrchestratorStub,
+    ProposedSkill,
     RuntimeProposal,
+    SkillMdContent,
     SkillProposalResult,
     WorkloadClassification,
 )
@@ -261,10 +265,232 @@ async def step_runtime_proposer(
     )
 
 
-async def step_scaffold_writer(*args: Any, **kwargs: Any) -> Any:
-    raise NotImplementedError(
-        "scaffold_writer: produces the agent_starter/ directory with SKILL.md files, "
-        "orchestrator stub, eval seed, LLM-as-judge harness, design_rationale.md."
+async def step_generate_skill_md(
+    client: AsyncOpenAI,
+    skill: ProposedSkill,
+    workload: WorkloadClassification,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+    role_context_json: str,
+) -> SkillMdContent:
+    """Generate the SKILL.md content for one proposed skill."""
+    prompt = load_prompt(
+        "05a_skill_md.md",
+        PROPOSED_SKILL_JSON=skill.model_dump_json(indent=2),
+        WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        ARCHITECTURE_PROPOSAL_JSON=architecture.model_dump_json(indent=2),
+        RUNTIME_PROPOSAL_JSON=runtime.model_dump_json(indent=2),
+        ROLE_CONTEXT_JSON=role_context_json,
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=SkillMdContent,
+        max_tokens=8192,  # SKILL.md content is verbose (frontmatter + multi-section body)
+    )
+
+
+async def step_generate_orchestrator_stub(
+    client: AsyncOpenAI,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+) -> OrchestratorStub:
+    """Generate the orchestrator.py stub matching the selected runtime + architecture."""
+    prompt = load_prompt(
+        "05b_orchestrator_stub.md",
+        ARCHITECTURE_PROPOSAL_JSON=architecture.model_dump_json(indent=2),
+        RUNTIME_PROPOSAL_JSON=runtime.model_dump_json(indent=2),
+        SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=OrchestratorStub,
+        max_tokens=8192,  # Python source for N skills + imports + loop scaffold
+    )
+
+
+async def step_generate_design_rationale(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+    spec_md: str,
+) -> DesignRationale:
+    """Aggregate all upstream decisions into design_rationale.md."""
+    prompt = load_prompt(
+        "05c_design_rationale.md",
+        WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
+        ARCHITECTURE_PROPOSAL_JSON=architecture.model_dump_json(indent=2),
+        RUNTIME_PROPOSAL_JSON=runtime.model_dump_json(indent=2),
+        SPEC_MD=spec_md,
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=DesignRationale,
+        max_tokens=12288,  # Audit trail aggregates every prior decision; can be long
+    )
+
+
+async def step_scaffold_writer(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+    spec_md: str,
+    role_context_json: str,
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Produce the agent_starter/ directory.
+
+    Runs three LLM sub-steps in sequence:
+      1. generate_skill_md (one call per proposed skill — parallelized)
+      2. generate_orchestrator_stub (one call)
+      3. generate_design_rationale (one call)
+
+    Plus deterministic writes:
+      - skills/<skill_name>/SKILL.md per skill
+      - orchestrator.py
+      - design_rationale.md
+      - README.md (a small starter readme aggregating setup + structure)
+      - meta/ — upstream Pydantic outputs as JSON (audit-trail copies)
+
+    Returns a dict summarizing what was written.
+    """
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "skills").mkdir(exist_ok=True)
+    (output_dir / "meta").mkdir(exist_ok=True)
+    (output_dir / "eval").mkdir(exist_ok=True)
+
+    # ---- 1. SKILL.md per skill (parallelized) ----
+    print(f"  [5a] generating SKILL.md for {len(skills.skills)} skills (parallel)...")
+    skill_md_results: list[SkillMdContent] = await asyncio.gather(
+        *(
+            step_generate_skill_md(client, skill, workload, architecture, runtime, role_context_json)
+            for skill in skills.skills
+        )
+    )
+
+    for content in skill_md_results:
+        skill_dir = output_dir / "skills" / content.skill_name
+        skill_dir.mkdir(exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(content.skill_md)
+        print(f"       ✓ skills/{content.skill_name}/SKILL.md")
+
+    # ---- 2. orchestrator stub ----
+    print("  [5b] generating orchestrator.py stub...")
+    stub = await step_generate_orchestrator_stub(client, skills, architecture, runtime)
+    (output_dir / stub.filename).write_text(stub.orchestrator_py)
+    print(f"       ✓ {stub.filename} (imports: {len(stub.imports_needed)}, env vars: {len(stub.env_vars_needed)})")
+
+    # ---- 3. design_rationale ----
+    print("  [5c] generating design_rationale.md (audit trail)...")
+    rationale = await step_generate_design_rationale(client, workload, skills, architecture, runtime, spec_md)
+    (output_dir / "design_rationale.md").write_text(rationale.rationale_md)
+    print("       ✓ design_rationale.md")
+
+    # ---- 4. meta/ — deterministic copies of upstream Pydantic outputs ----
+    print("  [5*] writing meta/ artifacts (deterministic)...")
+    (output_dir / "meta" / "01_workload_classification.json").write_text(
+        workload.model_dump_json(indent=2)
+    )
+    (output_dir / "meta" / "02_skill_proposal.json").write_text(
+        skills.model_dump_json(indent=2)
+    )
+    (output_dir / "meta" / "03_architecture_proposal.json").write_text(
+        architecture.model_dump_json(indent=2)
+    )
+    (output_dir / "meta" / "04_runtime_proposal.json").write_text(
+        runtime.model_dump_json(indent=2)
+    )
+    (output_dir / "meta" / "spec_consumed.md").write_text(spec_md)
+    (output_dir / "meta" / "role_context_consumed.json").write_text(role_context_json)
+    print("       ✓ meta/ (6 artifacts)")
+
+    # ---- 5. starter README — deterministic, assembled from upstream + stub metadata ----
+    print("  [5*] writing starter README.md...")
+    readme = _starter_readme(
+        skill_md_results=skill_md_results,
+        stub=stub,
+        architecture=architecture,
+        runtime=runtime,
+    )
+    (output_dir / "README.md").write_text(readme)
+    print("       ✓ README.md")
+
+    return {
+        "output_dir": str(output_dir),
+        "skills_written": [c.skill_name for c in skill_md_results],
+        "orchestrator_filename": stub.filename,
+        "imports_needed": stub.imports_needed,
+        "env_vars_needed": stub.env_vars_needed,
+        "rationale_length": len(rationale.rationale_md),
+        "meta_artifacts": 6,
+    }
+
+
+def _starter_readme(
+    skill_md_results: list[SkillMdContent],
+    stub: OrchestratorStub,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+) -> str:
+    """Deterministic README assembler. No LLM call — pure templating from upstream data."""
+    skills_list = "\n".join(
+        f"- `skills/{c.skill_name}/SKILL.md`" for c in skill_md_results
+    )
+    imports_list = "\n".join(f"- `{imp}`" for imp in stub.imports_needed) if stub.imports_needed else "(none listed)"
+    env_vars_list = "\n".join(f"- `{var}`" for var in stub.env_vars_needed) if stub.env_vars_needed else "(none listed)"
+
+    return (
+        f"# agent_starter/\n\n"
+        f"Starter agent design produced by discovery-inception's inception pipeline.\n\n"
+        f"**Architecture:** `{architecture.selected_pattern_slug}` — {architecture.selected_pattern_title}  \n"
+        f"**Runtime:** {runtime.selected_runtime} + {runtime.selected_model_family}\n\n"
+        f"## Read this first\n\n"
+        f"This is a STARTER, not a finished agent. The orchestrator's wiring is in place; skill bodies are TODO markers.\n\n"
+        f"Expected first-pass quality: ~75/100 on LLM-as-judge eval. The builder iterates from here. Compare with Bala's "
+        f"P&G Brand Analyst Agent (https://github.com/bladata1990/pg-brand-analyst-agent) for an empirical receipt of "
+        f"what a 97/100 endpoint looks like with the same architectural shape.\n\n"
+        f"**Read `design_rationale.md` before iterating.** It explains every decision made, with citations.\n\n"
+        f"## Structure\n\n"
+        f"```\n"
+        f"agent_starter/\n"
+        f"├── README.md            ← this file\n"
+        f"├── design_rationale.md  ← audit trail (READ FIRST)\n"
+        f"├── orchestrator.py      ← runnable stub; skill bodies are TODOs\n"
+        f"├── skills/              ← SKILL.md per skill\n"
+        f"├── eval/                ← (currently empty; eval seed deferred to next iteration)\n"
+        f"└── meta/                ← upstream inception outputs (audit-trail copies)\n"
+        f"```\n\n"
+        f"## Skills\n\n"
+        f"{skills_list}\n\n"
+        f"Each SKILL.md has its own purpose, inputs/outputs, implementation guidance, and provenance back to "
+        f"the RoleContext entries that justified its existence.\n\n"
+        f"## Dependencies\n\n"
+        f"### Python packages\n\n"
+        f"{imports_list}\n\n"
+        f"### Environment variables\n\n"
+        f"{env_vars_list}\n\n"
+        f"## How to iterate\n\n"
+        f"1. Read `design_rationale.md`\n"
+        f"2. Read each SKILL.md and implement the skill body (replace the TODO markers)\n"
+        f"3. Run the orchestrator end-to-end against synthetic data\n"
+        f"4. Add eval questions once the agent boots; an LLM-as-judge harness is the recommended methodology "
+        f"(see Bala's repo for the canonical pattern — 5 dimensions: accuracy, root-cause classification, "
+        f"hallucination, reasoning quality, actionability)\n"
+        f"5. Iterate from initial pass to target quality\n\n"
+        f"## Provenance\n\n"
+        f"`meta/01_workload_classification.json`, `meta/02_skill_proposal.json`, `meta/03_architecture_proposal.json`, "
+        f"`meta/04_runtime_proposal.json` contain the structured outputs of each inception step. `meta/spec_consumed.md` "
+        f"and `meta/role_context_consumed.json` are the inputs that produced this starter — useful when comparing iterations "
+        f"or running the inception pipeline against a new version of the spec.\n"
     )
 
 
@@ -272,11 +498,16 @@ async def step_scaffold_writer(*args: Any, **kwargs: Any) -> Any:
 # Pipeline
 # ---------------------------------------------------------------------------
 
-async def run_inception(spec_md: str, role_context_json: str) -> dict:
+async def run_inception(
+    spec_md: str,
+    role_context_json: str,
+    output_dir: Path | None = None,
+) -> dict:
     """Run the inception pipeline.
 
-    Currently runs step 1 only. Downstream steps will be added in subsequent
-    iterations.
+    Steps 1-4 always run. Step 5 (scaffold_writer) runs only when output_dir
+    is provided — that's the step that materializes the agent_starter/
+    directory on disk.
     """
     client = _client()
     try:
@@ -357,18 +588,43 @@ async def run_inception(spec_md: str, role_context_json: str) -> dict:
         print(f"     cross-runtime same provider: {runtime.calibration_cost.cross_runtime_same_provider}")
         print(f"     cross-provider:              {runtime.calibration_cost.cross_provider}")
 
+        if output_dir is None:
+            print()
+            print("→ Step 5/6: scaffold_writer SKIPPED (no --output-dir provided).")
+            print("   Pass --output-dir <path> to materialize agent_starter/.")
+            return {
+                "classification": classification.model_dump(),
+                "skill_proposal": proposal.model_dump(),
+                "architecture_proposal": architecture.model_dump(),
+                "runtime_proposal": runtime.model_dump(),
+                "scaffold_output": None,
+                "next_step": "step_scaffold_writer (skipped — provide --output-dir)",
+            }
+
         print()
-        print("→ Steps 5-6: NOT YET IMPLEMENTED.")
-        print("   Next: scaffold_writer will produce the agent_starter/ directory with")
-        print("   SKILL.md files per skill, orchestrator stub, eval seed, judge harness,")
-        print("   and design_rationale.md citing every decision back to its source.")
+        print(f"→ Step 5/6: scaffold_writer → {output_dir}")
+        scaffold_summary = await step_scaffold_writer(
+            client,
+            classification,
+            proposal,
+            architecture,
+            runtime,
+            spec_md=spec_md,
+            role_context_json=role_context_json,
+            output_dir=output_dir,
+        )
+
+        print()
+        print("→ Step 6: critics — NOT YET IMPLEMENTED (advisory; lower priority).")
+        print("   Eval question seed + LLM-as-judge harness scaffold deferred to next session.")
 
         return {
             "classification": classification.model_dump(),
             "skill_proposal": proposal.model_dump(),
             "architecture_proposal": architecture.model_dump(),
             "runtime_proposal": runtime.model_dump(),
-            "next_step": "step_scaffold_writer (not yet implemented)",
+            "scaffold_output": scaffold_summary,
+            "next_step": "step_critics (not yet implemented) + eval/judge scaffolding (next session)",
         }
     finally:
         await client.close()
@@ -394,6 +650,16 @@ def main() -> None:
         type=Path,
         help="Path to the RoleContext JSON produced by the intake pipeline.",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "If provided, materializes the agent_starter/ directory at this path "
+            "by running step 5 (scaffold_writer). Without this arg, only steps 1-4 "
+            "run and their structured outputs are printed/returned."
+        ),
+    )
     args = parser.parse_args()
 
     spec_path: Path = args.spec_md.resolve()
@@ -407,13 +673,21 @@ def main() -> None:
     spec_md = spec_path.read_text()
     role_context_json = rc_path.read_text()
 
-    result = asyncio.run(run_inception(spec_md, role_context_json))
+    result = asyncio.run(
+        run_inception(spec_md, role_context_json, output_dir=args.output_dir)
+    )
 
     print()
     print("─" * 70)
     c = result["classification"]
-    print(f"Workload classified as: {c['interaction_shape']} / "
-          f"{c['decision_complexity']} / {c['data_intensity']}")
+    print(f"Workload:     {c['interaction_shape']} / {c['decision_complexity']} / {c['data_intensity']}")
+    a = result["architecture_proposal"]
+    print(f"Architecture: {a['selected_pattern_slug']}")
+    r = result["runtime_proposal"]
+    print(f"Runtime:      {r['selected_runtime']} + {r['selected_model_family']}")
+    if result.get("scaffold_output"):
+        s = result["scaffold_output"]
+        print(f"Scaffold:     {s['output_dir']} ({len(s['skills_written'])} skills, orchestrator.py, design_rationale.md, meta/)")
 
 
 if __name__ == "__main__":

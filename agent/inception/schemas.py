@@ -484,8 +484,94 @@ class RuntimeProposal(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Subsequent steps' schemas will be added as implemented:
+# Step 5: scaffold_writer — sub-step outputs
+# ---------------------------------------------------------------------------
+#
+# scaffold_writer produces a multi-file agent_starter/ directory. It runs as
+# a small internal sub-pipeline. Each sub-step has its own typed output;
+# the writer aggregates them and writes the files deterministically.
+#
+# Tonight's scope (initial implementation): 3 LLM sub-steps + deterministic
+# meta + readme. Eval question seed + LLM-as-judge harness deferred to a
+# subsequent iteration.
+
+
+class SkillMdContent(BaseModel):
+    """Output of `generate_skill_md`. Called once per proposed skill."""
+
+    skill_name: str = Field(..., description="snake_case name (must match the proposed skill's name).")
+    skill_md: str = Field(
+        ...,
+        description=(
+            "Full markdown content for the SKILL.md file, including YAML frontmatter "
+            "(name + description) and body sections. The body should include: Purpose, "
+            "Inputs, Outputs, Implementation guidance, Provenance (which RoleContext "
+            "entries justified this skill), Open questions for the builder. Body shape "
+            "should adapt to suggested_body_shape (inner-pipeline gets code structure; "
+            "single-llm-call gets simpler shape; deterministic gets pure-Python pointers)."
+        ),
+    )
+
+
+class OrchestratorStub(BaseModel):
+    """Output of `generate_orchestrator_stub`. Single call."""
+
+    filename: str = Field(
+        default="orchestrator.py",
+        description="The orchestrator file name; usually orchestrator.py.",
+    )
+    orchestrator_py: str = Field(
+        ...,
+        description=(
+            "Python source for the orchestrator stub. Should be runnable in principle "
+            "(imports, function signatures, agent loop scaffold) but skill implementations "
+            "are TODO markers — the builder fills them. Must match the selected "
+            "architecture + runtime: e.g., for single-agent-react + Claude Agent SDK, "
+            "use anthropic SDK tool-use loop with the proposed skills bound as tools."
+        ),
+    )
+    imports_needed: list[str] = Field(
+        default_factory=list,
+        description=(
+            "External packages this stub imports (e.g., 'anthropic>=0.40', "
+            "'pydantic>=2.0'). Used by the writer to populate a requirements section "
+            "in the starter README."
+        ),
+    )
+    env_vars_needed: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Environment variables the builder must set (e.g., 'ANTHROPIC_API_KEY', "
+            "'DATABRICKS_HOST'). Used by the writer to populate setup instructions."
+        ),
+    )
+
+
+class DesignRationale(BaseModel):
+    """Output of `generate_design_rationale`. Single call.
+
+    This is the audit-trail artifact. Aggregates every decision made in
+    steps 1-4 with the specific evidence (RoleContext entries, pattern
+    citations, workload axes) that justified it.
+    """
+
+    rationale_md: str = Field(
+        ...,
+        description=(
+            "Full markdown content for design_rationale.md. Sections: Workload classification "
+            "(with rationale + open questions), Skill cut (per-skill provenance), Architecture "
+            "choice (with pattern citation + rejected alternatives), Runtime choice (with "
+            "harness citation + calibration cost), Add-ons (if any), Bake-off variables. "
+            "Every decision must cite its source — a RoleContext entry, a pattern, or a "
+            "workload axis. Reads like a brief but defensible audit trail."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Subsequent steps' schemas (when implemented):
 #   - SkillCritique         (skill_critic)
 #   - ArchitectureCritique  (architecture_critic)
-#   - ScaffoldArtifact      (scaffold_writer — the agent_starter/ contents)
+#   - EvalSeed              (later iteration of scaffold_writer)
+#   - JudgeHarness          (later iteration of scaffold_writer)
 # ---------------------------------------------------------------------------
