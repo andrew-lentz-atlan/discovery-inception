@@ -1,119 +1,56 @@
-# patterns/ — the agentic patterns knowledge base
+# patterns/
 
-> Design: `plans/07-patterns-knowledge-base.md`.
+Curated knowledge base of agentic patterns: architectures, skill-design choices, anti-patterns, harness comparisons, decision guides. Externalizes design opinions out of agent prompts and into a versioned, queryable substrate.
 
-The substrate that externalizes architectural opinions out of agent prompts and into a queryable, versioned, citation-friendly knowledge base. Inspired by Karpathy's LLM-maintained wiki gist.
+**Design:** `plans/07-patterns-knowledge-base.md`.
+**Inspired by:** Karpathy's LLM-maintained wiki gist.
 
-**The principle this enforces:** prompts encode invariants; this directory encodes opinions. When the field shifts, entries update — prompts stay stable.
+## Why this directory exists
 
----
+Prompts encode invariants. This directory encodes opinions. When the field shifts, entries update; prompts stay stable. Contrast with the prior pattern where opinions baked into prompts went stale silently — see `plans/09-context-debt-migration-backlog.md`.
 
 ## Status
 
-**Seeded by hand (gold-standard pass) — 2026-05-20.**
+**Phase 1 (gold-standard seed):** complete — 5 hand-authored entries serving as the reference target for the eventual `patterns_curator` agent.
 
-5 entries authored manually by Claude as the empirical reference for what good entries look like. These are the gold standard that the eventual `patterns_curator` agent will be validated against — when the curator ingests the same source materials, does it produce entries that match this reference?
+Phase 2 builds the curator's `ingest` operation and validates it by reproducing these seed entries from their source materials. Phase 3 has the curator ingest the remaining ~20 entries (harnesses, more anti-patterns, builder lessons, decision guides).
 
-Seed entries:
-- `architectures/adversarial-decomposition.md` (from `findings/05`)
-- `architectures/single-agent-react.md` (from `findings/01` + Bala's empirical choice)
-- `architectures/chained-pipeline.md` (from `findings/01` — the rejected alternative)
-- `anti-patterns/definitions-without-context.md` (from Bala's `bca_framework must travel` lesson)
-- `lessons-from-builders/bala-data-summary-not-raw-rows.md` (from Bala's truncation lesson)
+## How to consume this directory
 
-After Phase 2 (curator build) and Phase 3 (curator ingests the rest), this set grows to ~25 entries.
+- **Agents** (curator, inception sub-agents, mega-agent): read `SKILL.md` for navigation instructions, filtering, and query patterns.
+- **Humans** (reviewers, authors, project maintainers): browse entries by category. `_index.md` lists every entry with status + last-updated.
 
----
+## File layout
 
-## How to read an entry
+- `README.md` — this file (humans)
+- `SKILL.md` — agent navigation
+- `_index.md` — entry list
+- `_log.md` — audit trail
+- `<category>/<entry>.md` — knowledge entries (lean, agent-consumable)
+- `<category>/<entry>.reference.md` — supplementary content when justified (rare; reserved for substantive non-source-resident detail like deprecation history)
 
-Every entry is a markdown file with YAML frontmatter:
+## Authoring conventions
 
-```yaml
----
-title: Adversarial Decomposition
-category: architectures
-status: validated              # validated | experimental | deprecated
-last_updated: 2026-05-13
-source_findings: [findings/05-v08-probe-sharpener-and-tensions.md]
-source_external: []
-applies_when:
-  workloads: [structured-extraction, conversational, quality-critical]
-  constraints: []
-contradicts: [chained-pipeline]
-related: [single-agent-react, skill-design/adversarial-review]
----
-```
+- **Name files by content, not by source.** A lesson from builder X goes in the topical category (`skill-design/`, `anti-patterns/`, etc.) by what it teaches. Attribution lives in `source_external:` frontmatter + optional one-line credit in the body.
+- **Lean by default.** Entries target ~30–50 lines. Frontmatter does the structured query work; body does the operational guidance. If a section grows past the lean target, ask whether it belongs in a `.reference.md` companion instead.
+- **One file per entry by default.** A `.reference.md` companion exists only when there's substantive content that genuinely doesn't fit the primary file AND isn't already in the cited source.
+- **Empirical anchors are mandatory for `validated`.** Without at least one cited finding or external source, status is `experimental`.
 
-The **frontmatter** makes entries queryable by agents at decision time. The **body** makes them readable by humans. Every entry must have both.
+## Status semantics
 
-Body structure:
-
-```markdown
-# <Title>
-
-## When to use
-[1–3 paragraphs]
-
-## When NOT to use
-[1–2 paragraphs]
-
-## Empirical receipts
-[citations to findings/ or external research that validate this]
-
-## Implementation gotchas
-[bullet points]
-
-## Variants & related patterns
-[cross-references]
-```
-
----
-
-## Status values
-
-| Value | Meaning |
+| status | meaning |
 |---|---|
-| `validated` | Backed by at least one `findings/` doc OR two independent external sources OR observed in production at scale |
-| `experimental` | Promising, but evidence is single-source or anecdotal |
-| `deprecated` | Once validated, now superseded — kept readable for traceability. New consumers should follow the `superseded_by` pointer |
+| `validated` | Empirically supported; default choice for that decision |
+| `experimental` | Promising but single-source evidence or anecdotal |
+| `deprecated` | Once valid, now superseded — kept readable for traceability. Follow `superseded_by:` pointer |
 
----
+## Adding entries (for now, by hand)
 
-## How to author a new entry
+1. Pick the category subfolder by what the entry teaches
+2. Write the YAML frontmatter first (forces specificity about applicability)
+3. Body: one-paragraph summary → Use when → Don't use when → Key gotchas → Empirical anchor
+4. Add a `.reference.md` companion only if justified
+5. Append a row to `_index.md`
+6. Append a dated entry to `_log.md`
 
-1. Identify a source — a finding, an external doc, a builder lesson
-2. Pick the category subfolder
-3. Write frontmatter first (forces specificity about applicability)
-4. Body sections in the order above
-5. Cross-link to related entries; add `contradicts:` for entries that argue the opposite
-6. Update `_index.md` to include the new entry
-7. Append a row to `_log.md` capturing the addition
-
-When the `patterns_curator` agent ships, steps 1-6 become automated for findings/external sources; humans review before commit.
-
----
-
-## When to read this directory
-
-- **Building an agent?** Inception's sub-agents will consult these at decision time (per `plans/08-inception-agent.md`). Citing the pattern in your design rationale is encouraged for traceability.
-- **Editing a prompt?** Check whether the opinion you're encoding should live here instead of in the prompt (per `plans/09-context-debt-migration-backlog.md`).
-- **Authoring a finding?** When the finding validates a pattern that doesn't have an entry yet, write the entry alongside the finding. Findings stay as empirical receipts; entries are the reusable distillations.
-
----
-
-## Files in this directory
-
-- `_index.md` — auto-discoverable list of all entries with status + last-updated. Regenerated when entries change.
-- `_log.md` — audit trail of additions, edits, status changes, deprecations.
-- `<category>/<entry>.md` — the actual pattern entries.
-- `README.md` — this file.
-
----
-
-## What this directory does NOT do
-
-- It's not exhaustive. We curate what we use, not what exists. The field has thousands of patterns; we'll have dozens.
-- It doesn't replace `findings/`. Findings are empirical receipts; patterns are reusable distillations. Both stay.
-- It doesn't auto-update from arbitrary internet content. Sources are vetted.
-- It doesn't enforce that every agent decision cites a pattern — strong norm, not hard requirement.
+When the `patterns_curator` agent ships, steps 1–4 become automated from source materials; humans review before commit.

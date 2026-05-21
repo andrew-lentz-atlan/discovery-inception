@@ -9,105 +9,40 @@ source_external:
 applies_when:
   workloads: [query-response, single-question-end-to-end, conversational]
   constraints: [simplicity-prized, low-latency-target, single-domain-scope]
-contradicts:
-  - chained-pipeline
-related:
-  - adversarial-decomposition
-  - skill-design/inner-pipeline
-  - harnesses/claude-agent-sdk
-  - harnesses/openai-agents-sdk
+contradicts: [chained-pipeline]
+related: [adversarial-decomposition]
 ---
 
 # Single-Agent ReAct (with Tools)
 
-One LLM call per turn, with a strong system prompt and a bound set of tools (or skills) the model decides to invoke. The model reads the user input, reasons, picks tools, gets results back, reasons again, picks more tools, until it produces a final answer. The whole agent is the prompt + the tools + the loop.
+One LLM call per turn with a strong system prompt and a bound set of tools the model decides to invoke. The loop is `reason → act → observe`, repeated until the model emits `stop_reason: "end_turn"`. The whole agent is `prompt + tools + loop` — the harness (Anthropic SDK, OpenAI Agents SDK, Pydantic AI) handles iteration.
 
-The "ReAct" name comes from Reason-and-Act — the loop is conceptually `[reason → act → observe]`, repeated until done. In modern SDKs (Anthropic SDK, OpenAI Agents SDK), this is the default shape — you bind tools and the harness handles the loop until the model emits `stop_reason: "end_turn"`.
+## Use when
 
----
+- Query-response with a known answer shape (*"Why did X lose share at Y?"*) — single question, multi-step lookup, structured answer
+- Frontier models doing the routing (Claude Opus 4.7, GPT-5.4 route tool calls well; weaker models benefit from explicit planning)
+- Conversational agents where the conversation shape is unknown ahead of time and adaptive routing matters
+- Production surfaces where simplicity is a feature — one loop, one thing to debug
 
-## When to use
+## Don't use when
 
-- **Query-response workloads with a known answer shape.** *"Why did X lose share at Y?"* — single question, multi-step lookup, structured answer. Bala's P&G Brand Analyst Agent is the canonical example: 4 tools bound, 4-6 tool calls in 2-3 iterations, final HTML report.
-- **Workloads where the model is competent at routing without external planning.** Frontier models (Claude Opus 4.7, GPT-5.4) decide tool sequence well; weaker models benefit from explicit planning (see `planning-first` pattern, not yet written).
-- **Conversational agents where the conversation shape is unknown ahead of time.** Discovery interviews where the agent must adapt to whatever the customer says next. Empirically (findings/01), the single-agent mega prompt produced 2/5 wins on conversation quality vs the chained alternative's 0/5.
-- **Production agent surfaces where simplicity is a feature.** One loop is one thing to debug.
+- Deliverable is heavily structured and must persist across turns (use the hybrid — extractors + single-agent + tools)
+- Multi-domain workloads with conflicting reasoning patterns (decompose to skills with their own inner pipelines)
+- Long-horizon workflows needing durability and replay (put a graph runtime like LangGraph underneath)
+- Quality criticality requires adversarial review (layer on `adversarial-decomposition`, don't replace the loop)
 
----
+## Key gotchas
 
-## When NOT to use
+- **Tool descriptions are load-bearing.** Vague descriptions cause wrong-moment invocations. Be explicit about *when* to call, not just *what*.
+- **`max_iterations` defaults.** Too low → model gives up mid-task. Too high → runaway loops.
+- **Context bloat across iterations.** Tool results accumulate. After 5+ iterations the context is large. Use harness compaction or summarize older results.
+- **System prompt is load-bearing.** Bala's was ~1.5K tokens encoding workflow + BCA categories + citation discipline. Skimping here is the most common failure mode.
 
-- **Workloads where the deliverable is heavily structured.** findings/01 showed mega-only produced no structured spec — it could converse but couldn't maintain spec state across turns. If you need a `spec.json` at the end, you need either decomposed state extractors (the hybrid pattern) or explicit state-management tools.
-- **Multi-domain workloads with conflicting reasoning patterns.** A single agent juggling SQL generation + customer-empathy + executive-narrative-voice tends to degrade on all three. Decompose to skills (each skill being its own inner-pipeline).
-- **Long-horizon workflows that need durability and replay.** Single-agent loops are stateless across crashes. For durability, use a graph runtime (LangGraph) underneath the same conceptual ReAct loop.
-- **When you need adversarial review.** If output quality is critical, add an adversarial-decomposition pair on top of (not instead of) the single-agent loop. See `adversarial-decomposition.md`.
+## Empirical anchor
 
----
+Two independent receipts:
 
-## Empirical receipts
+- `findings/01`: 5-turn deterministic script comparing chained / mega-only / hybrid. The mega-only variant produced 2/5 conversation-quality wins at 4× the speed of the chain, but no structured spec. The hybrid (single-agent ReAct + extractors) won outright at 3/5.
+- Bala's P&G Brand Analyst Agent (https://github.com/bladata1990/pg-brand-analyst-agent): single Anthropic SDK tool-use loop, claude-opus-4-7, 4 tools, 4–6 tool calls across 2–3 iterations. Independent LLM-as-judge score: **97/100**.
 
-`findings/01-architecture-comparison.md` (2026-05-05, 5-turn deterministic script):
-
-| Variant | Conversation quality (subjective wins) | Wall time | Structured spec produced |
-|---|---|---|---|
-| Chained (v0.5) | 0/5 | 75s | ✓ |
-| **Mega-only** | **2/5** | **16s** | ✗ |
-| Hybrid (extractors + mega + tools) | 3/5 | 85s | ✓ |
-
-The headline finding: **decomposition is not load-bearing for conversation quality.** The single-agent prompt produced more compelling conversation than the chained pipeline at 4× the speed. But it sacrificed structured state.
-
-Bala's P&G Brand Analyst Agent (https://github.com/bladata1990/pg-brand-analyst-agent) is an independent empirical receipt:
-
-- Single Anthropic SDK tool-use loop, claude-opus-4-7
-- 4 tools bound (search_atlan, analyze_market_share, diagnose_root_cause, generate_report)
-- Typical 4-6 tool calls across 2-3 loop iterations
-- LLM-as-judge independent score: **97/100**
-
-Same architecture, very different workload (query-response analyst vs conversational discovery), both empirically successful. The pattern travels across workload shapes.
-
----
-
-## Implementation gotchas
-
-- **Tool definitions must be precise.** Vague tool descriptions cause the model to invoke them at wrong moments. Be explicit about *when to call*, not just *what it does*.
-- **Stop-condition handling.** Anthropic SDK uses `stop_reason: "end_turn"`. OpenAI Agents SDK uses similar. Be careful with `max_iterations` defaults — too low and the model gives up mid-task; too high and runaway loops are possible.
-- **Sequential tool calls per iteration.** Most SDKs let the model emit multiple tool calls per turn; they run in parallel. Make sure your tools are idempotent / order-independent if you rely on this.
-- **Context bloat across iterations.** Tool results stay in the message history. Over 5+ iterations the context gets large. Mitigation: compact older tool results (summarize them) or use the harness's built-in compaction.
-- **System prompt is load-bearing.** Bala's was ~1.5K tokens encoding workflow rules + BCA categories + citation discipline. The mega-agent in v0.7-v0.8 of discovery uses ~2-3K tokens of system prompt. Skimping here is the most common failure mode.
-
----
-
-## Variants & related patterns
-
-- **Hybrid (extractors + mega-agent + tools)** — the pattern findings/01 actually recommended for discovery. Single-agent ReAct at the conversation layer, plus structured extractor sub-agents producing per-turn state. Best of both. Not yet promoted into a separate pattern entry.
-- **`adversarial-decomposition.md`** — orthogonal layer: add a critic to review the single-agent's output. Pairs cleanly.
-- **`chained-pipeline.md`** — the alternative this contradicts. Read both before choosing.
-- **`skill-design/inner-pipeline.md`** — a single-agent loop where each *tool* is itself an inner pipeline (LLM #1 generates SQL, LLM #2 interprets results). Bala's pattern. Combines well.
-
----
-
-## Cost / latency profile
-
-For Claude Opus 4.7 in production (Bala's P&G agent, 97/100 baseline):
-
-| Component | Latency |
-|---|---|
-| Per iteration (model call) | 5-12s |
-| Per tool call (inside iteration) | varies — 1-3s for Atlan API, 2-5s for inner-pipeline skill |
-| Typical full session | 30-90s end-to-end for a 4-6-tool-call task |
-
-For Claude Haiku 4.5 (discovery v0.8 mega-agent):
-
-| Component | Latency |
-|---|---|
-| Per iteration | 5-8s |
-| Plus sharpener post-processor | +3-5s |
-| Total per turn | 13-17s end-to-end |
-
----
-
-## Maintenance notes
-
-- Promoted during the gold-standard seed pass 2026-05-20.
-- Status remained `validated` rather than going to `experimental` because we have two independent empirical receipts (findings/01 + Bala's repo) showing the pattern works across distinct workloads.
-- The `hybrid` variant deserves its own entry once another finding validates it independently of findings/01.
+Same architectural shape, very different workloads. The pattern travels.
