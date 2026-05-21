@@ -682,7 +682,115 @@ class JudgeHarness(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Prior iteration feedback (Loop 2 — intra-session learning)
+# ---------------------------------------------------------------------------
+#
+# Per plans/10's three-loop architecture: Loop 2 is intra-session, meaning
+# a builder iterates on the agent_starter/ produced by one inception run
+# and the next inception run for the SAME spec consumes that feedback as
+# constraints. Feedback stays session-scoped — it does NOT leak to other
+# agents (that's Loop 3's job, via the patterns_curator agent).
+#
+# Each feedback item targets one inception sub-agent's step. Session-level
+# `free_text_lessons` apply across all steps.
+
+
+FeedbackTargetStep = Literal[
+    "workload",      # workload_classifier
+    "skills",        # skill_proposer
+    "architecture",  # architecture_proposer
+    "runtime",       # runtime_proposer
+    "scaffold",      # scaffold_writer (any of its sub-steps)
+]
+
+
+FeedbackType = Literal[
+    "worked_as_proposed",         # confirm: keep the decision
+    "worked_with_modification",   # adapt: builder made a tweak; propose that tweaked version directly
+    "wrong_for_this_use_case",    # reject: do not repeat without explicit justification
+    "missing",                    # add: this aspect was missing from the prior output and must be addressed
+]
+
+
+class FeedbackItem(BaseModel):
+    """One piece of feedback targeting a specific inception sub-agent's decision."""
+
+    targets_step: FeedbackTargetStep = Field(
+        ...,
+        description=(
+            "Which inception sub-agent's output this feedback targets. Each sub-agent "
+            "filters feedback to items targeting its own step."
+        ),
+    )
+    decision: str = Field(
+        ...,
+        description=(
+            "Short label naming the specific decision this feedback is about. "
+            "E.g., 'selected_runtime: Claude Agent SDK', 'skill cut: 4 skills including "
+            "question_parser', 'calibration_cost.cross_runtime_same_provider rated moderate'."
+        ),
+    )
+    feedback_type: FeedbackType = Field(
+        ...,
+        description=(
+            "Category of feedback. worked_as_proposed confirms the prior decision; "
+            "worked_with_modification means the modification IS the right answer; "
+            "wrong_for_this_use_case rejects it; missing flags an addition needed."
+        ),
+    )
+    detail: str = Field(
+        ...,
+        description=(
+            "Explanation. For worked_with_modification: what the modification was. "
+            "For wrong_for_this_use_case: what was done instead, and why. For missing: "
+            "what should have been included and what specifically should change."
+        ),
+    )
+
+
+class PriorIterationFeedback(BaseModel):
+    """Builder feedback from a previous inception iteration on the same spec.
+
+    Consumed by every inception sub-agent on re-run. Treated as constraints —
+    not advisory. Each sub-agent filters items by `targets_step` to its own
+    step; `free_text_lessons` applies session-wide.
+
+    Stays scoped to ONE session / ONE spec. Cross-stage learnings (across
+    multiple agent builds) flow through the patterns_curator's promote
+    operation, NOT through this schema. See plans/10's three-loop design
+    for the boundary.
+    """
+
+    iteration: int = Field(
+        ...,
+        description=(
+            "Which iteration produced this feedback. The next inception run is "
+            "iteration N+1. Used in the prompt to clarify ordering."
+        ),
+    )
+    items: list[FeedbackItem] = Field(
+        default_factory=list,
+        description="Per-decision feedback items. Each targets one step.",
+    )
+    free_text_lessons: str = Field(
+        default="",
+        description=(
+            "Session-level insights that don't fit the per-decision grain. Applied "
+            "as background context to every sub-agent regardless of which step the "
+            "lesson targets."
+        ),
+    )
+    source: str | None = Field(
+        default=None,
+        description=(
+            "Optional: where this feedback came from. A findings/ doc, an empirical "
+            "receipt from running the agent, a builder's notes. Useful for audit trail."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Subsequent steps' schemas (when implemented):
-#   - SkillCritique         (skill_critic)
-#   - ArchitectureCritique  (architecture_critic)
+#   - SkillCritique         (skill_critic; back-burner per Andrew's call)
+#   - ArchitectureCritique  (architecture_critic; back-burner)
 # ---------------------------------------------------------------------------

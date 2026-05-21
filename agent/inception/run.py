@@ -30,8 +30,10 @@ from agent.inception.schemas import (  # noqa: E402
     ArchitectureProposal,
     DesignRationale,
     EvalSeed,
+    FeedbackTargetStep,
     JudgeHarness,
     OrchestratorStub,
+    PriorIterationFeedback,
     ProposedSkill,
     RuntimeProposal,
     SkillMdContent,
@@ -65,6 +67,72 @@ def load_prompt(name: str, **substitutions: str) -> str:
 
 
 PATTERNS_DIR = PROJECT_ROOT / "patterns"
+
+
+def feedback_block(feedback: PriorIterationFeedback | None, step: FeedbackTargetStep) -> str:
+    """Format the prior-iteration-feedback section for a specific sub-agent's prompt.
+
+    Each sub-agent only sees feedback items that target its own step, PLUS
+    the session-level free_text_lessons (which apply as background to every
+    step). When feedback is absent or doesn't target this step, returns a
+    passive line — keeps the prompt's behavior unchanged from a first-run
+    inception.
+
+    Per plans/10's Loop 2 design: feedback is treated as constraints, not
+    advisory. The sub-agent's prompt makes the constraint nature explicit.
+    """
+    if not feedback or (not feedback.items and not feedback.free_text_lessons):
+        return (
+            "## Prior iteration feedback\n\n"
+            "*(No prior iteration feedback — this is the first inception run for this spec.)*"
+        )
+
+    items_for_step = [i for i in feedback.items if i.targets_step == step]
+    has_lessons = bool(feedback.free_text_lessons.strip())
+
+    if not items_for_step and not has_lessons:
+        return (
+            "## Prior iteration feedback\n\n"
+            "*(Prior iteration feedback exists but doesn't target this step. Continue with default reasoning.)*"
+        )
+
+    next_iter = feedback.iteration + 1
+    lines = [
+        "## Prior iteration feedback",
+        "",
+        f"This is inception iteration **{next_iter}** for this spec. The previous output "
+        f"(iteration {feedback.iteration}) was tried by a builder. Treat the feedback below "
+        "as **constraints**, not suggestions.",
+        "",
+    ]
+
+    if items_for_step:
+        lines.append(f"### Feedback targeting your step ({step})")
+        lines.append("")
+        for item in items_for_step:
+            lines.append(f"**[{item.feedback_type}]** *{item.decision}*")
+            lines.append("")
+            lines.append(item.detail)
+            lines.append("")
+
+    if has_lessons:
+        lines.append("### Session-level lessons (apply across all steps)")
+        lines.append("")
+        lines.append(feedback.free_text_lessons.strip())
+        lines.append("")
+
+    if feedback.source:
+        lines.append(f"*Source:* {feedback.source}")
+        lines.append("")
+
+    lines.append("**Rules for incorporating this feedback:**")
+    lines.append("")
+    lines.append("- `wrong_for_this_use_case` items MUST NOT be repeated without explicit justification in your rationale.")
+    lines.append("- `worked_with_modification` — the modification IS the right answer. Propose the modified version directly.")
+    lines.append("- `missing` items MUST be addressed in this iteration's output.")
+    lines.append("- `worked_as_proposed` items confirm the previous decision; keep them.")
+    lines.append("- Session-level lessons apply as background context regardless of which decision they target.")
+    return "\n".join(lines)
 
 
 def load_pattern_category(category: str) -> str:
@@ -161,12 +229,14 @@ async def step_workload_classifier(
     client: AsyncOpenAI,
     spec_md: str,
     role_context_json: str,
+    prior_feedback: PriorIterationFeedback | None = None,
 ) -> WorkloadClassification:
     """Classify the workload's interaction shape, latency sensitivity, etc."""
     prompt = load_prompt(
         "01_workload_classifier.md",
         SPEC_MD=spec_md,
         ROLE_CONTEXT_JSON=role_context_json,
+        PRIOR_FEEDBACK=feedback_block(prior_feedback, "workload"),
     )
     return await call_step(
         client,
@@ -185,6 +255,7 @@ async def step_skill_proposer(
     workload: WorkloadClassification,
     spec_md: str,
     role_context_json: str,
+    prior_feedback: PriorIterationFeedback | None = None,
 ) -> SkillProposalResult:
     """Propose the agent's skills given workload + spec + RoleContext."""
     prompt = load_prompt(
@@ -192,6 +263,7 @@ async def step_skill_proposer(
         WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
         SPEC_MD=spec_md,
         ROLE_CONTEXT_JSON=role_context_json,
+        PRIOR_FEEDBACK=feedback_block(prior_feedback, "skills"),
     )
     return await call_step(
         client,
@@ -211,6 +283,7 @@ async def step_architecture_proposer(
     client: AsyncOpenAI,
     workload: WorkloadClassification,
     skills: SkillProposalResult,
+    prior_feedback: PriorIterationFeedback | None = None,
 ) -> ArchitectureProposal:
     """Pick an architectural shape, citing patterns/architectures/ + workload axes.
 
@@ -225,6 +298,7 @@ async def step_architecture_proposer(
         WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
         SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
         ARCHITECTURE_PATTERNS=load_pattern_category("architectures"),
+        PRIOR_FEEDBACK=feedback_block(prior_feedback, "architecture"),
     )
     return await call_step(
         client,
@@ -245,6 +319,7 @@ async def step_runtime_proposer(
     workload: WorkloadClassification,
     skills: SkillProposalResult,
     architecture: ArchitectureProposal,
+    prior_feedback: PriorIterationFeedback | None = None,
 ) -> RuntimeProposal:
     """Pick a runtime + model family that preserves the architectural shape.
 
@@ -258,6 +333,7 @@ async def step_runtime_proposer(
         SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
         ARCHITECTURE_PROPOSAL_JSON=architecture.model_dump_json(indent=2),
         HARNESS_PATTERNS=load_pattern_category("harnesses"),
+        PRIOR_FEEDBACK=feedback_block(prior_feedback, "runtime"),
     )
     return await call_step(
         client,
@@ -570,18 +646,37 @@ async def run_inception(
     spec_md: str,
     role_context_json: str,
     output_dir: Path | None = None,
+    prior_feedback: PriorIterationFeedback | None = None,
 ) -> dict:
     """Run the inception pipeline.
 
     Steps 1-4 always run. Step 5 (scaffold_writer) runs only when output_dir
     is provided — that's the step that materializes the agent_starter/
     directory on disk.
+
+    When `prior_feedback` is provided (Loop 2 per plans/10), each sub-agent's
+    prompt gains a "Prior iteration feedback" section that the model treats
+    as constraints. Feedback is filtered per-step (workload_classifier sees
+    only items targeting 'workload', etc.); session-level free_text_lessons
+    apply across all steps.
     """
     client = _client()
     try:
+        if prior_feedback:
+            print(
+                f"→ Loop 2: prior iteration {prior_feedback.iteration} feedback present "
+                f"({len(prior_feedback.items)} items, "
+                f"{sum(1 for i in prior_feedback.items if i.feedback_type == 'wrong_for_this_use_case')} wrong / "
+                f"{sum(1 for i in prior_feedback.items if i.feedback_type == 'missing')} missing). "
+                "Sub-agents will consume as constraints."
+            )
+            if prior_feedback.source:
+                print(f"   source: {prior_feedback.source}")
+            print()
+
         print("→ Step 1/6: workload_classifier...")
         classification = await step_workload_classifier(
-            client, spec_md, role_context_json
+            client, spec_md, role_context_json, prior_feedback=prior_feedback
         )
         print(f"   interaction_shape:        {classification.interaction_shape}")
         print(f"   latency_sensitivity:      {classification.latency_sensitivity}")
@@ -599,7 +694,7 @@ async def run_inception(
         print()
         print("→ Step 2/6: skill_proposer...")
         proposal = await step_skill_proposer(
-            client, classification, spec_md, role_context_json
+            client, classification, spec_md, role_context_json, prior_feedback=prior_feedback
         )
         print(f"   skills proposed:        {len(proposal.skills)}")
         for i, s in enumerate(proposal.skills, 1):
@@ -619,7 +714,9 @@ async def run_inception(
 
         print()
         print("→ Step 3/6: architecture_proposer...")
-        architecture = await step_architecture_proposer(client, classification, proposal)
+        architecture = await step_architecture_proposer(
+            client, classification, proposal, prior_feedback=prior_feedback
+        )
         print(f"   selected:     {architecture.selected_pattern_slug}  ({architecture.selected_pattern_title})")
         print(f"   confidence:   {architecture.confidence:.2f}")
         print(f"   rationale:    {architecture.selection_rationale}")
@@ -638,7 +735,9 @@ async def run_inception(
 
         print()
         print("→ Step 4/6: runtime_proposer...")
-        runtime = await step_runtime_proposer(client, classification, proposal, architecture)
+        runtime = await step_runtime_proposer(
+            client, classification, proposal, architecture, prior_feedback=prior_feedback
+        )
         print(f"   selected:     {runtime.selected_runtime}")
         print(f"   model:        {runtime.selected_model_family}")
         print(f"   confidence:   {runtime.confidence:.2f}")
@@ -728,7 +827,26 @@ def main() -> None:
             "run and their structured outputs are printed/returned."
         ),
     )
+    parser.add_argument(
+        "--prior-feedback",
+        type=Path,
+        default=None,
+        help=(
+            "Optional path to a JSON file matching the PriorIterationFeedback schema. "
+            "When provided, each inception sub-agent's prompt gets a 'Prior iteration "
+            "feedback' section that the model treats as constraints. Used to re-run "
+            "inception with builder feedback on a previous starter. Loop 2 per "
+            "plans/10's three-loop architecture."
+        ),
+    )
     args = parser.parse_args()
+
+    prior_feedback: PriorIterationFeedback | None = None
+    if args.prior_feedback is not None:
+        feedback_path = args.prior_feedback.resolve()
+        if not feedback_path.exists():
+            raise SystemExit(f"prior-feedback not found: {feedback_path}")
+        prior_feedback = PriorIterationFeedback.model_validate_json(feedback_path.read_text())
 
     spec_path: Path = args.spec_md.resolve()
     rc_path: Path = args.role_context.resolve()
@@ -742,7 +860,12 @@ def main() -> None:
     role_context_json = rc_path.read_text()
 
     result = asyncio.run(
-        run_inception(spec_md, role_context_json, output_dir=args.output_dir)
+        run_inception(
+            spec_md,
+            role_context_json,
+            output_dir=args.output_dir,
+            prior_feedback=prior_feedback,
+        )
     )
 
     print()

@@ -1,0 +1,25 @@
+{
+  "iteration": 1,
+  "items": [
+    {
+      "targets_step": "runtime",
+      "decision": "calibration_cost.same_runtime_family rated 'Trivial. Swapping claude-opus-4-7 for claude-haiku-4-5 ... requires only prompt validation'",
+      "feedback_type": "wrong_for_this_use_case",
+      "detail": "We tried this in production. Swapping claude-opus-4-7 for claude-haiku-4-5 on the inner-pipeline LLM calls within each skill (intra-skill, NOT at the orchestrator level) triggered exactly the failure mode documented in findings/08-cheap-cascade-gpt4o-mini-doesnt-pan-out.md. Total cost went UP 67% — the orchestrator made 4.5x more tool calls trying to compensate for thinner extractor outputs. The 'trivial' rating is correct ONLY for whole-orchestrator model swaps; it is misleading for partial swaps within a multi-skill pipeline."
+    },
+    {
+      "targets_step": "runtime",
+      "decision": "missing: anti-pattern callout about mixing model tiers within a skill stack",
+      "feedback_type": "missing",
+      "detail": "runtime_proposer should explicitly surface 'mixing model tiers within a single agent's skill stack' as an anti-pattern when the architecture has inner-pipeline skills. Cite findings/08's empirical receipt (+67% cost, quality drop). This belongs either in `open_questions` or in a new `anti_patterns_to_avoid` field on the runtime proposal."
+    },
+    {
+      "targets_step": "runtime",
+      "decision": "calibration_cost framework conflates two distinct concerns",
+      "feedback_type": "worked_with_modification",
+      "detail": "The three-tier framework (same-runtime-family / cross-runtime same-provider / cross-provider) is structurally sound, but the 'same-runtime-family' tier needs sub-tiers: (a) whole-orchestrator model swap (genuinely trivial), (b) inner-pipeline model swap within a skill (NOT trivial — see findings/08). The runtime proposal should distinguish these explicitly in the calibration_cost output."
+    }
+  ],
+  "free_text_lessons": "The deepest lesson from the prior iteration: prompts authored against one model family don't always port cleanly across boundaries, AND mixing models within a single agent's skill stack triggers compensatory behaviors that can negate the cost savings the mix was intended to achieve. This is the empirical anchor for the 'prompts inherit flavor' principle (findings/08, plans/10 anti-patterns). Going forward, calibration_cost estimates should distinguish 'swap the model' from 'mix the models' as separate cost categories.",
+  "source": "findings/08-cheap-cascade-gpt4o-mini-doesnt-pan-out.md (empirical receipt: total cost +67%, quality dropped, mega-agent tool calls +350%)"
+}
