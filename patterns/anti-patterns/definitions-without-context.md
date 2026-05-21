@@ -40,6 +40,6 @@ The fix is structural: every classification result must carry its category defin
 
 ## Empirical anchor
 
-Bala's P&G Brand Analyst Agent. Early versions returned only BCA category labels; the orchestrator hallucinated competitor promotional activity to fill the gap. Fix: return `result["bca_framework"] = bca` alongside the diagnosis labels. **Judge score: 87 → 97.** Single structural change, 10-point quality jump on a 100-point LLM-as-judge eval.
+The public brand-analytics reference build (https://github.com/bladata1990/pg-brand-analyst-agent). Early versions returned only category labels from a domain taxonomy; the orchestrator hallucinated unsupported activity to fill the gap. Fix: return the full taxonomy definitions alongside the diagnosis labels. **Judge score: 87 → 97.** Single structural change, 10-point quality jump on a 100-point LLM-as-judge eval.
 
-Origin: documented by Bala (P&G Brand Analyst Agent README §2, *"bca_framework must reach the orchestrator"*).
+Origin: documented in the reference build's README §2 (*"definitions must reach the orchestrator"*).

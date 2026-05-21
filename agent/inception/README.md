@@ -1,70 +1,114 @@
 # agent/inception — the inception agent
 
-Closes the loop on the project's name: discovery extracts tacit context into a spec; **inception** turns that spec into a concrete starter agent design — proposed skills, architecture, runtime, plus a scaffolded `agent_starter/` directory the builder can iterate on.
+Closes the loop on the project's name: discovery extracts tacit context into a spec; **inception** turns that spec into a concrete starter agent design — proposed skills, architecture, runtime, plus a scaffolded `agent_starter/` directory the human builder can iterate on.
 
-Design: `plans/08-inception-agent.md`.
+The inception agent is the second half of the project's name (`discovery-inception`): discovery produces a structured spec; inception turns that spec into an actionable starter design.
 
 ## Status
 
-**Skeleton + workload_classifier (step 1) shipping.** Six sub-agents are planned per the design doc; only the first is implemented. The others are stubs.
+Pipeline is **feature-complete** for starter generation as of the current commit.
 
-The validation case is the P&G F&HC Brand Analyst exercise. Feed inception the oriented RoleContext at `skills/p-and-g-fhc-analyst-oriented/context.json` + the use_case_seed; compare the produced `agent_starter/` design to (a) my manual v2 cut in `skills/p-and-g-fhc-analyst-oriented/agent_skills_v2.md` and (b) Bala's actual implementation at https://github.com/bladata1990/pg-brand-analyst-agent.
+| Step | Sub-agent | State |
+|---|---|---|
+| 1 | `workload_classifier` | shipped |
+| 2 | `skill_proposer` | shipped |
+| 3 | `architecture_proposer` | shipped |
+| 4 | `runtime_proposer` | shipped |
+| 5 | `scaffold_writer` (5 sub-steps: SKILL.md per skill / orchestrator.py / design_rationale.md / eval/questions.json / eval/judge.py) | shipped |
+| 6 | critics for steps 2 + 3 | deferred (advisory; lower priority) |
 
-## Pipeline (planned)
+Plus **intra-session feedback**: the pipeline accepts a `--prior-feedback <path>` argument; each sub-agent's prompt gains a "Prior iteration feedback" section that the model treats as constraints. Used to iterate a starter design within a session based on builder feedback on the previous output.
+
+## Pipeline
 
 ```
 DiscoverySpec (spec.md + RoleContext) + BoundedContext (Atlan, when available)
                               │
+       optional: prior_feedback for re-runs (Loop 2)
                               ▼
-              workload_classifier   ← SHIPPING IN THIS COMMIT
+              workload_classifier
                               │
                               ▼
-       skill_proposer ── skill_critic       (adversarial pair)   stub
+              skill_proposer  ──→  orchestrator_level_concerns
                               │
                               ▼
-   architecture_proposer ── arch_critic     (adversarial pair)   stub
+              architecture_proposer  ──→  selected pattern + add-ons
+                                                (consults patterns/architectures/)
                               │
                               ▼
-              runtime_proposer                                    stub
+              runtime_proposer  ──→  selected harness + model
+                                          (consults patterns/harnesses/)
                               │
                               ▼
-              scaffold_writer                                     stub
+              scaffold_writer (5 parallel/sequential sub-steps)
                               │
                               ▼
               agent_starter/   ← portable artifact for the builder
+                ├── README.md
+                ├── design_rationale.md      (audit trail with citations)
+                ├── orchestrator.py          (ReAct loop + tool stubs + TODOs)
+                ├── skills/<name>/SKILL.md   (per skill, Anthropic skill format)
+                ├── eval/questions.json      (10-15 seed questions)
+                ├── eval/judge.py            (LLM-as-judge harness scaffold)
+                └── meta/                    (upstream pydantic outputs)
 ```
 
-Each sub-agent is a single prompt + single Pydantic output, modeled on `intake/` and `agent/patterns_curator/`.
+Each sub-agent is a single prompt + single Pydantic output, modeled on `intake/` and `agent/patterns_curator/`. `scaffold_writer` runs its 5 sub-steps mostly in parallel; `step 5e` depends on `step 5d` so it's sequential after the gather.
 
-## Step 1 — workload_classifier (shipping)
+## Workload axes (step 1's classification)
 
-Reads a DiscoverySpec and emits a structured classification of the workload along six axes:
+The workload classifier emits six structured axes. These are the filters the downstream proposers use against `patterns/`.
 
 | Axis | Values | Why it matters |
 |---|---|---|
-| `interaction_shape` | conversational, query-response, batch, streaming | Determines which architectures are even candidates |
-| `latency_sensitivity` | real-time, near-real-time, tolerant | Rules out adversarial-decomposition for sub-second targets, etc. |
+| `interaction_shape` | conversational, query-response, batch, streaming | Determines which architectures are candidates |
+| `latency_sensitivity` | real-time, near-real-time, tolerant | Rules out adversarial-decomposition for sub-second targets |
 | `decision_complexity` | deterministic, rule-based, judgment-heavy | Drives skill granularity; judgment-heavy → inner-pipeline skills |
-| `data_intensity` | light, moderate, heavy | Pushes toward data-shaping patterns (`anti-patterns/truncated-data-summary`) |
+| `data_intensity` | light, moderate, heavy | Pushes toward data-shaping patterns (`patterns/anti-patterns/truncated-data-summary`) |
 | `multi_step_or_single_step` | single, multi | Single-step → one tool call; multi → loop or chain |
 | `state_shape` | stateless, session-scoped, long-horizon | Long-horizon → durable execution (LangGraph); stateless → simpler harnesses |
-
-The classification is the input to the downstream proposer sub-agents. `architecture_proposer` filters `patterns/architectures/` by `applies_when.workloads` matching these axes. Same for `runtime_proposer` against `patterns/harnesses/`.
 
 ## CLI
 
 ```bash
+# Run the full pipeline + materialize agent_starter/
 uv run python -m agent.inception.run \
     --spec-md path/to/spec.md \
-    --role-context skills/<role-id>/context.json
+    --role-context path/to/role_context.json \
+    --output-dir path/to/agent_starter/
+
+# Run steps 1-4 only (no scaffold materialization)
+uv run python -m agent.inception.run \
+    --spec-md path/to/spec.md \
+    --role-context path/to/role_context.json
+
+# Re-run with prior iteration feedback (Loop 2)
+uv run python -m agent.inception.run \
+    --spec-md path/to/spec.md \
+    --role-context path/to/role_context.json \
+    --output-dir path/to/agent_starter/ \
+    --prior-feedback path/to/feedback.json
 ```
 
-Currently runs step 1 only. Future iterations add the rest of the pipeline and produce `agent_starter/` output.
+The `--spec-md` should point at a discovery agent's spec output (typically `sessions/<session_id>/spec.md`). The `--role-context` should point at an intake pipeline's RoleContext output (typically `skills/<role-id>/context.json` — gitignored).
+
+## Validation
+
+The pipeline has been validated on a real customer use case (a CPG brand-analytics agent). Held against an independent reference implementation by a builder who shipped a similar agent and scored 97/100 on LLM-as-judge eval, our inception output independently:
+
+- Classified the workload identically across all six axes
+- Proposed a matching skill decomposition (4 skills, one finer than the reference)
+- Selected the same architecture (single-agent ReAct with tools)
+- Selected the same runtime + model (Claude Agent SDK + claude-opus-4-7)
+- Additionally surfaced a recommended add-on (adversarial-decomposition for quality gating) that the reference implementation didn't have but the spec's orchestrator-level concerns explicitly called for
+
+The empirical reference is at https://github.com/bladata1990/pg-brand-analyst-agent (public). The customer-specific validation artifacts (spec, RoleContext, manual skill design comparison) live locally, not in this repo.
 
 ## Files
 
 - `__init__.py`
 - `README.md` — this file
-- `schemas.py` — Pydantic models
-- `prompts/` — one per sub-agent
-- `run.py` — CLI entry point
+- `schemas.py` — Pydantic models for every sub-agent's output
+- `prompts/` — one prompt per sub-agent, plus 5 for scaffold_writer's sub-steps
+- `run.py` — CLI entry point + the pipeline orchestration
+- `sample_feedback/` — example feedback files for Loop 2 testing (gitignored; local-only)

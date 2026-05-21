@@ -78,8 +78,8 @@ def feedback_block(feedback: PriorIterationFeedback | None, step: FeedbackTarget
     passive line — keeps the prompt's behavior unchanged from a first-run
     inception.
 
-    Per plans/10's Loop 2 design: feedback is treated as constraints, not
-    advisory. The sub-agent's prompt makes the constraint nature explicit.
+    Feedback is treated as constraints, not advisory. The sub-agent's prompt
+    makes the constraint nature explicit.
     """
     if not feedback or (not feedback.items and not feedback.free_text_lessons):
         return (
@@ -143,7 +143,7 @@ def load_pattern_category(category: str) -> str:
 
     Naïve loader; works for the current scale (~3-15 entries per category).
     When patterns/ grows past ~50 entries, swap to a tool-based lookup
-    (lookup_pattern(filter)) per plans/07.
+    (lookup_pattern(filter)).
     """
     category_dir = PATTERNS_DIR / category
     if not category_dir.is_dir():
@@ -599,9 +599,9 @@ def _starter_readme(
         f"**Runtime:** {runtime.selected_runtime} + {runtime.selected_model_family}\n\n"
         f"## Read this first\n\n"
         f"This is a STARTER, not a finished agent. The orchestrator's wiring is in place; skill bodies are TODO markers.\n\n"
-        f"Expected first-pass quality: ~75/100 on LLM-as-judge eval. The builder iterates from here. Compare with Bala's "
-        f"P&G Brand Analyst Agent (https://github.com/bladata1990/pg-brand-analyst-agent) for an empirical receipt of "
-        f"what a 97/100 endpoint looks like with the same architectural shape.\n\n"
+        f"Expected first-pass quality: ~75/100 on LLM-as-judge eval. The builder iterates from here. For an empirical receipt of "
+        f"what a 97/100 endpoint looks like with this architectural shape, see the public reference build at "
+        f"https://github.com/bladata1990/pg-brand-analyst-agent.\n\n"
         f"**Read `design_rationale.md` before iterating.** It explains every decision made, with citations.\n\n"
         f"## Structure\n\n"
         f"```\n"
@@ -654,11 +654,11 @@ async def run_inception(
     is provided — that's the step that materializes the agent_starter/
     directory on disk.
 
-    When `prior_feedback` is provided (Loop 2 per plans/10), each sub-agent's
-    prompt gains a "Prior iteration feedback" section that the model treats
-    as constraints. Feedback is filtered per-step (workload_classifier sees
-    only items targeting 'workload', etc.); session-level free_text_lessons
-    apply across all steps.
+    When `prior_feedback` is provided (intra-session iteration), each
+    sub-agent's prompt gains a "Prior iteration feedback" section that the
+    model treats as constraints. Feedback is filtered per-step
+    (workload_classifier sees only items targeting 'workload', etc.);
+    session-level free_text_lessons apply across all steps.
     """
     client = _client()
     try:
@@ -835,8 +835,7 @@ def main() -> None:
             "Optional path to a JSON file matching the PriorIterationFeedback schema. "
             "When provided, each inception sub-agent's prompt gets a 'Prior iteration "
             "feedback' section that the model treats as constraints. Used to re-run "
-            "inception with builder feedback on a previous starter. Loop 2 per "
-            "plans/10's three-loop architecture."
+            "inception with builder feedback on a previous starter."
         ),
     )
     args = parser.parse_args()

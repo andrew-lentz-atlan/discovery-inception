@@ -390,7 +390,7 @@ class CalibrationCostEstimate(BaseModel):
 
     Cross-boundary moves (architecture / model / runtime) trigger prompt re-tuning per
     the empirical finding documented in findings/08 (cheap-cascade gpt-4o-mini didn't
-    pan out) and plans/10 (anti-patterns: prompt-flavor portability blindness).
+    pan out — prompts inherit flavor from the model + runtime they were authored against).
     """
 
     same_runtime_family: str = Field(
@@ -682,12 +682,12 @@ class JudgeHarness(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Prior iteration feedback (Loop 2 — intra-session learning)
+# Prior iteration feedback (intra-session learning)
 # ---------------------------------------------------------------------------
 #
-# Per plans/10's three-loop architecture: Loop 2 is intra-session, meaning
-# a builder iterates on the agent_starter/ produced by one inception run
-# and the next inception run for the SAME spec consumes that feedback as
+# Intra-session learning: a builder iterates on the agent_starter/ produced
+# by one inception run, and the next inception run for the SAME spec
+# consumes that feedback as
 # constraints. Feedback stays session-scoped — it does NOT leak to other
 # agents (that's Loop 3's job, via the patterns_curator agent).
 #
@@ -757,8 +757,7 @@ class PriorIterationFeedback(BaseModel):
 
     Stays scoped to ONE session / ONE spec. Cross-stage learnings (across
     multiple agent builds) flow through the patterns_curator's promote
-    operation, NOT through this schema. See plans/10's three-loop design
-    for the boundary.
+    operation, NOT through this schema.
     """
 
     iteration: int = Field(

@@ -66,7 +66,7 @@ All three use the same skill bundle (prompts, schemas, orchestration spec) and t
 
 **Effort to build:** ~half-day. Transcript loader + speaker-turn iterator + the same pipeline we already have.
 
-**Strategic value:** This is the LOWEST-RISK, HIGHEST-LEVERAGE first product surface. Atlan probably has hundreds of recorded calls. Running this on them produces immediate structured value with zero customer-facing risk. Maps to your manager's earlier "trigger on Upwork / P&G / Verizon accounts" suggestion.
+**Strategic value:** This is the LOWEST-RISK, HIGHEST-LEVERAGE first product surface. There are hundreds of recorded customer calls already on hand. Running this on them produces immediate structured value with zero customer-facing risk.
 
 ### Mode 2a — Co-pilot (sidebar augmentation, live call)
 

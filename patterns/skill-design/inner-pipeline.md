@@ -17,7 +17,7 @@ related: [truncated-data-summary, definitions-without-context, architectures/sin
 
 A skill that is itself a small pipeline of LLM calls, not a single call. The skill fetches context, runs an LLM call to generate something structured (often SQL or a plan), executes the structured artifact, validates, and runs a second LLM call to interpret the results. The outer agent (single-agent ReAct loop, typically) sees the skill as a single tool — internally it's a multi-step pipeline doing its own reasoning.
 
-This is how Bala's three skills in the P&G Brand Analyst Agent are built. Each skill is a mini-pipeline. The outer Anthropic SDK loop is the orchestrator.
+This is how the three skills in the public brand-analytics reference build (https://github.com/bladata1990/pg-brand-analyst-agent) are constructed. Each skill is a mini-pipeline. The outer Anthropic SDK loop is the orchestrator.
 
 ## The pattern
 
@@ -124,6 +124,6 @@ The tradeoff: more LLM calls = more cost + latency, but also more structured int
 
 ## Empirical anchor
 
-Bala's three skills (`market_share_skill`, `root_cause_skill`, `report_skill`) in the P&G Brand Analyst Agent are all inner pipelines. The agent scored 97/100 on independent LLM-as-judge eval. Without the inner-pipeline structure — specifically without the structured `data_summary` between SQL execution and interpretation — Bala's worked example shows the LLM missed the week-20 signal embedded in the synthetic ground truth. The pattern is load-bearing for this class of workload (LLM-interpreted query results against a relational data source).
+The three skills (`market_share_skill`, `root_cause_skill`, `report_skill`) in the public brand-analytics reference build are all inner pipelines. The agent scored 97/100 on independent LLM-as-judge eval. Without the inner-pipeline structure — specifically without the structured `data_summary` between SQL execution and interpretation — the worked example shows the LLM missed a step-change signal embedded in the synthetic ground truth. The pattern is load-bearing for this class of workload (LLM-interpreted query results against a relational data source).
 
-Origin: documented by Bala (P&G Brand Analyst Agent, source files `skills/market_share_skill.py` and `skills/root_cause_skill.py`).
+Origin: documented in the reference build's source files `skills/market_share_skill.py` and `skills/root_cause_skill.py` (https://github.com/bladata1990/pg-brand-analyst-agent).

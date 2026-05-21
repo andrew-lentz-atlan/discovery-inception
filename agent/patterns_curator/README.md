@@ -1,6 +1,6 @@
 # agent/patterns_curator — the patterns/ knowledge-base curator agent
 
-Companion agent to discovery-inception. Maintains the `patterns/` knowledge base via three operations: **ingest**, **query**, **lint**. Per the Karpathy LLM-maintained wiki gist; design captured in `plans/07-patterns-knowledge-base.md`.
+Companion agent to discovery-inception. Maintains the `patterns/` knowledge base via three operations: **ingest**, **query**, **lint**. Inspired by Karpathy's LLM-maintained wiki gist (https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
 ## Status
 

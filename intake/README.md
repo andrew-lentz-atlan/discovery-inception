@@ -2,7 +2,7 @@
 
 Takes a single unstructured artifact about a workplace role (job description, runbook, transcript, policy doc) and produces a structured `RoleContext` skill that the downstream discovery agent can use as priors.
 
-This is the first concrete build in the discovery-inception project. See `../plans/02-intake-agent.md` for the design rationale.
+This is the first concrete build in the discovery-inception project — the priors-generation pipeline that takes a customer artifact and produces a structured `RoleContext` consumed by the downstream discovery agent.
 
 ## Architecture (one paragraph)
 

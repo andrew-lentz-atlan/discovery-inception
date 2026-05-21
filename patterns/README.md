@@ -2,12 +2,11 @@
 
 Curated knowledge base of agentic patterns: architectures, skill-design choices, anti-patterns, harness comparisons, decision guides. Externalizes design opinions out of agent prompts and into a versioned, queryable substrate.
 
-**Design:** `plans/07-patterns-knowledge-base.md`.
-**Inspired by:** Karpathy's LLM-maintained wiki gist.
+**Inspired by:** Karpathy's LLM-maintained wiki gist (https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
 ## Why this directory exists
 
-Prompts encode invariants. This directory encodes opinions. When the field shifts, entries update; prompts stay stable. Contrast with the prior pattern where opinions baked into prompts went stale silently — see `plans/09-context-debt-migration-backlog.md`.
+Prompts encode invariants. This directory encodes opinions. When the field shifts, entries update; prompts stay stable. Contrast with the prior pattern where opinions baked into prompts went stale silently.
 
 ## Status
 

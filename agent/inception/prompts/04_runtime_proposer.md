@@ -21,7 +21,7 @@ For the runtime choice:
 2. **Honor the spec's tech_stack constraints (if any).** The spec's technical section may say "team has standardized on Anthropic SDK" or "must run inside AgentCore." If so, the runtime choice must respect this. Flag violations explicitly in `constraints_violated` (rare; only for cases where the workload genuinely can't be served by the constrained runtime).
 3. **Pick the simplest sufficient runtime.** Don't pick LangGraph for durable execution when the workload is stateless and short-running. Don't pick Anthropic SDK direct when the team needs portable cross-provider behavior.
 4. **Document rejected alternatives.** For at least the top-5 plausible alternatives (based on the harness landscape's decision tree), name them and give a one-line reason.
-5. **Estimate calibration cost.** What would porting this agent across boundaries cost? Three tiers per `findings/08` and `plans/10` empirical findings — same runtime family (model swap), cross-runtime same provider (e.g., SDK → Managed Agents), cross-provider (Anthropic → OpenAI requires real prompt re-tuning).
+5. **Estimate calibration cost.** What would porting this agent across boundaries cost? Three tiers per the empirical findings in `findings/08` — same runtime family (model swap), cross-runtime same provider (e.g., SDK → Managed Agents), cross-provider (Anthropic → OpenAI requires real prompt re-tuning).
 
 ## Hard rules
 

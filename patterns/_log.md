@@ -77,4 +77,4 @@ The refactor preserves the Karpathy LLM-wiki spirit (continuously curated knowle
 - **CREATE** `patterns/anti-patterns/definitions-without-context.md` (gold-standard seed; from Bala's bca_framework lesson)
 - **CREATE** `patterns/lessons-from-builders/bala-data-summary-not-raw-rows.md` (gold-standard seed; superseded the same day by the refactor — see afternoon entry)
 
-Phase 1 of the patterns seed per `plans/07-patterns-knowledge-base.md`. Hand-authored by Claude as the empirical reference set the `patterns_curator` agent will be validated against in Phase 2.
+Phase 1 of the patterns seed. Hand-authored by Claude as the empirical reference set the `patterns_curator` agent will be validated against in Phase 2.

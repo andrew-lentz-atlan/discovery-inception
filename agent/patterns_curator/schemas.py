@@ -36,7 +36,7 @@ BodyShape = Literal[
 
 SourceType = Literal[
     "internal_finding",       # one of our findings/ docs
-    "internal_plan",          # one of our plans/ docs
+    "internal_design_doc",    # internal design document (local; not in the public repo)
     "external_research",      # external doc / blog / framework comparison
     "builder_report",         # README / write-up from a specific build
     "external_repo",          # code repo with documented patterns

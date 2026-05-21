@@ -55,6 +55,6 @@ data_summary = {
 
 ## Empirical anchor
 
-Bala's P&G Brand Analyst Agent. Early `market_share_skill` passed raw rows with `rows[:80]`. With 52 weeks × 5 brands = 260 rows, the truncation dropped most of the focal brand's data. The synthetic week-20 step-change in Gain's share decline (embedded as ground truth) was hidden in the truncated rows. Fix: structured `data_summary` with all 52 focal-brand weekly rows + aggregated competitor shares. Combined with the `definitions-without-context` fix, agent moved from sub-90 to 97/100 on LLM-as-judge.
+The public brand-analytics reference build (https://github.com/bladata1990/pg-brand-analyst-agent). Early skill versions passed raw rows with `rows[:80]`. With 52 weeks × 5 brands = 260 rows, the truncation dropped most of the focal entity's data. A synthetic step-change in the focal entity's metrics (embedded as ground truth at week 20) was hidden in the truncated rows. Fix: structured `data_summary` with all 52 focal-entity weekly rows + aggregated peer averages. Combined with the `definitions-without-context` fix, the agent moved from sub-90 to 97/100 on LLM-as-judge.
 
-Origin: documented by Bala (P&G Brand Analyst Agent README §3, *"data_summary, not raw rows"*).
+Origin: documented in the reference build's README §3 (*"data_summary, not raw rows"*).

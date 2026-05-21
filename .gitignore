@@ -36,10 +36,21 @@ dist/
 build/
 *.egg
 
-# Generated outputs
-# Note: skills/solutions-consultant-gold/ IS committed (gold reference)
-# Other generated skills (from real intake runs) are not — uncomment to ignore them:
-# skills/solutions-consultant/
-
-# Discovery agent runtime — per-session conversation state, never committed
+# Customer data + session outputs — NEVER committed.
+# Intake's priors generation writes RoleContext outputs here; per-session state lives
+# in sessions/. These are local-only by policy — they contain real customer
+# transcripts, RoleContext priors derived from them, and inception-pipeline session
+# state. None of this belongs in the public repo. Local-only is also where our own
+# research / validation work on specific customer use cases lives.
+skills/
 sessions/
+intake/sources/
+agent/inception/sample_feedback/
+
+# Inception's agent_starter/ outputs — generated artifacts per use case, local-only
+agent_starter/
+
+# Reference docs / case studies we author internally but don't ship publicly
+# (our customer-specific validation work lives here on disk, not in git)
+docs/internal/
+research/

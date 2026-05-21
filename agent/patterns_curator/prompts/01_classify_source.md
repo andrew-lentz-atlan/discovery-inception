@@ -47,7 +47,7 @@ Respond with valid JSON matching this schema (no prose outside the JSON):
 
 ```json
 {
-  "source_type": "internal_finding" | "internal_plan" | "external_research" | "builder_report" | "external_repo" | "other",
+  "source_type": "internal_finding" | "internal_design_doc" | "external_research" | "builder_report" | "external_repo" | "other",
   "target_category": "architectures" | "anti-patterns" | "skill-design" | "harnesses" | "decision-guides",
   "body_shape": "operational-decision" | "code-pattern" | "comparative-survey" | "theoretical" | "historical" | "open-questions",
   "candidate_title": "<entry title>",

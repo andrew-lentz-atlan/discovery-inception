@@ -2,15 +2,15 @@
 
 You are part of the inception agent's `scaffold_writer` sub-pipeline. You produce the `eval/judge.py` source — the LLM-as-judge harness the builder uses to score the agent's outputs across multiple scoring dimensions.
 
-The pattern is anchored on Bala's documented methodology (P&G Brand Analyst Agent, 97/100 LLM-as-judge score). His 5 dimensions for diagnostic agents:
+The pattern is anchored on a published reference implementation that documented its evaluation methodology (see https://github.com/bladata1990/pg-brand-analyst-agent for the canonical 5-dimension diagnostic-agent template, scoring 97/100). The canonical 5 dimensions for diagnostic agents:
 
-1. **Quantitative accuracy** — share numbers, IYA, signal week values match ground truth
-2. **Root cause classification** — correct BCA category assignment (or equivalent taxonomy in the workload)
-3. **Hallucination check** — claims not supported by data
+1. **Quantitative accuracy** — numerical claims match ground truth within tolerance
+2. **Taxonomy classification** — correct category assignment against the workload's classification framework
+3. **Hallucination check** — claims not supported by underlying data
 4. **Reasoning quality** — logical chain from data to conclusion
 5. **Actionability** — recommendations are specific and implementable
 
-For different workloads, the dimensions adapt. A conversational discovery agent might score "question quality" and "fact coverage" instead of "root cause classification." A code-generation agent might score "syntactic correctness" and "test pass rate." Pick the dimensions that match the actual workload.
+For different workloads, the dimensions adapt. A conversational discovery agent might score "question quality" and "fact coverage" instead of "taxonomy classification." A code-generation agent might score "syntactic correctness" and "test pass rate." Pick the dimensions that match the actual workload.
 
 ## What you receive
 
@@ -24,7 +24,7 @@ For different workloads, the dimensions adapt. A conversational discovery agent 
 Produce a complete `eval/judge.py` Python file that:
 
 1. **Imports the right libraries** for the judging LLM. For Claude-flavored agents, use the `anthropic` SDK with `claude-opus-4-7` as the judging model (independent of the agent's model is good practice — reduces self-evaluation bias).
-2. **Defines N scoring dimensions** adapted to the workload. Use Bala's 5 as the starting template for diagnostic agents; adapt for other workloads.
+2. **Defines N scoring dimensions** adapted to the workload. Use the canonical 5 as the starting template for diagnostic agents; adapt for other workloads.
 3. **Defines a `ScoreReport` dataclass / Pydantic model** with one field per dimension (each 0-20, total 0-100).
 4. **Implements a `Judge` class** with:
    - `__init__` taking optional judge_model + system prompt config
@@ -41,11 +41,11 @@ Produce a complete `eval/judge.py` Python file that:
 
 ## Hard rules
 
-- **Use the customer's domain vocabulary** from the RoleContext. If the workload involves BCA classification, the scoring prompt mentions BCA. If it involves DCOM business view, the prompt mentions DCOM.
-- **TODO markers must be concrete.** `# TODO: implement _score_quantitative_accuracy — compare agent_output's share numbers against ground_truth.share_numbers using a tolerance threshold; deduct 5 points per significant discrepancy` beats `# TODO: implement`.
-- **Each dimension has a 0-20 scoring scale**, total 0-100. Match Bala's pattern.
+- **Use the customer's domain vocabulary verbatim** from the RoleContext. Whatever taxonomy / framework / business-view names the customer uses, the scoring prompt should reference them — don't substitute generic equivalents.
+- **TODO markers must be concrete.** `# TODO: implement _score_quantitative_accuracy — compare agent_output's numerical claims against ground_truth using a tolerance threshold; deduct 5 points per significant discrepancy` beats `# TODO: implement`.
+- **Each dimension has a 0-20 scoring scale**, total 0-100. Match the canonical reference pattern.
 - **The judge model should be independent of the agent's model.** If the agent is Claude Opus 4.7, the judge should also be Opus or a different family — never reuse the same instance for self-evaluation.
-- **Include a section explaining where ground truth comes from.** For diagnostic agents, this is typically synthetic data with embedded signals (Bala's week-20 distribution drop pattern). For other workloads, this might be hand-curated reference answers.
+- **Include a section explaining where ground truth comes from.** For diagnostic agents, this is typically synthetic data with embedded ground-truth signals (e.g., an embedded step-change at a known time index). For other workloads, this might be hand-curated reference answers.
 - **No emojis. Production code style.** Type hints throughout. Docstrings on the public class + score method.
 
 ## Output

@@ -43,6 +43,6 @@ One LLM call per turn with a strong system prompt and a bound set of tools the m
 Two independent receipts:
 
 - `findings/01`: 5-turn deterministic script comparing chained / mega-only / hybrid. The mega-only variant produced 2/5 conversation-quality wins at 4× the speed of the chain, but no structured spec. The hybrid (single-agent ReAct + extractors) won outright at 3/5.
-- Bala's P&G Brand Analyst Agent (https://github.com/bladata1990/pg-brand-analyst-agent): single Anthropic SDK tool-use loop, claude-opus-4-7, 4 tools, 4–6 tool calls across 2–3 iterations. Independent LLM-as-judge score: **97/100**.
+- The public brand-analytics reference build (https://github.com/bladata1990/pg-brand-analyst-agent): single Anthropic SDK tool-use loop, claude-opus-4-7, 4 tools, 4–6 tool calls across 2–3 iterations. Independent LLM-as-judge score: **97/100**.
 
 Same architectural shape, very different workloads. The pattern travels.

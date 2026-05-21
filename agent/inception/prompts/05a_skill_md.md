@@ -69,9 +69,9 @@ description: |
 ## Hard rules
 
 - **Use the proposed skill's exact `name`** as the frontmatter `name`.
-- **Use the customer's domain vocabulary** from the RoleContext where applicable (e.g., "AOS", "BCA framework", "DCOM"). Don't substitute generic equivalents.
+- **Use the customer's domain vocabulary verbatim** from the RoleContext where applicable — the canonical terms / framework abbreviations / system names the customer's analysts use. Don't substitute generic equivalents.
 - **Implementation guidance must match `suggested_body_shape`.** An `inner-pipeline` skill gets a multi-step internal pipeline outline (fetch context → LLM call #1 → execute → validate → LLM call #2). A `single-llm-call` gets a single-prompt approach.
-- **Every input/output field must have a type AND a description.** Just "string" isn't enough; "string — resolved brand name (e.g., 'GAIN')" is right.
+- **Every input/output field must have a type AND a description.** Just "string" isn't enough; describe what canonical value the field carries (e.g., "string — resolved canonical entity name").
 - **Provenance is required.** Quote or reference the specific RoleContext entries that justified the skill. If the skill is too vague to justify with provenance, that's a sign the skill itself is wrong.
 - **Anti-pattern callouts are required when applicable.** If the skill does anything that touches a known anti-pattern (returns classifications, interprets multi-row data, generates SQL), cite the relevant `patterns/anti-patterns/` entry by slug.
 - **Description in frontmatter is what the skill-loading mechanism reads.** Make it concrete and useful for an agent deciding whether to invoke this skill.
