@@ -359,22 +359,59 @@ def _render_spec_markdown(session: DiscoverySession) -> str:
             lines.append(f"> {wt.sharpest_disconfirmer}")
             lines.append("")
 
-    lines.append("## Captured topics + facts")
-    lines.append("")
+    # Split topics into conceptual / technical / other concern threads.
+    # The split is for reader clarity — the inception pipeline downstream
+    # consumes the conceptual half to set up the agent's behavior and the
+    # technical half to settle architecture / runtime / data-source choices.
+    from agent.state import topic_concern_thread
+
+    conceptual_topics = [t for t in spec.topics if topic_concern_thread(t.topic) == "conceptual"]
+    technical_topics = [t for t in spec.topics if topic_concern_thread(t.topic) == "technical"]
+    other_topics = [t for t in spec.topics if topic_concern_thread(t.topic) == "other"]
+
+    def _render_topic_block(t):
+        block: list[str] = []
+        bedrock = " — **BEDROCK**" if t.bedrock_reached else ""
+        block.append(f"### `{t.topic}`{bedrock}")
+        for fact, source in zip(t.facts, t.sources):
+            block.append(f"- **[{source}]** {fact}")
+        if t.superseded_facts:
+            block.append("")
+            block.append("Superseded:")
+            for f in t.superseded_facts:
+                block.append(f"  - {f}")
+        block.append("")
+        return block
+
     if not spec.topics:
+        lines.append("## Captured topics + facts")
+        lines.append("")
         lines.append("*(no facts captured)*")
+        lines.append("")
     else:
-        for t in spec.topics:
-            bedrock = " — **BEDROCK**" if t.bedrock_reached else ""
-            lines.append(f"### `{t.topic}`{bedrock}")
-            for fact, source in zip(t.facts, t.sources):
-                lines.append(f"- **[{source}]** {fact}")
-            if t.superseded_facts:
-                lines.append("")
-                lines.append("Superseded:")
-                for f in t.superseded_facts:
-                    lines.append(f"  - {f}")
+        if conceptual_topics:
+            lines.append("## Conceptual context")
             lines.append("")
+            lines.append("*(persona, current pain, success metrics, anti-goals, decision points, escalation rules, risks)*")
+            lines.append("")
+            for t in conceptual_topics:
+                lines.extend(_render_topic_block(t))
+
+        if technical_topics:
+            lines.append("## Technical context")
+            lines.append("")
+            lines.append("*(tech stack, data sources, semantic layer, existing context, runtime target, governance, data freshness, identity model — consumed by the inception pipeline to settle architecture + runtime choices)*")
+            lines.append("")
+            for t in technical_topics:
+                lines.extend(_render_topic_block(t))
+
+        if other_topics:
+            lines.append("## Other captured topics")
+            lines.append("")
+            lines.append("*(topics outside the conceptual/technical canonical sets — domain-specific or use-case-specific concerns)*")
+            lines.append("")
+            for t in other_topics:
+                lines.extend(_render_topic_block(t))
 
     if spec.gaps:
         lines.append("## Flagged gaps for FDE follow-up")

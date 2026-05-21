@@ -187,6 +187,37 @@ CANONICAL_CHECKLIST_TOPICS = (
     "risk",
 )
 
+# Technical-concern topics — the parallel concern thread the mega-agent should
+# weave into discovery alongside the conceptual checklist above. These are not
+# part of the hard stop-condition (gating to inception doesn't require them to
+# all be covered), but the inception pipeline downstream needs them to produce
+# defensible starter designs. The mega-agent probes for them when the customer's
+# answer naturally touches a technical asset, OR when the conceptual checklist
+# is largely complete and these gaps remain.
+TECHNICAL_TOPICS = (
+    "tech_stack",              # SDKs / frameworks / runtimes the team is committed to
+    "data_sources",            # warehouses, tables, schemas, where data physically lives
+    "semantic_layer",          # Cortex Analyst / dbt semantic / hand-rolled SQL / none
+    "existing_context",        # what's already cataloged in Atlan or equivalent
+    "runtime_target",          # where the agent eventually deploys + infra constraints
+    "governance_constraints",  # must-use / can't-use / compliance
+    "data_freshness",          # real-time / daily / weekly / batch
+    "identity_model",          # per-user auth / service account / OAuth / etc.
+)
+
+# Convenience: complete catalog of canonical topics across both concern threads.
+ALL_CANONICAL_TOPICS = CANONICAL_CHECKLIST_TOPICS + TECHNICAL_TOPICS
+
+
+def topic_concern_thread(topic_name: str) -> str:
+    """Classify a topic name as belonging to the 'conceptual', 'technical', or
+    'other' concern thread. Used for rendering split sections in spec.md."""
+    if topic_name in CANONICAL_CHECKLIST_TOPICS:
+        return "conceptual"
+    if topic_name in TECHNICAL_TOPICS:
+        return "technical"
+    return "other"
+
 # Topics that the validator (Stage 3) cares about for bedrock. In v0.5 of the
 # discovery agent, bedrock is ADVISORY — it's tracked and surfaced as a "soft"
 # checklist item, but it does NOT block declare_ready. The hard stop-condition
