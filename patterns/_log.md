@@ -4,6 +4,20 @@ Append-only record of additions, edits, status changes, and deprecations. Hand-m
 
 ---
 
+## 2026-05-22 (findings → patterns promotion, round 1)
+
+Two unpromoted findings docs were load-bearing for inception's downstream proposers but had never landed in `patterns/`. Promoting them by hand (curator's `ingest` ships only step 1 today; doing the work directly until steps 2–5 land).
+
+- **CREATE** `patterns/anti-patterns/cheap-cascade-orchestrator-compensation.md` from `findings/08`. The negative result that "cheap sub-agents + frontier orchestrator saves money" doesn't hold — orchestrator compensates for thinner extractor outputs and net cost rises +67%. Includes the empirical receipt (the 50-turn comparison table) and the rule for `runtime_proposer` to flag cheap-cascade configurations.
+- **CREATE** `patterns/decision-guides/cost-vs-latency-tradeoffs.md` from `findings/06`. First entry in the `decision-guides/` category. Captures the "latency is usually the constraint, not cost" frame, the per-step latency breakdown, optimization leverage table, and the cost-axis flip for async-batch deployments.
+
+Both entries cite the originating findings doc in frontmatter `source_findings:` and use the operational-decision body shape. Total entries: 7 → 9.
+
+Updates:
+- `patterns/_index.md` — added rows; `decision-guides/` is no longer empty; coverage summary refreshed (9 entries, all 5 categories active).
+
+---
+
 ## 2026-05-20 (evening — body-shape diversity)
 
 Andrew flagged: the existing 5 seed entries are all the same variety (operational-decision: Use when / Don't use when / Gotchas / Empirical anchor). The curator agent trained on these would pattern-match a single body shape and lose the convention-loosening benefit — never produce comparative surveys, code-pattern entries, theoretical foundations, etc.

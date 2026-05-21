@@ -63,6 +63,7 @@ uv run python -m agent.cli start-session --use-case-seed "..."
 ```
 
 For ongoing use across many sessions: install the MCP server (see [`agent/mcp_server/README.md`](agent/mcp_server/README.md)).
+For what's shipped in the current version + where to start: see [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Pipeline
 
