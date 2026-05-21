@@ -54,6 +54,7 @@ from mcp.server.stdio import stdio_server
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
 
+from agent.atlan_client import fetch_bounded_context  # noqa: E402
 from agent.baselines.mega_agent import MegaAgentSession  # noqa: E402
 from agent.schemas import DiscoverySpec, WorkingTheory  # noqa: E402
 from agent.state import DiscoverySession  # noqa: E402
@@ -196,19 +197,48 @@ def tool_get_priors(role_id: str) -> dict[str, Any]:
     return {"ok": True, "role_id": role_id, "role_context": json.loads(context_path.read_text())}
 
 
-def tool_start_discovery_session(
+async def tool_start_discovery_session(
     use_case_seed: str,
     role_id: str | None = None,
+    atlan_tenant: str | None = None,
+    atlan_glossary: str | None = None,
+    atlan_tables: list[str] | None = None,
+    atlan_domains: list[str] | None = None,
 ) -> dict[str, Any]:
     """Start a new discovery session. The tester plays the customer; the
     mega-agent runs the FDE interview. No initial probe is generated —
-    submit the customer's opening message first."""
+    submit the customer's opening message first.
+
+    Atlan integration (optional): if `atlan_tenant` is provided (or
+    `ATLAN_BASE_URL` is set), the discovery agent queries the named scope
+    at session start. Cataloged glossary terms, table schemas, lineage,
+    ownership, governance tags, and business domains land in the
+    mega-agent's system prompt as authoritative "established context" —
+    technical-thread probes skip what's already known. Graceful degradation:
+    if Atlan is unavailable, discovery runs in probe-only mode and a
+    warning surfaces in the session state.
+    """
     spec = DiscoverySpec(use_case_seed=use_case_seed, role_id=role_id)
+
+    # Attempt the bounded-context fetch when any Atlan scope arg is set,
+    # OR when env vars are configured even without explicit args (assumes
+    # the user wants integration on but hasn't named a scope — we'll return
+    # an empty bounded context with fetch_status='not_configured' to be
+    # transparent rather than guessing a default scope).
+    any_atlan_arg = atlan_tenant or atlan_glossary or atlan_tables or atlan_domains
+    if any_atlan_arg:
+        bc = await fetch_bounded_context(
+            tenant=atlan_tenant,
+            glossary=atlan_glossary,
+            tables=atlan_tables,
+            domains=atlan_domains,
+        )
+        spec.bounded_context = bc.model_dump()
     session = DiscoverySession(spec=spec)
     mega = MegaAgentSession(use_case_seed=use_case_seed, role_id=role_id)
     _MEGA_SESSIONS[session.session_id] = mega
     session.save()
-    return {
+    response: dict[str, Any] = {
         "ok": True,
         "session_id": session.session_id,
         "use_case_seed": use_case_seed,
@@ -218,6 +248,20 @@ def tool_start_discovery_session(
             "message=<your_first_message_as_customer>)."
         ),
     }
+    if spec.bounded_context:
+        bc_status = spec.bounded_context.get("fetch_status")
+        response["atlan_context"] = {
+            "tenant": spec.bounded_context.get("source_tenant"),
+            "status": bc_status,
+            "n_glossary_terms": len(spec.bounded_context.get("glossary_terms") or []),
+            "n_tables": len(spec.bounded_context.get("tables") or []),
+            "n_lineage_edges": len(
+                (spec.bounded_context.get("lineage") or {}).get("edges") or []
+            ),
+            "n_business_domains": len(spec.bounded_context.get("business_domains") or []),
+            "error": spec.bounded_context.get("error_message"),
+        }
+    return response
 
 
 async def tool_submit_customer_turn(
@@ -248,7 +292,7 @@ def tool_get_session_state(session_id: str) -> dict[str, Any]:
     """Inspect the current structured state of a session."""
     session, _ = _get_or_rehydrate_session(session_id)
     spec = session.spec.model_dump()
-    return {
+    payload: dict[str, Any] = {
         "ok": True,
         "session_id": session_id,
         "phase": spec.get("phase"),
@@ -259,6 +303,17 @@ def tool_get_session_state(session_id: str) -> dict[str, Any]:
         "working_theory": spec.get("working_theory"),
         "full_spec": spec,
     }
+    bc = spec.get("bounded_context")
+    if bc:
+        payload["atlan_context_summary"] = {
+            "tenant": bc.get("source_tenant"),
+            "status": bc.get("fetch_status"),
+            "n_glossary_terms": len(bc.get("glossary_terms") or []),
+            "n_tables": len(bc.get("tables") or []),
+            "n_lineage_edges": len((bc.get("lineage") or {}).get("edges") or []),
+            "n_business_domains": len(bc.get("business_domains") or []),
+        }
+    return payload
 
 
 async def tool_finalize_discovery_session(session_id: str) -> dict[str, Any]:
@@ -336,6 +391,15 @@ def _render_spec_markdown(session: DiscoverySession) -> str:
     lines.append(f"**Phase at close:** `{spec.phase}`")
     if wt:
         lines.append(f"**Working theory confidence:** `{wt.confidence}`")
+    if spec.bounded_context:
+        bc = spec.bounded_context
+        status = bc.get("fetch_status", "unknown")
+        n_terms = len(bc.get("glossary_terms") or [])
+        n_tables = len(bc.get("tables") or [])
+        lines.append(
+            f"**Atlan context:** `{bc.get('source_tenant', '?')}` "
+            f"(status: {status}, {n_terms} terms, {n_tables} tables)"
+        )
     lines.append("")
 
     if wt:
@@ -423,6 +487,24 @@ def _render_spec_markdown(session: DiscoverySession) -> str:
                 lines.append(f"  - Related topic: `{g.related_topic}`")
             lines.append("")
 
+    # Established context appendix (Atlan) — verbatim what the agent saw.
+    # Downstream inception reads this to know what's cataloged vs what came
+    # from the customer's own statements. We bump the inner heading from H3
+    # to H2 so it slots into spec.md alongside other top-level sections.
+    if spec.bounded_context:
+        try:
+            from agent.atlan_context import BoundedContext
+
+            bc = BoundedContext.model_validate(spec.bounded_context)
+            rendered = bc.render_for_prompt()
+            if rendered.strip():
+                rendered = rendered.replace("### Established context", "## Established context", 1)
+                lines.append(rendered.rstrip())
+                lines.append("")
+        except Exception:
+            # Renderer is best-effort — never block spec.md export on this.
+            pass
+
     lines.append("---")
     lines.append("")
     lines.append("*Generated by discovery-inception v0.8 (lazy synthesis + probe-sharpener + tensions surfacing + deterministic close-out).*")
@@ -488,7 +570,12 @@ async def list_tools() -> list[types.Tool]:
                 "Start a new discovery session. The user plays the CUSTOMER; "
                 "the discovery agent plays the FDE interviewer. No initial "
                 "agent question is generated — submit your first customer "
-                "message via submit_customer_turn to begin the interview."
+                "message via submit_customer_turn to begin the interview. "
+                "Optional Atlan integration: pass atlan_tenant + scope args "
+                "(glossary, tables, domains) to prime the agent with the "
+                "customer's established context — cataloged definitions, "
+                "table schemas, lineage, ownership, governance tags. "
+                "Discovery proceeds normally if Atlan is unavailable."
             ),
             inputSchema={
                 "type": "object",
@@ -500,6 +587,24 @@ async def list_tools() -> list[types.Tool]:
                     "role_id": {
                         "type": "string",
                         "description": "Optional: role_id from list_priors (e.g. 'solutions-consultant'). Without priors the agent still works but won't mirror domain vocabulary.",
+                    },
+                    "atlan_tenant": {
+                        "type": "string",
+                        "description": "Optional: Atlan tenant host (e.g. 'ces.atlan.com'). When set, discovery fetches the customer's established context at session start.",
+                    },
+                    "atlan_glossary": {
+                        "type": "string",
+                        "description": "Optional: scope the established-context fetch to one glossary by display name (e.g. 'Fabric_Care_Analytics').",
+                    },
+                    "atlan_tables": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: list of fully-qualified table names to pull schemas/columns/ownership for (e.g. ['default.aos', 'default.ddm']).",
+                    },
+                    "atlan_domains": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: list of DataDomain names to pull descriptions for (e.g. ['F&HC']).",
                     },
                 },
                 "required": ["use_case_seed"],
@@ -567,7 +672,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         elif name == "get_priors":
             result = tool_get_priors(**arguments)
         elif name == "start_discovery_session":
-            result = tool_start_discovery_session(**arguments)
+            result = await tool_start_discovery_session(**arguments)
         elif name == "submit_customer_turn":
             result = await tool_submit_customer_turn(**arguments)
         elif name == "get_session_state":

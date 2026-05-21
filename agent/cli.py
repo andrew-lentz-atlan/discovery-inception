@@ -16,6 +16,12 @@ Usage:
     uv run python -m agent.cli start-session \\
         --use-case-seed "we want a SoCo agent for onboarding at TechCo" \\
         --role-id solutions-consultant
+    # With Atlan context priming:
+    uv run python -m agent.cli start-session \\
+        --use-case-seed "brand analyst agent for fabric care" \\
+        --atlan-tenant ces.atlan.com \\
+        --atlan-glossary Fabric_Care_Analytics \\
+        --atlan-tables default.aos,default.ddm
     uv run python -m agent.cli submit-turn \\
         --session-id sess_abc \\
         --message "We want to reduce TTFV from 90 to 30 days."
@@ -82,9 +88,23 @@ async def _async_main(args: argparse.Namespace) -> None:
         elif cmd == "get-priors":
             result = tool_get_priors(role_id=args.role_id)
         elif cmd == "start-session":
-            result = tool_start_discovery_session(
+            atlan_tables = (
+                [t.strip() for t in args.atlan_tables.split(",") if t.strip()]
+                if args.atlan_tables
+                else None
+            )
+            atlan_domains = (
+                [d.strip() for d in args.atlan_domains.split(",") if d.strip()]
+                if args.atlan_domains
+                else None
+            )
+            result = await tool_start_discovery_session(
                 use_case_seed=args.use_case_seed,
                 role_id=args.role_id,
+                atlan_tenant=args.atlan_tenant,
+                atlan_glossary=args.atlan_glossary,
+                atlan_tables=atlan_tables,
+                atlan_domains=atlan_domains,
             )
         elif cmd == "submit-turn":
             result = await tool_submit_customer_turn(
@@ -126,6 +146,22 @@ def main() -> None:
     p = sub.add_parser("start-session", help="Start a discovery session — tester plays customer")
     p.add_argument("--use-case-seed", required=True)
     p.add_argument("--role-id", help="Optional role_id from list-priors")
+    p.add_argument(
+        "--atlan-tenant",
+        help="Optional Atlan host (e.g. 'ces.atlan.com'). Primes the agent with established context at session start.",
+    )
+    p.add_argument(
+        "--atlan-glossary",
+        help="Optional: scope the established-context fetch to one glossary by display name.",
+    )
+    p.add_argument(
+        "--atlan-tables",
+        help="Optional: comma-separated fully-qualified table names (e.g. 'default.aos,default.ddm').",
+    )
+    p.add_argument(
+        "--atlan-domains",
+        help="Optional: comma-separated DataDomain names (e.g. 'F&HC,Customer360').",
+    )
 
     # submit-turn
     p = sub.add_parser("submit-turn", help="Submit a customer turn → agent response")

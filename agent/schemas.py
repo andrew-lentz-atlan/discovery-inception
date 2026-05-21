@@ -409,6 +409,20 @@ class DiscoverySpec(BaseModel):
     ready_confidence: ConfidenceLevel | None = None
     remaining_known_gaps: ListOfStr = Field(default_factory=list)
 
+    # Established Atlan context — populated at session start if --atlan-* CLI
+    # args / MCP arguments named a tenant + scope. The mega-agent renders this
+    # into its system prompt every turn so cataloged definitions are always in
+    # scope and the technical-thread probes can skip what's already known.
+    # See agent/atlan_context.py for the slot types. Stored loosely as a dict
+    # so old sessions on disk (without this field) deserialize cleanly.
+    bounded_context: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "BoundedContext.model_dump() if Atlan was queried at session start; "
+            "None when the session ran without Atlan integration."
+        ),
+    )
+
 
 # ---------------------------------------------------------------------------
 # Stop-condition checklist (deterministic — no LLM)

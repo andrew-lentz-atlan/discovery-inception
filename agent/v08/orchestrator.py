@@ -132,15 +132,43 @@ You have FOUR tools. Use them deliberately. Concrete triggers below:
 # Priors (customer's role context)
 {PRIORS}
 
-# Output
+{ESTABLISHED_CONTEXT}# Output
 Respond to the customer as a good FDE would. Match the natural rhythm of consultative conversation. Trust your judgment about when to play back a theory, when to drill, when to acknowledge and pivot. The structured spec is being built separately by extractors — your job is the conversation. Don't format anything; free-form prose is fine.
 """
+
+
+def _established_context_block(session: DiscoverySession) -> str:
+    """Render the Atlan bounded-context snapshot (if any) as a system-prompt
+    section.
+
+    Empty string when the session ran without --atlan-* args — the
+    surrounding template handles a missing block cleanly.
+
+    The block is intentionally placed AFTER PRIORS in the prompt: priors are
+    inferred scaffolding (from a JD/artifact), established context is
+    authoritative (live catalog). The agent should read them in that order so
+    cataloged definitions override anything the priors guessed at.
+    """
+    raw = session.spec.bounded_context
+    if not raw:
+        return ""
+    try:
+        from agent.atlan_context import BoundedContext
+
+        bc = BoundedContext.model_validate(raw)
+    except Exception:
+        return ""
+    rendered = bc.render_for_prompt()
+    if not rendered.strip():
+        return ""
+    return rendered + "\n"
 
 
 def _build_v08_system_prompt(session: DiscoverySession) -> str:
     return V08_SYSTEM_PROMPT_TEMPLATE.format(
         USE_CASE_SEED=session.spec.use_case_seed,
         PRIORS=_relevant_priors(session, None),
+        ESTABLISHED_CONTEXT=_established_context_block(session),
     )
 
 
