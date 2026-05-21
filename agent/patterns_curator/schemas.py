@@ -126,6 +126,16 @@ class PatternFrontmatter(BaseModel):
     superseded_by: list[str] = Field(default_factory=list)
     reference: str | None = None
     snapshot_date: str | None = None
+    source_hash: str | None = Field(
+        default=None,
+        description=(
+            "SHA256 of the source text this entry was extracted from. Set by the "
+            "curator at ingest time. Audit operations can detect 'source has "
+            "changed since this entry was ingested → flag for re-ingest' by "
+            "re-hashing the source and comparing. Idea borrowed from theafh's "
+            "ai-modules/knowledge_management plugin."
+        ),
+    )
 
 
 class PatternEntry(BaseModel):
@@ -323,3 +333,213 @@ class PromotionRunReport(BaseModel):
     n_clusters_above_threshold: int
     recurrence_threshold: int
     candidates: list[PromotionCandidate]
+
+
+# ---------------------------------------------------------------------------
+# Ingest step 5 — overlap_check produces a TriageReport
+#
+# Borrowed pattern from theafh/ai-modules/plugins/knowledge_management:
+# triage reports surface "new pages, extensions, and contradictions BEFORE
+# wiki writes." Our overlap_check returns one TriageReport per ingest;
+# the recommended_action determines which output file gets written:
+#   create_new          → patterns/<category>/<slug>.draft.md
+#   update_existing     → patterns/<category>/<existing_slug>.update.md
+#   contested           → patterns/<category>/<existing_slug>.contested.md
+#   needs_human_review  → patterns/<category>/<slug>.triage.md only (no draft)
+#
+# Bias: convergence over fragmentation. When uncertain between create_new
+# and update_existing, prefer update_existing.
+# ---------------------------------------------------------------------------
+
+
+class ExtensionCandidate(BaseModel):
+    """An existing entry the new draft could extend/merge into."""
+
+    existing_slug: str = Field(
+        ..., description="Filename stem of the existing pattern (no .md suffix)."
+    )
+    existing_category: PatternCategory = Field(
+        ..., description="Which patterns/<category>/ directory the existing entry lives in."
+    )
+    overlap_summary: str = Field(
+        ...,
+        description=(
+            "One-paragraph summary of what's shared between the new draft and "
+            "the existing entry. Names the specific sections / claims that overlap."
+        ),
+    )
+    proposed_merge: str = Field(
+        ...,
+        description=(
+            "How to fold the new content into the existing entry. Specific: "
+            "'add a new variant under §Variants'; 'extend the Empirical anchor "
+            "with the second receipt'; 'update the Gotchas list with item N'. "
+            "NOT generic ('combine them')."
+        ),
+    )
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0,
+        description="0.0-1.0 confidence that this is a real merge candidate, not a false positive.",
+    )
+
+
+class ContradictionCandidate(BaseModel):
+    """An existing entry the new draft directly contradicts.
+
+    Surfaced for human resolution via the 'contested-page protocol'
+    (theafh's framing) — the curator never auto-resolves contradictions.
+    Both versions land on a `.contested.md` file; a human reconciles.
+    """
+
+    existing_slug: str = Field(..., description="Filename stem of the contradicted entry.")
+    existing_category: PatternCategory
+    contradiction_summary: str = Field(
+        ...,
+        description=(
+            "One-paragraph summary of the contradiction. Names the specific "
+            "claim in the existing entry and the contradicting claim in the new draft."
+        ),
+    )
+    reconciliation_options: list[str] = Field(
+        default_factory=list,
+        description=(
+            "2-4 ways the contradiction could be resolved. Examples: "
+            "'existing entry is stale; deprecate it and promote the new draft'; "
+            "'both are valid in different contexts; merge with an applies_when split'; "
+            "'new draft's empirical receipt is weaker; reject and keep existing'."
+        ),
+    )
+    confidence: float = Field(..., ge=0.0, le=1.0)
+
+
+TriageAction = Literal[
+    "create_new",
+    "update_existing",
+    "contested",
+    "needs_human_review",
+]
+
+
+class TriageReport(BaseModel):
+    """Output of step 5 (overlap_check). The single artifact that decides
+    where the ingest's draft lands.
+
+    Drafter-not-publisher: this report never auto-edits canonical entries.
+    Worst case it routes the draft to a `.contested.md` or `.triage.md`
+    file for a human to review.
+    """
+
+    recommended_action: TriageAction
+    rationale: str = Field(
+        ...,
+        description="One paragraph: why this action. Should reference specific candidates by slug.",
+    )
+    extension_candidates: list[ExtensionCandidate] = Field(default_factory=list)
+    contradiction_candidates: list[ContradictionCandidate] = Field(default_factory=list)
+    # The slug used for the output filename. For create_new, this is a
+    # fresh slug derived from the new entry's title. For update_existing /
+    # contested, this is the existing entry's slug (so the file lands
+    # alongside the original for diffing).
+    target_slug: str = Field(
+        ...,
+        description=(
+            "Filename stem for the output file (no .md suffix). For create_new "
+            "this is the new slug from step 1's classification; for "
+            "update_existing and contested it's the existing entry's slug."
+        ),
+    )
+    target_category: PatternCategory
+
+
+# ---------------------------------------------------------------------------
+# Top-level ingest run report — what the CLI returns
+# ---------------------------------------------------------------------------
+
+
+class IngestRunReport(BaseModel):
+    """Summary of one ingest invocation. Returned by run_ingest() and
+    serialized to stdout by the CLI.
+    """
+
+    ok: bool
+    source_filename: str
+    classification_summary: str  # e.g., "skill-design / code-pattern / candidate-slug-here"
+    triage_action: TriageAction
+    output_path: str  # relative to project root
+    triage_path: str | None  # the .triage.md sidecar if non-trivial overlap surfaced
+    validate_errors: list[str] = Field(default_factory=list)
+    validate_warnings: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Audit operation — periodic semantic + structural scan over the wiki
+#
+# Two-phase pattern (borrowed from theafh's wiki_auto_shaper):
+#   1. Assess  — deterministic lint + LLM-driven semantic clustering
+#   2. Fix     — stage `<slug>.repair.md` proposals for human review
+#
+# Output lands under `patterns/.audit_runs/<timestamp>/` so audit history is
+# auditable (no pun intended) without polluting the canonical entry tree.
+# ---------------------------------------------------------------------------
+
+
+AuditSeverity = Literal["error", "warning", "info"]
+
+
+AuditKind = Literal[
+    "frontmatter_violation",     # missing required field, bad date format, etc.
+    "reference_broken",          # related: or contradicts: points at non-existent entry
+    "fence_imbalance",           # markdown code fences unbalanced
+    "stale",                     # last_updated / snapshot_date past staleness threshold
+    "semantic_duplicate",        # two entries cover substantially the same lesson
+    "semantic_contradiction",    # two entries make directly opposing claims
+    "orphan",                    # entry not referenced by any other entry + not used by any agent
+    "source_hash_drift",         # source_hash differs from current source's hash → entry may be stale
+]
+
+
+class AuditFinding(BaseModel):
+    """One issue detected during the audit pass.
+
+    Most findings target a single entry (the `slug` field). Semantic findings
+    (duplicate / contradiction) target two — the second goes in `also_affects`.
+    """
+
+    severity: AuditSeverity
+    kind: AuditKind
+    slug: str = Field(..., description="Primary entry the finding targets, as `<category>/<slug>`.")
+    also_affects: list[str] = Field(
+        default_factory=list,
+        description="Other slugs touched by this finding (e.g., the second entry in a duplicate pair).",
+    )
+    description: str = Field(..., description="One-paragraph description of the issue.")
+    proposed_fix: str | None = Field(
+        None,
+        description=(
+            "Specific proposed fix. For frontmatter violations, the missing/wrong field. "
+            "For semantic findings, the merge or deprecation proposal."
+        ),
+    )
+
+
+class AuditRunReport(BaseModel):
+    """Top-level output of one `audit` invocation. Written to
+    `patterns/.audit_runs/<timestamp>/report.md` (human-readable) +
+    `report.json` (machine-readable)."""
+
+    run_id: str
+    run_at: str  # ISO timestamp
+    n_entries_scanned: int
+    n_findings: int
+    n_errors: int
+    n_warnings: int
+    n_info: int
+    findings: list[AuditFinding]
+    staged_repairs: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Relative paths of `.repair.md` files staged for human review. Each "
+            "corresponds to a finding with a concrete fix; humans diff against "
+            "the original entry and approve or reject."
+        ),
+    )

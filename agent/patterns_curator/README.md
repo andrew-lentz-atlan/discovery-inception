@@ -4,7 +4,7 @@ Companion agent to discovery-inception. Maintains the `patterns/` knowledge base
 
 ## Status
 
-**`ingest` is a skeleton** (step 1 implemented; steps 2-5 stubbed). **`promote` is shipping** (Loop 3 from plans/10 — cross-session knowledge promotion). `query` and `lint` are not yet built.
+**`ingest` is shipping** (all 6 steps: classify → extract → frontmatter → body → overlap_check → validate, with output routing to `.draft.md` / `.update.md` / `.contested.md` / `.triage.md` based on the triage decision). **`promote` is shipping** (Loop 3 from plans/10 — cross-session knowledge promotion). **`audit` is shipping** (deterministic lint + semantic clustering for drift detection). `query` (interactive retrieval) is not yet built — humans currently read the wiki directly or browse via `_index.md`.
 
 ## Why this exists
 
@@ -16,15 +16,30 @@ The curator agent ingests source materials (findings docs, external research, bu
 
 ### `ingest <source>`
 
-Takes one source artifact (markdown file, URL, or repo path) and produces a draft pattern entry. The draft goes through several deterministic steps:
+```bash
+uv run python -m agent.patterns_curator.run \
+    --source findings/08-cheap-cascade-gpt4o-mini-doesnt-pan-out.md
+```
 
-1. **classify_source** — what kind of pattern does this source teach? Returns target `category` (architectures / anti-patterns / skill-design / harnesses / decision-guides), `body_shape` (operational-decision / code-pattern / comparative-survey / theoretical / historical / open-questions), and a confidence.
-2. **extract_pattern** — pull out the rule, when it applies, when it doesn't, gotchas, empirical receipts. *(stub)*
-3. **draft_frontmatter** — populate the standardized YAML fields. *(stub)*
-4. **draft_body** — write the body using the appropriate body shape. *(stub)*
-5. **validate** — does the draft have a frontmatter, summary, and (for `validated` status) at least one empirical receipt? *(stub)*
+Takes one source artifact and produces a draft pattern entry. Six steps:
 
-Drafts are written to `patterns/<category>/<slug>.draft.md` for human review before promotion to the canonical filename.
+1. **classify_source** — what kind of pattern does this source teach? Returns target `category` (architectures / anti-patterns / skill-design / harnesses / decision-guides), `body_shape` (operational-decision / code-pattern / comparative-survey / theoretical / historical / open-questions), candidate title + slug, confidence.
+2. **extract_pattern** — body-shape-aware extraction. Pulls summary, use_when, dont_use_when, gotchas, empirical_receipts, code_excerpts, survey_items as appropriate for the body shape.
+3. **draft_frontmatter** — populates YAML fields. Most are deterministic from steps 1-2; `applies_when`, `related`, `contradicts` are LLM-decided. `source_hash` (SHA256 of source) is added for audit-time drift detection.
+4. **draft_body** — body-shape-templated markdown rendering. Six templates (one per body shape) keep entries structurally consistent with existing ones.
+5. **overlap_check** — runs after the body is drafted, produces a `TriageReport`. Surfaces extension candidates (existing entries this should merge into) and contradiction candidates (existing entries this directly opposes). **Convergence-not-fragmentation**: when uncertain, prefers `update_existing` over `create_new`.
+6. **validate** — deterministic lint (frontmatter required fields, date format, fence balance, reference integrity, body length sanity, status-vs-receipts consistency).
+
+**Output routing** (from triage decision):
+
+| Action | Where it lands |
+|---|---|
+| `create_new` | `patterns/<category>/<slug>.draft.md` (+ `.triage.md` sidecar if any overlap surfaced) |
+| `update_existing` | `patterns/<category>/<existing_slug>.update.md` + `.triage.md` (proposed merge into the existing entry, diff against original) |
+| `contested` | `patterns/<category>/<existing_slug>.contested.md` + `.triage.md` (direct contradiction with existing entry, both versions side-by-side for human reconciliation) |
+| `needs_human_review` | `<slug>.triage.md` only (no draft — analysis surfaced for human decision) |
+
+Drafter-not-publisher: the curator never writes to canonical `<slug>.md`. Humans review the draft / update / contested file and promote when ready.
 
 ### `promote` (Loop 3 — cross-session knowledge promotion)
 
@@ -53,13 +68,24 @@ Outputs:
 
 The recurrence threshold + the lean-toward-specific classifier bias are the two guardrails against over-promotion: single-session quirks never reach `patterns/`.
 
+### `audit`
+
+```bash
+uv run python -m agent.patterns_curator.audit
+uv run python -m agent.patterns_curator.audit --staleness-days 60
+uv run python -m agent.patterns_curator.audit --skip-semantic
+```
+
+Periodic hygiene pass. Two phases:
+
+1. **Deterministic** — frontmatter integrity, broken references (`related:` / `contradicts:` / `superseded_by:` pointing at non-existent entries), fence imbalance, staleness (`last_updated` past threshold), source-hash drift (if `source_hash` is set and the source file is reachable + has changed since ingest, flag for re-ingest).
+2. **Semantic** (LLM call) — clusters entries by lesson, flags duplicates ("API best practices" vs "SDK best practices" — different names, same content) and contradictions (two entries making opposing claims). Convergence principle as the explicit bias — false positives are worse than false negatives.
+
+Output: `patterns/.audit_runs/<timestamp>/report.md` (human) + `report.json` (machine). Drafter-not-publisher: audit never edits canonical entries; produces a findings list for human review.
+
 ### `query <filter>` *(not yet built)*
 
 Query the knowledge base by structured filter. Surfaces matching entries for an agent at decision time. Will be wired up after ingest is mature.
-
-### `lint` *(not yet built)*
-
-Periodic review for staleness, contradictions, duplicates, orphaned receipts. Will be wired up after ingest is mature.
 
 ## Validation target
 
@@ -79,3 +105,4 @@ A reasonable match is ~80% on structure (right category, right body shape, all r
 - `prompts/` — one prompt per pipeline step. Prefix `promote_*.md` for the cross-session pipeline.
 - `run.py` — `ingest` CLI entry point
 - `promote.py` — `promote` CLI entry point (Loop 3)
+- `audit.py` — `audit` CLI entry point (hygiene + drift detection)
