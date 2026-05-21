@@ -54,3 +54,10 @@ agent_starter/
 # (our customer-specific validation work lives here on disk, not in git)
 docs/internal/
 research/
+
+# Patterns curator audit-trail artifacts — useful locally for inspecting
+# `promote` runs, but accumulate noise over time. The `.candidate.md` files
+# (one per promoted cluster) ARE tracked so humans can review + commit
+# approved promotions; `.promotion_runs/*.json` are run-level audit JSON
+# that adds little to history.
+patterns/.promotion_runs/

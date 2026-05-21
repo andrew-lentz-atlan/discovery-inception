@@ -1,10 +1,10 @@
 # agent/patterns_curator — the patterns/ knowledge-base curator agent
 
-Companion agent to discovery-inception. Maintains the `patterns/` knowledge base via three operations: **ingest**, **query**, **lint**. Inspired by Karpathy's LLM-maintained wiki gist (https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+Companion agent to discovery-inception. Maintains the `patterns/` knowledge base via four operations: **ingest**, **promote**, **query**, **lint**. Inspired by Karpathy's LLM-maintained wiki gist (https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
 ## Status
 
-**Skeleton.** This directory has the scaffolding (schemas, prompts, run.py) but only the `ingest` operation's first step (`classify_source`) is implemented at this stage. Other steps are stubbed; `query` and `lint` operations are not yet built.
+**`ingest` is a skeleton** (step 1 implemented; steps 2-5 stubbed). **`promote` is shipping** (Loop 3 from plans/10 — cross-session knowledge promotion). `query` and `lint` are not yet built.
 
 ## Why this exists
 
@@ -25,6 +25,33 @@ Takes one source artifact (markdown file, URL, or repo path) and produces a draf
 5. **validate** — does the draft have a frontmatter, summary, and (for `validated` status) at least one empirical receipt? *(stub)*
 
 Drafts are written to `patterns/<category>/<slug>.draft.md` for human review before promotion to the canonical filename.
+
+### `promote` (Loop 3 — cross-session knowledge promotion)
+
+Distinct from `ingest`: where ingest reads ONE source and produces ONE draft, promote reads MANY per-session feedback artifacts and produces zero-or-more candidate drafts based on **recurrence**.
+
+```
+uv run python -m agent.patterns_curator.promote
+uv run python -m agent.patterns_curator.promote --min-sessions 2 --dry-run
+uv run python -m agent.patterns_curator.promote \
+    --feedback-dir agent/inception/sample_feedback \
+    --feedback-dir sessions/
+```
+
+Pipeline (per plans/10):
+
+1. **discover + parse** — scan `sessions/` and `agent/inception/sample_feedback/` (or the dirs given via `--feedback-dir`) for `feedback.{yaml,yml,json}` files; extract atomic `FeedbackSignal`s.
+2. **classify** — `specific_vs_generic_classifier` (per-signal, parallel). Specific lessons stay session-scoped and drop here. Generic ones survive.
+3. **cluster** — `signal_clusterer` groups generic signals across sessions by theme. Cross-stage clusters (discovery + inception teach the same lesson) are flagged.
+4. **threshold** — `≥3` distinct sessions per cluster by default (configurable via `--min-sessions`). Below-threshold clusters are recorded for diagnostics but don't promote.
+5. **duplicate-check** — slug match against existing pattern entries. Semantic overlap is left for human review.
+6. **draft** — produces a candidate `PatternEntry` per surviving cluster, written to `patterns/<category>/<slug>.candidate.md`. Empirical anchor cites the originating session_ids.
+
+Outputs:
+- `patterns/<category>/<slug>.candidate.md` per promoted cluster (review + rename to `.md` to ratify).
+- `patterns/.promotion_runs/<ts>.json` audit-trail report (gitignored).
+
+The recurrence threshold + the lean-toward-specific classifier bias are the two guardrails against over-promotion: single-session quirks never reach `patterns/`.
 
 ### `query <filter>` *(not yet built)*
 
@@ -48,6 +75,7 @@ A reasonable match is ~80% on structure (right category, right body shape, all r
 
 - `__init__.py`
 - `README.md` — this file
-- `schemas.py` — Pydantic models for the intermediate step outputs and the final draft entry
-- `prompts/` — one prompt per pipeline step
-- `run.py` — CLI entry point
+- `schemas.py` — Pydantic models for the intermediate step outputs and the final draft entry (covers both `ingest` and `promote`)
+- `prompts/` — one prompt per pipeline step. Prefix `promote_*.md` for the cross-session pipeline.
+- `run.py` — `ingest` CLI entry point
+- `promote.py` — `promote` CLI entry point (Loop 3)

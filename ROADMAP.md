@@ -12,8 +12,10 @@ The forward direction for discovery-inception. What's shipped, what's coming nex
 | **Discovery (v0.8)** | Multi-turn conversational agent that interviews a customer to produce a structured spec. Five sub-agents per turn (triage / distill / mega-agent with tools / probe-sharpener / lazy synthesizer). Deterministic close-out synthesis at session end. Validated through five empirical iterations (see `findings/`). |
 | **Patterns knowledge base** | Curated agentic-design knowledge — architectures, anti-patterns, skill-design patterns, harness landscape, decision guides. Read at runtime by the inception pipeline. |
 | **Inception** | Turns a spec into a complete starter agent design. Five sub-agents end-to-end: workload classification → skill proposal → architecture selection → runtime selection → scaffold writer (which itself runs five parallel/sequential sub-steps to produce SKILL.md per skill, orchestrator.py, design_rationale.md, eval seed, judge harness). |
-| **Patterns curator** | Maintains the knowledge base via ingest / query / lint operations. Skeleton + step 1 (classify source) shipping. |
+| **Patterns curator** | Maintains the knowledge base via ingest / promote / query / lint. `ingest` step 1 shipping; **`promote` shipping** (cross-session knowledge promotion — reads per-session feedback, classifies generic vs specific, clusters recurring lessons, promotes ≥3-session clusters to `.candidate.md` drafts for human review). |
 | **Intra-session feedback** | Inception accepts `--prior-feedback` so builder feedback on a starter becomes constraints for the next iteration. |
+| **Discovery technical thread** | Discovery now probes a parallel thread on tech stack / data sources / semantic layer / runtime target / governance / data freshness / identity model alongside the conceptual checklist. `spec.md` renders the two threads in separate sections; the inception pipeline consumes the technical half. |
+| **Atlan context integration** | Read-side: discovery primes the mega-agent with the customer's established Atlan context (glossary terms, table schemas, lineage, ownership, governance tags, business domains) at session start. Cataloged definitions land authoritative in the prompt; the technical thread skips what's already known. Graceful degradation when Atlan is unavailable. CLI: `--atlan-tenant`, `--atlan-glossary`, `--atlan-tables`, `--atlan-domains`. |
 | **Distribution surfaces** | Installable Claude skill (one curl), MCP server runtime, headless CLI. |
 
 ---
@@ -22,12 +24,10 @@ The forward direction for discovery-inception. What's shipped, what's coming nex
 
 In rough priority order:
 
-1. **Discovery technical-thread extension.** Add a parallel concern thread to discovery that asks about data sources, tech stack, semantic layer, runtime targets — the technical context the inception pipeline needs to produce defensible starters. Today discovery covers conceptual concerns well; technical concerns are missing.
-2. **Atlan context integration.** Read-side: query the customer's Atlan tenant at discovery session start to establish what's already cataloged (glossary, tables, lineage). Skip redundant questioning. Produce a "what's missing from your context layer" artifact at session close.
-3. **Cross-session knowledge promotion.** Aggregate builder feedback across many agent builds. When a lesson recurs across ≥3 sessions, promote it to the patterns knowledge base. Closes the loop from "this build's learnings stayed in this builder's head" to "all future builds inherit accumulated wisdom."
-4. **Discovery iteration loop.** When the spec gate criteria aren't met (too many outstanding questions), discovery should iterate — follow-up sessions, chat-based gap-filling, transcript ingest — until the spec is good enough for inception. Mechanism designed; not yet built.
-5. **Critics for inception's proposer sub-agents.** Advisory adversarial pairs for skill_proposer and architecture_proposer that pressure-test their drafts against the spec. Lower priority — current pipeline produces defensible outputs; critics are quality-amplification.
-6. **v1.0 packaging.** Separate the durable IP (prompts + schemas + orchestration spec) from the runtime that interprets it. Skill bundle becomes portable across runtimes — anyone can re-implement on LangGraph, Pydantic AI, or Deep Agents from the same contract. Contract sketched in `skill/`; implementation pending.
+1. **Discovery iteration loop.** When the spec gate criteria aren't met (too many outstanding questions), discovery should iterate — follow-up sessions, chat-based gap-filling, transcript ingest — until the spec is good enough for inception. Mechanism designed; not yet built.
+2. **Atlan write-back path.** Discovery already produces `context_repo_gaps`-shaped candidate terms when the customer references concepts not in their tenant. Next step is the CES-mediated handshake to push reviewed gaps back to Atlan as proposed glossary terms / descriptions / lineage edges. Deferred from the Atlan-integration read-side ship.
+3. **Critics for inception's proposer sub-agents.** Advisory adversarial pairs for skill_proposer and architecture_proposer that pressure-test their drafts against the spec. Lower priority — current pipeline produces defensible outputs; critics are quality-amplification.
+4. **v1.0 packaging.** Separate the durable IP (prompts + schemas + orchestration spec) from the runtime that interprets it. Skill bundle becomes portable across runtimes — anyone can re-implement on LangGraph, Pydantic AI, or Deep Agents from the same contract. Contract sketched in `skill/`; implementation pending.
 
 ---
 
