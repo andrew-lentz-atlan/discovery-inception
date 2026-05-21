@@ -1,24 +1,44 @@
 ---
 name: discovery-inception
 description: |
-  Set up and run discovery-inception — an artifact-first context-ingestion
-  product that turns call transcripts, runbooks, docs, and (optionally) a
-  live conversation into a structured spec a builder can use to scope an
-  AI agent. Use when the user asks to test, try, or use discovery-inception,
-  OR when the user says they have a call/transcript/doc they want to turn
+  Set up and run discovery-inception — a two-stage agent system for
+  building other agents. Stage 1 (discovery) is an artifact-first
+  context-ingestion product that turns call transcripts, runbooks, docs,
+  and (optionally) a live conversation into a structured spec. Stage 2
+  (inception) turns that spec into a complete starter agent design:
+  proposed skills, selected architecture, runtime + model selection,
+  scaffolded orchestrator code, evaluation seed, and judge harness.
+  Use when the user asks to test, try, or use discovery-inception, OR
+  when the user says they have a call/transcript/doc they want to turn
   into an agent spec, OR when they want to figure out what an agent build
-  for some use case would look like. The skill handles repo cloning,
-  dependency install, credential setup, multi-artifact ingest, chat-fill
-  of gaps the FDE already knows the answer to, and optional live discovery
-  interview for the gaps that need a real customer answer. Final deliverable
-  is a spec.md the user can hand to a builder.
+  for some use case would look like, OR when they have a spec and want a
+  starter agent scaffolded. The skill handles repo cloning, dependency
+  install, credential setup, multi-artifact ingest, chat-fill of gaps the
+  FDE already knows the answer to, optional live discovery interview for
+  the gaps that need a real customer answer, and the inception pipeline
+  that produces the starter agent. Final deliverable is a spec.md + an
+  agent_starter/ directory the user can iterate on.
 ---
 
-# discovery-inception — install, set up, and run a discovery
+# discovery-inception — install, set up, and run end-to-end
 
-You are guiding the user through discovery-inception. The product turns unstructured customer context (call transcripts, docs, runbooks, slack threads) into a structured spec for an AI agent build. The conversational "interview the customer" mode is still here, but **it is no longer the first thing the user does** — most real flows start with artifacts already in hand.
+You are guiding the user through discovery-inception, a two-stage system for building agents:
 
-Two entry shapes:
+- **Discovery** turns unstructured customer context (call transcripts, docs, runbooks, slack threads) into a structured spec. Conversational "interview the customer" mode is still available but is **not** the first thing the user does — most real flows start with artifacts in hand.
+- **Inception** turns that spec into a complete starter agent design — proposed skills, selected architecture (e.g. single-agent ReAct vs chained pipeline), runtime + model selection, scaffolded orchestrator code, eval seed, judge harness. Six sub-agents run end-to-end; takes 3–5 minutes.
+
+The full happy path is:
+
+```
+artifacts → ingest → gap_list.md → chat-fill known gaps
+                                  → (optional) interview unknown gaps
+                                  → finalize → spec.md + spec.json
+                                  → inception → agent_starter/
+```
+
+Most colleagues testing for the first time will want to run the full pipeline. Some will stop at spec.md. Either is valid; lead the user through Phases 1–5 first, then ask if they want to continue into Phase 6 (inception).
+
+Two entry shapes for the discovery half:
 
 | Shape | When the user picks this |
 |---|---|
@@ -265,7 +285,15 @@ Stop when one of:
    >
    > The spec.md is what you'd hand to a builder. The spec.json (next to it) is the machine-readable version, used as input to the inception pipeline.
 
-4. Ask for feedback:
+4. Ask whether to continue into inception:
+
+   > Spec captured. Want to keep going and have inception scaffold a starter agent design from it?
+   >
+   > Inception runs six sub-agents (workload classifier → skill proposer → architecture selector → runtime + model picker → scaffold writer → eval seed + judge harness). Takes 3–5 minutes. Output: a full `agent_starter/<id>/` directory with `orchestrator.py`, `skills/<name>/SKILL.md` files, `design_rationale.md`, an eval seed, and a judge harness.
+   >
+   > If yes, I'll run it now. If you'd rather stop here and take the spec.md to a builder manually, that's the other half of the product — your call.
+
+5. If the user says yes, proceed to Phase 6. If they want to stop here, ask for feedback:
 
    > Two things I'd like to know:
    > 1. Did the ingest + gap-fill flow feel substantive, or artificial? Where specifically?
@@ -275,7 +303,59 @@ Stop when one of:
 
 ---
 
-## Phase 6 — Optional: persistent MCP setup
+## Phase 6 — Inception (turn the spec into a starter agent)
+
+This is the second half of the product. The discovery spec is the input; the output is a complete starter agent design.
+
+1. Run it:
+
+   ```bash
+   cd "$REPO" && uv run python -m agent.cli inception --session-id "<session_id>"
+   ```
+
+   Auto-resolves the spec.md + role-context paths from the session id. Optional `--output-dir <path>` to override where the starter lands (default: `agent_starter/<role_id_or_session_id>/`).
+
+   Each step prints progress; the full run takes ~3–5 minutes. The CLI returns JSON with the selected workload axes, architecture, runtime + model, and scaffold output paths.
+
+2. Surface the high-level decisions to the user:
+
+   > Inception finished. Here's what the pipeline picked for this agent:
+   > - **Workload:** `<interaction_shape> / <decision_complexity> / <data_intensity>` — the shape of the work the agent will do
+   > - **Architecture:** `<selected_pattern_slug>` (e.g. `single-agent-react`, `chained-pipeline`, `inner-pipeline-skill`)
+   > - **Runtime:** `<runtime> + <model_family>` (e.g. `claude-agent-sdk + claude-opus-4-7`)
+   > - **Scaffold:** `agent_starter/<id>/` — orchestrator.py + N skills + design_rationale.md + eval seed + judge harness
+
+3. Read the key files for the user (don't dump everything; surface the ones that explain the design):
+
+   ```bash
+   ls -la "$REPO/agent_starter/<id>/"
+   cat "$REPO/agent_starter/<id>/design_rationale.md"
+   ```
+
+   Walk the user through `design_rationale.md` — it's the human-readable explanation of why this pipeline picked these skills + architecture + runtime. Surface the open questions section (places where the design has tradeoffs the user should validate).
+
+4. Point them at the rest:
+
+   > The starter is at `agent_starter/<id>/`. Look at:
+   > - `orchestrator.py` — the runnable entry point. Sketch + types; not production-tuned.
+   > - `skills/<name>/SKILL.md` — one per proposed skill; each one has a prompt template, input/output schemas, and example calls.
+   > - `eval/questions.json` — seed evaluation cases (10–20 generated questions specific to your use case).
+   > - `eval/judge.py` — LLM-as-judge harness for grading the agent's responses on those cases.
+   >
+   > This isn't a working agent yet — it's a defensible starter the builder can pressure-test. The whole point is to compress iteration time from "weeks figuring out what to build" to "days iterating on a candidate design."
+
+5. Ask for feedback:
+
+   > Three things I'd like to know:
+   > 1. Did the discovery → spec → inception flow feel cohesive?
+   > 2. Is the `agent_starter/<id>/` directory a defensible starting point for a builder, or does it feel hallucinated?
+   > 3. Where specifically did the pipeline miscalibrate (e.g. wrong architecture pick, weak skill cut, runtime mismatch)?
+   >
+   > Andrew is collecting feedback to iterate. Specific gripes are more useful than overall scores.
+
+---
+
+## Phase 7 — Optional: persistent MCP setup
 
 If the user wants discovery-inception always available as MCP tools (so future use cases don't need re-invoking this skill), point them at `$REPO/agent/mcp_server/README.md` for the one-time MCP registration. Don't push this if they just wanted to test once.
 
@@ -283,6 +363,7 @@ If the user wants discovery-inception always available as MCP tools (so future u
 
 ## Important rules for you (Claude) during this skill
 
+- **The product is two stages: discovery → inception.** If a user asks "what does this do," lead with the full pipeline (artifacts → spec → starter agent), not just the discovery half. Phase 6 is the second half of the product, not an afterthought.
 - **Default to artifact-first.** If the user hands you any artifact or mentions one, treat ingest as the first move. Don't drop them into interview mode unless they explicitly say they have nothing.
 - **Don't paraphrase or summarize the agent's responses.** Show them verbatim. The structure of the agent's response is part of what the user is evaluating.
 - **One turn at a time in interview mode.** Don't try to batch interview turns.

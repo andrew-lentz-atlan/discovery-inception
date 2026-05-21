@@ -9,10 +9,12 @@ The project is the top-down complement to bottom-up tools (metadata scans, RAG, 
 ## How most people use it
 
 ```
-artifacts → ingest → gap_list.md → chat-fill known gaps → (optional) interview for unknown gaps → spec.md
+artifacts → ingest → gap_list.md → chat-fill known gaps → (optional) interview for unknown gaps → spec.md → inception → agent_starter/
 ```
 
 Most flows start with *something*: a Granola call summary, a runbook excerpt, an internal scoping doc. The artifact-first ingest pipeline runs intake + fact extraction in parallel across all artifacts you hand it, produces a populated session, and writes a `gap_list.md` showing exactly what's covered and what's still missing. The FDE chat-fills gaps they know the answer to (~5s/fact); the interview-mode discovery agent handles the gaps that need a real customer answer (~15s/turn). Hybrid flows are the common case.
+
+Once the spec is settled, **inception** turns it into a complete starter agent design — proposed skills, selected architecture (single-agent ReAct vs chained pipeline vs adversarial decomposition), runtime + model picks, scaffolded orchestrator code, eval seed, judge harness. Six sub-agents run end-to-end; ~3–5 min. The handoff is one CLI invocation: `agent.cli inception --session-id <id>`.
 
 ## Try it (one curl)
 
@@ -47,7 +49,16 @@ uv run python -m agent.cli submit-turn --no-probe \
     --session-id sess_xxx \
     --message "<your answer phrased as if the customer said it>"
 
-# Or interview-only mode if you have nothing in hand:
+# Finalize → produces spec.md + spec.json
+uv run python -m agent.cli finalize --session-id sess_xxx
+
+# Inception → turns the spec into a complete starter agent design
+# (proposed skills, selected architecture + runtime + model, scaffolded
+# orchestrator code, eval seed, judge harness). ~3-5 minutes.
+uv run python -m agent.cli inception --session-id sess_xxx
+# Output: agent_starter/<role_id_or_session_id>/
+
+# Or interview-only mode if you have no artifacts:
 uv run python -m agent.cli start-session --use-case-seed "..."
 ```
 

@@ -530,12 +530,47 @@ async def step_scaffold_writer(
     print(f"       ✓ eval/questions.json ({len(eval_seed.questions)} seed questions)")
 
     # ---- 2. judge harness (depends on eval_seed) ----
+    # Step 5e generates a multi-hundred-line Python file inside a JSON
+    # string field. The model occasionally emits triple-quotes (`"""`) inside
+    # the generated docstring without escaping them, which makes the
+    # structured-output parse fail. The rest of the scaffold is already on
+    # disk by this point — we degrade gracefully rather than tanking the
+    # whole run when 5e specifically fails. The builder can re-generate the
+    # judge harness in isolation or write one by hand against eval/questions.json.
+    judge: JudgeHarness | None = None
+    judge_error: str | None = None
     print("  [5e] generating eval/judge.py (LLM-as-judge harness)...")
-    judge = await step_generate_judge_harness(
-        client, workload, skills, runtime, eval_seed, role_context_json
-    )
-    (output_dir / "eval" / "judge.py").write_text(judge.judge_py)
-    print(f"       ✓ eval/judge.py ({len(judge.dimensions)} scoring dimensions, judge model: {judge.judging_model_recommended})")
+    try:
+        judge = await step_generate_judge_harness(
+            client, workload, skills, runtime, eval_seed, role_context_json
+        )
+        (output_dir / "eval" / "judge.py").write_text(judge.judge_py)
+        print(
+            f"       ✓ eval/judge.py ({len(judge.dimensions)} scoring dimensions, "
+            f"judge model: {judge.judging_model_recommended})"
+        )
+    except Exception as exc:
+        judge_error = f"{type(exc).__name__}: {str(exc)[:300]}"
+        # Write a stub judge.py with a clear TODO so the builder sees what
+        # was supposed to be there + the eval/questions.json to score against.
+        stub_judge = (
+            '"""LLM-as-judge harness for this agent.\n\n'
+            "Auto-generation of this file failed during inception. The eval seed\n"
+            "(eval/questions.json) is still present and usable. To regenerate the\n"
+            "judge harness, re-run inception or write one by hand following the\n"
+            "pattern in patterns/skill-design/inner-pipeline.md §judge-harnesses.\n\n"
+            f"Failure: {judge_error}\n"
+            '"""\n\n'
+            "raise NotImplementedError(\n"
+            '    "Judge harness was not generated during scaffold. "\n'
+            '    "Regenerate via inception or implement by hand against eval/questions.json."\n'
+            ")\n"
+        )
+        (output_dir / "eval" / "judge.py").write_text(stub_judge)
+        print(
+            f"       ! eval/judge.py generation failed; wrote stub. Error: {judge_error[:120]}"
+        )
+        print("       (Steps 5a-5d landed cleanly; scaffold is otherwise complete.)")
 
     # ---- 3. meta/ — deterministic copies of upstream Pydantic outputs ----
     print("  [5*] writing meta/ artifacts (deterministic)...")
@@ -574,7 +609,8 @@ async def step_scaffold_writer(
         "env_vars_needed": stub.env_vars_needed,
         "rationale_length": len(rationale.rationale_md),
         "eval_questions": len(eval_seed.questions),
-        "judge_dimensions": judge.dimensions,
+        "judge_dimensions": judge.dimensions if judge else [],
+        "judge_generation_error": judge_error,  # None on success; str on graceful failure
         "meta_artifacts": 6,
     }
 

@@ -1,6 +1,6 @@
 # Claude skill — discovery-inception setup + test
 
-A one-file skill colleagues drop into their Claude installation to test discovery-inception without reading any docs. The skill handles clone, deps, credentials, multi-artifact ingest, chat-fill of known gaps, and optional live interview for the gaps that need a real customer answer.
+A one-file skill colleagues drop into their Claude installation to test discovery-inception end-to-end without reading any docs. The skill handles clone, deps, credentials, multi-artifact ingest, chat-fill of known gaps, optional live interview, AND the inception pipeline that turns the resulting spec into a starter agent design.
 
 ## What it does
 
@@ -15,17 +15,20 @@ When a user invokes the skill (e.g., *"test discovery-inception — I've got two
    - **Chat-fill** (`submit-turn --no-probe`) — FDE answers a known gap; fast (~5s); no follow-up question generated
    - **Interview** (`submit-turn`) — FDE plays customer for gaps that need a real answer; ~15s/turn; mega-agent produces the next probe
 7. On the user's "wrap up" signal, runs the deterministic close-out synthesis and exports `spec.md` + `spec.json`
-8. Surfaces the rendered spec and asks for feedback
+8. Asks if the user wants to continue into **inception** — if yes, runs `agent.cli inception --session-id <id>`, producing `agent_starter/<id>/` with orchestrator.py, proposed skills, design_rationale.md, eval seed, and judge harness (3–5 min)
+9. Surfaces the design rationale + asks for feedback
 
 ## Why artifact-first
 
 Most real flows start with *something* — a call transcript, a runbook, an internal doc. Discovery-as-interview is still here as the fallback mode for when the user truly has nothing, but the first-class path is now:
 
 ```
-artifacts → ingest → gap_list.md → chat-fill known gaps → interview unknown gaps → spec.md
+artifacts → ingest → gap_list.md → chat-fill known gaps → interview unknown gaps → spec.md → inception → agent_starter/
 ```
 
-The chat-fill mode is the load-bearing UX win. An FDE who was on the call knows the answer to most gaps. Chat-fill captures their answer as fact (the FDE's job is to decide what's fact) without making them ask the customer or play a fake interview turn.
+The chat-fill mode is the load-bearing UX win for the discovery half. An FDE who was on the call knows the answer to most gaps. Chat-fill captures their answer as fact (the FDE's job is to decide what's fact) without making them ask the customer or play a fake interview turn.
+
+Inception then turns the spec into a complete starter agent design — proposed skills, selected architecture, runtime + model picks, scaffolded code, eval seed, judge harness. The discovery → inception handoff is now one CLI invocation (`agent.cli inception --session-id <id>`) rather than two separate tools with different argument names — the skill drives both halves so a colleague tests the full product end-to-end without learning two invocation patterns.
 
 ## Installation (for a colleague trying it for the first time)
 

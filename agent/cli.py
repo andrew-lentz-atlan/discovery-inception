@@ -37,6 +37,11 @@ Usage:
     uv run python -m agent.cli finalize --session-id sess_abc
     uv run python -m agent.cli list-sessions
 
+    # Run inception against a finalized discovery session — produces
+    # agent_starter/<role_id_or_session_id>/ with orchestrator.py,
+    # proposed skills, design_rationale.md, eval seed, judge harness.
+    uv run python -m agent.cli inception --session-id sess_abc
+
 Every subcommand prints JSON to stdout on success. Errors print JSON
 with {"ok": false, "error": "..."} and exit code 1.
 """
@@ -63,6 +68,7 @@ from agent.mcp_server.server import (  # noqa: E402
     tool_get_session_state,
     tool_finalize_discovery_session,
     tool_list_sessions,
+    tool_run_inception,
 )
 
 
@@ -133,6 +139,12 @@ async def _async_main(args: argparse.Namespace) -> None:
             result = await tool_finalize_discovery_session(session_id=args.session_id)
         elif cmd == "list-sessions":
             result = tool_list_sessions()
+        elif cmd == "inception":
+            result = await tool_run_inception(
+                session_id=args.session_id,
+                output_dir=args.output_dir,
+                prior_feedback_path=args.prior_feedback,
+            )
         else:
             result = {"ok": False, "error": f"Unknown command: {cmd}"}
     except Exception as exc:
@@ -226,6 +238,24 @@ def main() -> None:
 
     # list-sessions
     sub.add_parser("list-sessions", help="List existing discovery sessions on disk")
+
+    # inception — turn the finalized spec into a starter agent design
+    p = sub.add_parser(
+        "inception",
+        help=(
+            "Run the inception pipeline against a finalized discovery session. "
+            "Auto-resolves spec.md + role-context paths from the session id. "
+            "Six sub-agents (3-5 min) produce a complete agent_starter/ "
+            "directory with proposed skills, architecture, runtime + model, "
+            "scaffolded code, eval seed, and judge harness."
+        ),
+    )
+    p.add_argument("--session-id", required=True,
+                   help="Discovery session id (sess_xxx). Must have been finalized first.")
+    p.add_argument("--output-dir", default=None,
+                   help="Optional output path. Default: agent_starter/<role_id_or_session_id>.")
+    p.add_argument("--prior-feedback", default=None,
+                   help="Optional path to a PriorIterationFeedback JSON file (Loop 2 — re-running with builder feedback).")
 
     args = parser.parse_args()
     asyncio.run(_async_main(args))

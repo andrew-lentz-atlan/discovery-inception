@@ -357,6 +357,170 @@ async def tool_finalize_discovery_session(session_id: str) -> dict[str, Any]:
     }
 
 
+async def tool_run_inception(
+    session_id: str,
+    output_dir: str | None = None,
+    prior_feedback_path: str | None = None,
+) -> dict[str, Any]:
+    """Run the inception pipeline against a finalized discovery session.
+
+    Auto-resolves spec.md from sessions/<id>/spec.md and role-context from
+    skills/<role_id>/context.json (or stubs a minimal RoleContext when the
+    session has no role_id). Defaults --output-dir to
+    agent_starter/<role_id_or_session_id>.
+
+    `prior_feedback_path` (optional) points to a JSON file matching the
+    PriorIterationFeedback schema — used for re-runs against builder
+    feedback (Loop 2).
+    """
+    from agent.inception.run import run_inception
+    from agent.inception.schemas import PriorIterationFeedback
+
+    session_dir = SESSIONS_DIR / session_id
+    spec_md_path = session_dir / "spec.md"
+    session_json_path = session_dir / "session.json"
+
+    if not spec_md_path.exists():
+        return {
+            "ok": False,
+            "error": (
+                f"spec.md not found at {spec_md_path}. Run "
+                f"`finalize_discovery_session(session_id='{session_id}')` first — "
+                f"inception consumes the finalized spec."
+            ),
+        }
+    if not session_json_path.exists():
+        return {
+            "ok": False,
+            "error": f"session.json not found at {session_json_path}",
+        }
+
+    raw_session = json.loads(session_json_path.read_text())
+    spec = raw_session.get("spec", {})
+    role_id = spec.get("role_id")
+    use_case_seed = spec.get("use_case_seed", "(use case unspecified)")
+
+    # Resolve the role context. Three cases:
+    #   1. session has role_id + context.json exists → use it (priors path)
+    #   2. session has role_id but context.json missing → stub + warn
+    #   3. session has no role_id (ingested w/o --role-id, or interview-only) → stub
+    role_context_source = "stub"
+    if role_id:
+        rc_path = SKILLS_DIR / role_id / "context.json"
+        if rc_path.exists():
+            role_context_json = rc_path.read_text()
+            role_context_source = f"skills/{role_id}/context.json"
+        else:
+            role_context_json = _stub_role_context_json(use_case_seed)
+            role_context_source = f"stub (role_id={role_id!r} but no context.json found)"
+    else:
+        role_context_json = _stub_role_context_json(use_case_seed)
+        role_context_source = "stub (session has no role_id)"
+
+    # Default output_dir
+    if output_dir is None:
+        slug = role_id or f"session_{session_id}"
+        output_dir = str(PROJECT_ROOT / "agent_starter" / slug)
+
+    # Optional prior feedback
+    prior_feedback: PriorIterationFeedback | None = None
+    if prior_feedback_path:
+        fb_path = Path(prior_feedback_path).resolve()
+        if not fb_path.exists():
+            return {
+                "ok": False,
+                "error": f"prior_feedback_path not found: {fb_path}",
+            }
+        try:
+            prior_feedback = PriorIterationFeedback.model_validate_json(fb_path.read_text())
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error": f"prior_feedback JSON didn't match schema: {exc}",
+            }
+
+    spec_md = spec_md_path.read_text()
+    result = await run_inception(
+        spec_md=spec_md,
+        role_context_json=role_context_json,
+        output_dir=Path(output_dir),
+        prior_feedback=prior_feedback,
+    )
+
+    summary: dict[str, Any] = {
+        "ok": True,
+        "session_id": session_id,
+        "role_context_source": role_context_source,
+        "output_dir": output_dir,
+    }
+    if "classification" in result:
+        c = result["classification"]
+        summary["workload"] = (
+            f"{c.get('interaction_shape')} / "
+            f"{c.get('decision_complexity')} / "
+            f"{c.get('data_intensity')}"
+        )
+    if "architecture_proposal" in result:
+        summary["architecture"] = result["architecture_proposal"].get("selected_pattern_slug")
+    if "runtime_proposal" in result:
+        r = result["runtime_proposal"]
+        summary["runtime"] = f"{r.get('selected_runtime')} + {r.get('selected_model_family')}"
+    if result.get("scaffold_output"):
+        s = result["scaffold_output"]
+        judge_err = s.get("judge_generation_error")
+        summary["scaffold"] = {
+            "output_dir": s.get("output_dir"),
+            "n_skills_written": len(s.get("skills_written") or []),
+            "files": [
+                "orchestrator.py",
+                "design_rationale.md",
+                "skills/<name>/SKILL.md (one per skill)",
+                "eval/questions.json",
+                "eval/judge.py" + (" (STUB — generation failed; see file for details)" if judge_err else ""),
+            ],
+        }
+        if judge_err:
+            summary["warnings"] = [
+                f"Step 5e (LLM-as-judge harness generation) failed: {judge_err[:200]}. "
+                "Wrote a stub eval/judge.py with the failure recorded; re-run "
+                "inception to retry, or write a judge by hand against eval/questions.json."
+            ]
+    return summary
+
+
+def _stub_role_context_json(use_case_seed: str) -> str:
+    """Build a minimal RoleContext JSON for sessions without explicit priors.
+
+    The inception pipeline expects a RoleContext to read role_name +
+    role_summary at minimum. When discovery was run without priors (no
+    --role-id on ingest, or interview-only mode), we synthesize a stub
+    from the use_case_seed so inception still runs — degraded but functional.
+
+    A real priors run via `generate-priors` is always going to produce a
+    better starter; the stub just keeps the pipeline from refusing to start.
+    """
+    stub = {
+        "role_name": "(unspecified)",
+        "role_summary": (
+            f"No RoleContext priors were generated for this discovery session. "
+            f"Use case: {use_case_seed}. Inception is running with a stub — "
+            f"recommend re-running with explicit priors for richer scaffolding."
+        ),
+        "primary_outcomes": [],
+        "typical_workflows": [],
+        "decision_criteria": [],
+        "escalation_paths": [],
+        "domain_vocabulary": {},
+        "common_edge_cases": [],
+        "unwritten_rules": [],
+        "confidence_per_field": {},
+        "flagged_unknowns": [],
+        "source_artifacts": [],
+        "target_use_case": use_case_seed,
+    }
+    return json.dumps(stub, indent=2)
+
+
 async def tool_ingest_artifacts(
     use_case_seed: str,
     artifact_paths: list[str],
@@ -735,6 +899,44 @@ async def list_tools() -> list[types.Tool]:
             description="List existing discovery sessions on disk — useful for resuming or inspecting prior runs.",
             inputSchema={"type": "object", "properties": {}},
         ),
+        types.Tool(
+            name="run_inception",
+            description=(
+                "**The second half of the product.** Turn a finalized "
+                "discovery spec into a starter agent design — proposed "
+                "skills, selected architecture (single-agent ReAct vs "
+                "chained pipeline vs adversarial decomposition), runtime + "
+                "model selection, scaffolded code (orchestrator.py, "
+                "skills/<name>/SKILL.md, design_rationale.md, eval seed, "
+                "judge harness). Six sub-agents run end-to-end; takes "
+                "3-5 minutes.\n\n"
+                "Auto-resolves spec.md from sessions/<id>/spec.md and the "
+                "RoleContext from skills/<role_id>/context.json (or stubs a "
+                "minimal one if the session has no priors). Output lands at "
+                "agent_starter/<role_id_or_session_id>/ unless overridden.\n\n"
+                "Call after finalize_discovery_session. Returns workload "
+                "classification, selected architecture + runtime + model, "
+                "and the scaffold output paths the user can open."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "description": "Discovery session id (sess_xxx). Must have been finalized first.",
+                    },
+                    "output_dir": {
+                        "type": "string",
+                        "description": "Optional override for where to write agent_starter/. Default: agent_starter/<role_id_or_session_id>.",
+                    },
+                    "prior_feedback_path": {
+                        "type": "string",
+                        "description": "Optional path to a PriorIterationFeedback JSON file (Loop 2 — re-running inception with builder feedback).",
+                    },
+                },
+                "required": ["session_id"],
+            },
+        ),
     ]
 
 
@@ -759,6 +961,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
             result = await tool_finalize_discovery_session(**arguments)
         elif name == "list_sessions":
             result = tool_list_sessions()
+        elif name == "run_inception":
+            result = await tool_run_inception(**arguments)
         else:
             result = {"ok": False, "error": f"unknown tool: {name}"}
     except Exception as exc:
