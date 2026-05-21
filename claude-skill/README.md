@@ -1,22 +1,31 @@
 # Claude skill — discovery-inception setup + test
 
-A one-file skill colleagues can drop into their Claude installation to test discovery-inception without reading any docs. The skill itself handles clone, deps, credentials, and drives the discovery interview turn-by-turn.
+A one-file skill colleagues drop into their Claude installation to test discovery-inception without reading any docs. The skill handles clone, deps, credentials, multi-artifact ingest, chat-fill of known gaps, and optional live interview for the gaps that need a real customer answer.
 
 ## What it does
 
-When a user invokes the skill (e.g., *"test discovery-inception for a churn-prediction agent at FinCo"*), Claude:
+When a user invokes the skill (e.g., *"test discovery-inception — I've got two call transcripts and a runbook for a renewal-risk agent"*), Claude:
 
 1. Looks for an existing clone of the repo, OR clones it fresh to a path of the user's choice
 2. Runs `uv sync` for dependencies
-3. Checks for `.env` with LiteLLM creds, prompts the user if missing
-4. Captures the use case and optionally an artifact (JD/runbook/transcript) for priors
-5. Generates priors (`agent.cli generate-priors`) if an artifact was provided
-6. Starts a discovery session (`agent.cli start-session`)
-7. Loops: relays the user's customer message → invokes the agent → shows the response → asks for the next message
-8. On the user's "wrap up" signal, runs the deterministic close-out synthesis and exports `spec.md` + `spec.json`
-9. Surfaces the rendered spec and asks for feedback
+3. Checks for `.env` with LiteLLM creds; prompts if missing
+4. Captures the use case + collects artifacts (any combination of transcripts, runbooks, JDs, slack threads, docs)
+5. Runs **multi-artifact ingest** (`agent.cli ingest`) — produces a populated `DiscoverySession` with facts captured + a `gap_list.md` the FDE acts on
+6. Walks the user through closing the gaps in whichever mode fits each gap:
+   - **Chat-fill** (`submit-turn --no-probe`) — FDE answers a known gap; fast (~5s); no follow-up question generated
+   - **Interview** (`submit-turn`) — FDE plays customer for gaps that need a real answer; ~15s/turn; mega-agent produces the next probe
+7. On the user's "wrap up" signal, runs the deterministic close-out synthesis and exports `spec.md` + `spec.json`
+8. Surfaces the rendered spec and asks for feedback
 
-The user plays customer; the discovery agent plays the FDE interviewer.
+## Why artifact-first
+
+Most real flows start with *something* — a call transcript, a runbook, an internal doc. Discovery-as-interview is still here as the fallback mode for when the user truly has nothing, but the first-class path is now:
+
+```
+artifacts → ingest → gap_list.md → chat-fill known gaps → interview unknown gaps → spec.md
+```
+
+The chat-fill mode is the load-bearing UX win. An FDE who was on the call knows the answer to most gaps. Chat-fill captures their answer as fact (the FDE's job is to decide what's fact) without making them ask the customer or play a fake interview turn.
 
 ## Installation (for a colleague trying it for the first time)
 
@@ -41,11 +50,15 @@ Just say to Claude:
 
 > Use the discovery-inception skill — I want to test it for [describe your use case].
 
-Claude takes it from there. The skill handles credential setup the first time; subsequent invocations skip the setup phase.
+If you have artifacts in hand, mention them up front — the skill will treat ingest as the first move:
 
-If you also want an artifact ingested for priors, include it (or a path to a file) in your initial message:
+> Use the discovery-inception skill — I've got a transcript from yesterday's scoping call with FinCo about a renewal-risk agent, plus our CSM team runbook. Want to turn those into a spec.
 
-> Use the discovery-inception skill — I want to test it for a renewal-risk agent for our CSM team at FinCo. Here's our internal CSM role description: [paste a few paragraphs].
+Or, if you genuinely have nothing:
+
+> Use the discovery-inception skill — I want to do a fresh interview for a SoCo agent at TechCo. No artifacts, just the use case.
+
+The skill picks up from there.
 
 ## What this is NOT
 

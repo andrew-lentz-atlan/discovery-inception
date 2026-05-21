@@ -2,9 +2,17 @@
 
 A two-stage agent system for **building other agents**.
 
-**Discovery** extracts tacit context from a customer (or an artifact, or a transcript) into a structured spec. **Inception** turns that spec into a starter agent design — proposed skills, architecture, runtime, scaffolded code. The goal isn't to ship a 100/100 agent on the first pass; it's to compress the human builder's iteration time from weeks to days by giving them a defensible candidate to react to.
+**Discovery** turns unstructured customer context — call transcripts, runbooks, docs, slack threads, optionally a live conversation — into a structured spec. **Inception** turns that spec into a starter agent design — proposed skills, architecture, runtime, scaffolded code. The goal isn't to ship a 100/100 agent on the first pass; it's to compress the human builder's iteration time from weeks to days by giving them a defensible candidate to react to.
 
 The project is the top-down complement to bottom-up tools (metadata scans, RAG, descriptions). Bottom-up tools see what's already documented. Discovery-inception extracts the part that lives only in senior practitioners' heads — decision rules, anti-goals, unwritten patterns — and turns it into something an agent can read.
+
+## How most people use it
+
+```
+artifacts → ingest → gap_list.md → chat-fill known gaps → (optional) interview for unknown gaps → spec.md
+```
+
+Most flows start with *something*: a Granola call summary, a runbook excerpt, an internal scoping doc. The artifact-first ingest pipeline runs intake + fact extraction in parallel across all artifacts you hand it, produces a populated session, and writes a `gap_list.md` showing exactly what's covered and what's still missing. The FDE chat-fills gaps they know the answer to (~5s/fact); the interview-mode discovery agent handles the gaps that need a real customer answer (~15s/turn). Hybrid flows are the common case.
 
 ## Try it (one curl)
 
@@ -13,10 +21,37 @@ curl -fsSL https://raw.githubusercontent.com/andrew-lentz-atlan/discovery-incept
     -o ~/.claude/skills/discovery-inception.md
 ```
 
-Restart Claude Code / Desktop, then: *"Use the discovery-inception skill — I want to test it for a renewal-risk agent for our CSM team at FinCo."* Claude clones the repo, sets up dependencies, drives the discovery interview turn-by-turn, exports `spec.md`.
+Restart Claude Code / Desktop. Then either:
+
+> *"Use the discovery-inception skill — I've got a transcript from yesterday's scoping call with FinCo about a renewal-risk agent. Want to turn it into a spec."*
+
+> *"Use the discovery-inception skill — I want to do a fresh interview for a SoCo agent at TechCo. No artifacts, just the use case."*
+
+Claude clones the repo, installs deps, ingests the artifacts (or starts a fresh interview), drives the gap-fill loop, exports `spec.md`.
+
+## Try it (terminal, no Claude)
+
+```bash
+git clone https://github.com/andrew-lentz-atlan/discovery-inception.git
+cd discovery-inception && uv sync && cp .env.example .env  # add LiteLLM creds
+
+# Artifact-first (recommended)
+uv run python -m agent.cli ingest \
+    --use-case-seed "your use case in one line" \
+    --artifact /path/to/call-transcript.txt \
+    --artifact /path/to/runbook.md \
+    --role-id your-role-slug
+
+# Then read gap_list.md, chat-fill answers you know:
+uv run python -m agent.cli submit-turn --no-probe \
+    --session-id sess_xxx \
+    --message "<your answer phrased as if the customer said it>"
+
+# Or interview-only mode if you have nothing in hand:
+uv run python -m agent.cli start-session --use-case-seed "..."
+```
 
 For ongoing use across many sessions: install the MCP server (see [`agent/mcp_server/README.md`](agent/mcp_server/README.md)).
-For terminal / scripting: CLI via `agent/cli.py`.
 
 ## Pipeline
 

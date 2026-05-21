@@ -16,7 +16,9 @@ The forward direction for discovery-inception. What's shipped, what's coming nex
 | **Intra-session feedback** | Inception accepts `--prior-feedback` so builder feedback on a starter becomes constraints for the next iteration. |
 | **Discovery technical thread** | Discovery now probes a parallel thread on tech stack / data sources / semantic layer / runtime target / governance / data freshness / identity model alongside the conceptual checklist. `spec.md` renders the two threads in separate sections; the inception pipeline consumes the technical half. |
 | **Atlan context integration** | Read-side: discovery primes the mega-agent with the customer's established Atlan context (glossary terms, table schemas, lineage, ownership, governance tags, business domains) at session start. Cataloged definitions land authoritative in the prompt; the technical thread skips what's already known. Graceful degradation when Atlan is unavailable. CLI: `--atlan-tenant`, `--atlan-glossary`, `--atlan-tables`, `--atlan-domains`. |
-| **Distribution surfaces** | Installable Claude skill (one curl), MCP server runtime, headless CLI. |
+| **Artifact-first ingest pipeline** | Multi-artifact intake + fact extraction in one command. Hand it N call transcripts / runbooks / docs; it runs intake + fact extraction in parallel per artifact, merges into one `RoleContext`, populates a `DiscoverySession` with captured facts, and writes a `gap_list.md` the FDE acts on. CLI: `agent.cli ingest --artifact A.txt --artifact B.md ...`. |
+| **FDE chat-fill mode** | `submit-turn --no-probe` skips the mega-agent's follow-up question while still capturing the FDE's answer as a fact (~3x faster, ~70% cheaper). Designed for closing gaps from `gap_list.md` that the FDE already knows the answer to. |
+| **Distribution surfaces** | Installable Claude skill (artifact-first flow, one curl), MCP server runtime, headless CLI. |
 
 ---
 
