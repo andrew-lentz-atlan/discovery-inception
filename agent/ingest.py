@@ -92,15 +92,26 @@ MAX_FACTS_PER_ARTIFACT = 50
 async def run_intake_all(
     artifact_paths: list[Path],
     use_case_seed: str | None,
-) -> list[RoleContext]:
+) -> tuple[list[RoleContext], list[tuple[Path, str]]]:
     """Run intake.run_intake on each artifact in parallel.
+
+    Per-artifact failures are tolerated — non-role-shaped artifacts
+    (knowledge-graph schemas, sample data files, dashboards) often have
+    nothing for intake to extract and surface as empty `{}` JSON that
+    fails Pydantic validation. Those failures must NOT crash the whole
+    multi-artifact ingest; fact extraction may still succeed on the
+    same artifacts (they're rich in technical-thread facts even when
+    they have no role-level structure).
+
+    Returns (successful_contexts, failures) where failures is a list of
+    (path, error_summary) for caller-side logging.
 
     use_case_seed is propagated as the `--use-case` orientation to each
     artifact's intake call — keeps the role extractor anchored on the agent
     being built rather than drifting to the role most named in each file.
     """
     if not artifact_paths:
-        return []
+        return [], []
 
     async def _one(path: Path) -> RoleContext:
         text = path.read_text()
@@ -110,7 +121,18 @@ async def run_intake_all(
             use_case=use_case_seed,
         )
 
-    return await asyncio.gather(*[_one(p) for p in artifact_paths])
+    results = await asyncio.gather(
+        *[_one(p) for p in artifact_paths],
+        return_exceptions=True,
+    )
+    successes: list[RoleContext] = []
+    failures: list[tuple[Path, str]] = []
+    for path, result in zip(artifact_paths, results):
+        if isinstance(result, BaseException):
+            failures.append((path, f"{type(result).__name__}: {str(result)[:200]}"))
+        else:
+            successes.append(result)
+    return successes, failures
 
 
 # ---------------------------------------------------------------------------
@@ -265,15 +287,30 @@ async def extract_facts_all(
     client: AsyncOpenAI,
     artifact_paths: list[Path],
     use_case_seed: str,
-) -> list[tuple[Path, list[DistilledFact]]]:
-    """Extract facts from each artifact in parallel; preserve source pairing."""
+) -> tuple[list[tuple[Path, list[DistilledFact]]], list[tuple[Path, str]]]:
+    """Extract facts from each artifact in parallel; tolerate per-artifact failures.
+
+    Same resilience pattern as run_intake_all — one artifact's extraction
+    failing must not block the others. Returns (successes, failures).
+    """
 
     async def _one(path: Path) -> tuple[Path, list[DistilledFact]]:
         text = path.read_text()
         result = await extract_facts_from_artifact(client, text, use_case_seed)
         return (path, result.facts)
 
-    return await asyncio.gather(*[_one(p) for p in artifact_paths])
+    results = await asyncio.gather(
+        *[_one(p) for p in artifact_paths],
+        return_exceptions=True,
+    )
+    successes: list[tuple[Path, list[DistilledFact]]] = []
+    failures: list[tuple[Path, str]] = []
+    for path, result in zip(artifact_paths, results):
+        if isinstance(result, BaseException):
+            failures.append((path, f"{type(result).__name__}: {str(result)[:200]}"))
+        else:
+            successes.append(result)
+    return successes, failures
 
 
 # ---------------------------------------------------------------------------
@@ -523,9 +560,19 @@ async def run_ingest(
     client = AsyncOpenAI(base_url=client_base_url, api_key=client_api_key)
 
     try:
-        # Step 1: intake on each artifact (parallel).
+        # Step 1: intake on each artifact (parallel; per-artifact failures
+        # are tolerated — non-role-shaped artifacts often have nothing to
+        # extract and shouldn't tank the run).
         print(f"→ Step 1: intake on {len(artifact_paths)} artifact(s) (parallel)...")
-        role_contexts = await run_intake_all(artifact_paths, use_case_seed)
+        role_contexts, intake_failures = await run_intake_all(artifact_paths, use_case_seed)
+        if intake_failures:
+            print(
+                f"   ! {len(intake_failures)} of {len(artifact_paths)} artifact(s) "
+                f"didn't produce a role context (not role-shaped, or extraction "
+                f"failed). Fact extraction still runs on them."
+            )
+            for path, err in intake_failures:
+                print(f"     - {path.name}: {err[:120]}")
 
         # Step 2: merge.
         merged = (
@@ -540,14 +587,20 @@ async def run_ingest(
                 f"{len(merged.unwritten_rules)} unwritten rules, "
                 f"{len(merged.flagged_unknowns)} flagged unknowns."
             )
+        else:
+            print("   no role contexts produced — proceeding with stub priors.")
 
-        # Step 3: fact extraction (parallel).
+        # Step 3: fact extraction (parallel; same per-artifact tolerance).
         print(f"→ Step 2: fact extraction on {len(artifact_paths)} artifact(s) (parallel)...")
-        facts_per_artifact = await extract_facts_all(
+        facts_per_artifact, fact_failures = await extract_facts_all(
             client, artifact_paths, use_case_seed
         )
         total_facts = sum(len(f) for _, f in facts_per_artifact)
-        print(f"   {total_facts} fact(s) extracted across all artifacts.")
+        print(f"   {total_facts} fact(s) extracted across {len(facts_per_artifact)} artifact(s).")
+        if fact_failures:
+            print(f"   ! {len(fact_failures)} artifact(s) failed fact extraction:")
+            for path, err in fact_failures:
+                print(f"     - {path.name}: {err[:120]}")
 
         # Step 4: build the session + record facts.
         print("→ Step 3: building session + recording facts...")
@@ -581,12 +634,14 @@ async def run_ingest(
 
         (session_dir / "spec.md").write_text(_render_spec_markdown(session))
 
-        return {
+        response: dict[str, Any] = {
             "ok": True,
             "session_id": session.session_id,
             "use_case_seed": use_case_seed,
             "role_id": role_id,
             "n_artifacts": len(artifact_paths),
+            "n_artifacts_intake_succeeded": len(role_contexts),
+            "n_artifacts_facts_succeeded": len(facts_per_artifact),
             "n_facts_captured": total_facts,
             "n_topics_covered": len({t.topic for t in session.spec.topics}),
             "n_flagged_unknowns": len(session.spec.gaps),
@@ -598,6 +653,17 @@ async def run_ingest(
                 f"Chat-fill answers via submit-turn, or run discovery against the gaps."
             ),
         }
+        if intake_failures or fact_failures:
+            response["warnings"] = []
+            for path, err in intake_failures:
+                response["warnings"].append(
+                    f"intake skipped on {path.name}: {err[:200]}"
+                )
+            for path, err in fact_failures:
+                response["warnings"].append(
+                    f"fact extraction failed on {path.name}: {err[:200]}"
+                )
+        return response
     finally:
         await client.close()
 

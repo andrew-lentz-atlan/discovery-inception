@@ -120,8 +120,20 @@ async def call_step(
     output_model: type[BaseModel],
     max_tokens: int = 4096,
     temperature: float = 0.2,
+    max_retries: int = 3,
 ) -> BaseModel:
-    """One LLM call → validated Pydantic instance.
+    """One LLM call → validated Pydantic instance, with retry/backoff.
+
+    Retries on the failure modes we actually see in the wild:
+      - empty response from the proxy (sporadic LiteLLM hiccup)
+      - response truncated mid-string (finish_reason='length' — we
+        automatically bump max_tokens on the retry so it can fit)
+      - malformed JSON
+      - parses-as-JSON but doesn't match the schema (rare with Claude
+        but still possible)
+
+    Bias is toward shipping a result rather than tanking the whole ingest
+    on one transient hiccup. Three attempts; backoff is 0.75s × attempt.
 
     Note on response_format: we deliberately do NOT pass
     `response_format={"type": "json_object"}`. When LiteLLM proxies that
@@ -131,47 +143,68 @@ async def call_step(
     needing the structured-output flag — keep the prompt strict and
     parse with our existing fence-tolerant JSON parser.
     """
-    response = await client.chat.completions.create(
-        model=MODEL,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You produce JSON output exactly as instructed by the user. "
-                    "Output only the JSON object — no prose, no markdown fences, "
-                    "no preamble or commentary. Begin your response with `{` and "
-                    "end with `}`."
-                ),
-            },
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    raw = response.choices[0].message.content or ""
+    last_error: Exception | None = None
+    current_max_tokens = max_tokens
 
-    if not raw.strip():
-        raise ValueError(
-            f"{output_model.__name__}: empty response from model. "
-            f"finish_reason={response.choices[0].finish_reason!r}"
+    for attempt in range(max_retries + 1):
+        if attempt > 0:
+            await asyncio.sleep(0.75 * attempt)
+        response = await client.chat.completions.create(
+            model=MODEL,
+            max_tokens=current_max_tokens,
+            temperature=temperature,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You produce JSON output exactly as instructed by the user. "
+                        "Output only the JSON object — no prose, no markdown fences, "
+                        "no preamble or commentary. Begin your response with `{` and "
+                        "end with `}`."
+                    ),
+                },
+                {"role": "user", "content": user_prompt},
+            ],
         )
+        raw = response.choices[0].message.content or ""
+        finish_reason = response.choices[0].finish_reason
 
-    try:
-        data = parse_json_response(raw)
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{output_model.__name__}: could not parse JSON — {exc}\n"
-            f"Raw content (first 1200 chars):\n{raw[:1200]}"
-        ) from exc
+        if not raw.strip():
+            last_error = ValueError(
+                f"{output_model.__name__}: empty response on attempt {attempt+1} "
+                f"(finish_reason={finish_reason!r})"
+            )
+            continue
 
-    try:
-        return output_model.model_validate(data)
-    except Exception as exc:
-        raise ValueError(
-            f"{output_model.__name__}: parsed JSON but validation failed — {exc}\n"
-            f"Parsed JSON: {json.dumps(data, indent=2)[:1200]}\n"
-            f"Raw content (first 1200 chars):\n{raw[:1200]}"
-        ) from exc
+        # Truncation detection: if the proxy returned finish_reason='length' OR
+        # the JSON parse fails AND we have headroom, bump tokens and retry.
+        try:
+            data = parse_json_response(raw)
+        except json.JSONDecodeError as exc:
+            last_error = ValueError(
+                f"{output_model.__name__}: could not parse JSON on attempt {attempt+1} "
+                f"(finish_reason={finish_reason!r}) — {exc}\n"
+                f"Raw content (first 600 chars):\n{raw[:600]}"
+            )
+            if finish_reason == "length" and current_max_tokens < 16384:
+                current_max_tokens = min(current_max_tokens * 2, 16384)
+            continue
+
+        try:
+            return output_model.model_validate(data)
+        except Exception as exc:
+            last_error = ValueError(
+                f"{output_model.__name__}: parsed JSON but validation failed on "
+                f"attempt {attempt+1} — {exc}\n"
+                f"Parsed JSON: {json.dumps(data, indent=2)[:600]}"
+            )
+            continue
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError(
+        f"{output_model.__name__}: unreachable — exhausted retries with no error"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +231,7 @@ async def step_extract(
         USE_CASE_CONTEXT=use_case_orientation(use_case),
     )
     return await call_step(
-        client, user_prompt=prompt, output_model=ExtractionResult, max_tokens=6000
+        client, user_prompt=prompt, output_model=ExtractionResult, max_tokens=8192
     )
 
 
@@ -211,7 +244,7 @@ async def step_normalize_vocabulary(
         EXTRACTION_JSON=extraction.model_dump_json(indent=2),
     )
     return await call_step(
-        client, user_prompt=prompt, output_model=VocabularyResult, max_tokens=3000
+        client, user_prompt=prompt, output_model=VocabularyResult, max_tokens=8192
     )
 
 
