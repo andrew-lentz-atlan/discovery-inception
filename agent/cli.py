@@ -9,6 +9,14 @@ Subcommands match the MCP tool names so the skill can drop in either
 transport.
 
 Usage:
+    # Artifact-first (recommended) — ingest call transcripts + docs first;
+    # produces a populated spec + gap_list.md the FDE acts on.
+    uv run python -m agent.cli ingest \\
+        --use-case-seed "build SoCo agent for onboarding at TechCo" \\
+        --artifact intake/sources/call-transcript.txt \\
+        --artifact intake/sources/runbook.md \\
+        --role-id soco-techco
+
     uv run python -m agent.cli list-priors
     uv run python -m agent.cli generate-priors \\
         --role-id soco-tc \\
@@ -45,6 +53,7 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(PROJECT_ROOT / ".env")
 
+from agent.ingest import run_ingest  # noqa: E402
 from agent.mcp_server.server import (  # noqa: E402
     tool_generate_priors,
     tool_list_priors,
@@ -76,7 +85,13 @@ def _read_artifact(args: argparse.Namespace) -> str:
 async def _async_main(args: argparse.Namespace) -> None:
     try:
         cmd = args.command
-        if cmd == "generate-priors":
+        if cmd == "ingest":
+            result = await run_ingest(
+                use_case_seed=args.use_case_seed,
+                artifact_paths=[Path(p).resolve() for p in args.artifact],
+                role_id=args.role_id,
+            )
+        elif cmd == "generate-priors":
             text = _read_artifact(args)
             result = await tool_generate_priors(
                 artifact_text=text,
@@ -127,6 +142,22 @@ async def _async_main(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(prog="discovery-inception")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    # ingest — the artifact-first entry point (recommended)
+    p = sub.add_parser(
+        "ingest",
+        help=(
+            "Multi-artifact ingest: feed N artifacts (calls, docs, runbooks) → "
+            "produces a populated discovery session with facts captured + a "
+            "gap_list.md the FDE acts on. The recommended starting command."
+        ),
+    )
+    p.add_argument("--use-case-seed", required=True,
+                   help="One-line description of what the customer wants to build.")
+    p.add_argument("--artifact", action="append", required=True,
+                   help="Path to an artifact file. Repeat for multiple artifacts.")
+    p.add_argument("--role-id", default=None,
+                   help="Optional: slug for the merged RoleContext (written to skills/<role_id>/context.json).")
 
     # generate-priors
     p = sub.add_parser("generate-priors", help="Run intake on a customer artifact → RoleContext on disk")

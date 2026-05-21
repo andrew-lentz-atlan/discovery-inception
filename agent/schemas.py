@@ -439,3 +439,23 @@ class ChecklistResult(BaseModel):
     missing: ListOfStr = Field(
         default_factory=list, description="Human-readable list of failed criteria."
     )
+
+
+# ---------------------------------------------------------------------------
+# Multi-artifact ingest (fact extractor wrapper)
+# ---------------------------------------------------------------------------
+
+
+class FactExtractionResult(BaseModel):
+    """Output of the fact_extractor sub-agent over one artifact.
+
+    The model emits a list; we wrap it in a Pydantic object so the
+    structured-output extractor has a stable top-level shape (LiteLLM /
+    Claude-via-proxy is more reliable returning `{"facts": [...]}` than a
+    bare JSON array).
+    """
+
+    facts: list[DistilledFact] = Field(
+        default_factory=list,
+        description="One DistilledFact per atomic use-case fact in the artifact.",
+    )
