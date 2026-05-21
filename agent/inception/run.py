@@ -180,45 +180,79 @@ async def call_step(
     output_model: type[BaseModel],
     max_tokens: int = 2048,
     temperature: float = 0.2,
+    max_retries: int = 3,
 ) -> BaseModel:
-    response = await client.chat.completions.create(
-        model=MODEL,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You produce JSON output exactly as instructed by the user. "
-                    "Output only the JSON object — no prose, no markdown fences, "
-                    "no preamble or commentary. Begin your response with `{` and "
-                    "end with `}`."
-                ),
-            },
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-    raw = response.choices[0].message.content or ""
-    if not raw.strip():
-        raise ValueError(
-            f"{output_model.__name__}: empty response from model. "
-            f"finish_reason={response.choices[0].finish_reason!r}"
+    """One LLM call → validated Pydantic instance, with retry/backoff.
+
+    Critical for scaffold_writer steps (OrchestratorStub, SkillMdContent,
+    DesignRationale, JudgeHarness) which embed Python source as JSON-
+    escaped strings — verbose, occasionally exceeds the configured
+    max_tokens, and truncates mid-string. When that happens we detect
+    `finish_reason == 'length'` and double max_tokens for the retry
+    (capped at 24576 so a single call can't run away). The same logic
+    handles transient empty responses and malformed JSON.
+
+    Three attempts total; 0.75s × attempt backoff.
+    """
+    last_error: Exception | None = None
+    current_max_tokens = max_tokens
+
+    for attempt in range(max_retries + 1):
+        if attempt > 0:
+            await asyncio.sleep(0.75 * attempt)
+        response = await client.chat.completions.create(
+            model=MODEL,
+            max_tokens=current_max_tokens,
+            temperature=temperature,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You produce JSON output exactly as instructed by the user. "
+                        "Output only the JSON object — no prose, no markdown fences, "
+                        "no preamble or commentary. Begin your response with `{` and "
+                        "end with `}`."
+                    ),
+                },
+                {"role": "user", "content": user_prompt},
+            ],
         )
-    try:
-        data = parse_json_response(raw)
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"{output_model.__name__}: could not parse JSON — {exc}\n"
-            f"Raw content (first 1200 chars):\n{raw[:1200]}"
-        ) from exc
-    try:
-        return output_model.model_validate(data)
-    except Exception as exc:
-        raise ValueError(
-            f"{output_model.__name__}: parsed JSON but validation failed — {exc}\n"
-            f"Parsed JSON: {json.dumps(data, indent=2)[:1200]}\n"
-            f"Raw content (first 1200 chars):\n{raw[:1200]}"
-        ) from exc
+        raw = response.choices[0].message.content or ""
+        finish_reason = response.choices[0].finish_reason
+
+        if not raw.strip():
+            last_error = ValueError(
+                f"{output_model.__name__}: empty response on attempt {attempt+1} "
+                f"(finish_reason={finish_reason!r})"
+            )
+            continue
+        try:
+            data = parse_json_response(raw)
+        except json.JSONDecodeError as exc:
+            last_error = ValueError(
+                f"{output_model.__name__}: could not parse JSON on attempt {attempt+1} "
+                f"(finish_reason={finish_reason!r}) — {exc}\n"
+                f"Raw content (first 600 chars):\n{raw[:600]}"
+            )
+            # Truncation: bump max_tokens for the retry (cap at 24576).
+            if finish_reason == "length" and current_max_tokens < 24576:
+                current_max_tokens = min(current_max_tokens * 2, 24576)
+            continue
+        try:
+            return output_model.model_validate(data)
+        except Exception as exc:
+            last_error = ValueError(
+                f"{output_model.__name__}: parsed JSON but validation failed on "
+                f"attempt {attempt+1} — {exc}\n"
+                f"Parsed JSON: {json.dumps(data, indent=2)[:600]}"
+            )
+            continue
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError(
+        f"{output_model.__name__}: unreachable — exhausted retries with no error"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +419,7 @@ async def step_generate_orchestrator_stub(
         client,
         user_prompt=prompt,
         output_model=OrchestratorStub,
-        max_tokens=8192,  # Python source for N skills + imports + loop scaffold
+        max_tokens=12288,  # Python source for N skills + imports + loop scaffold. Embedded source as JSON string is verbose; call_step auto-bumps on truncation, but raising the floor saves a retry on real-world 6+ skill agents.
     )
 
 
@@ -496,84 +530,14 @@ async def step_scaffold_writer(
     (output_dir / "meta").mkdir(exist_ok=True)
     (output_dir / "eval").mkdir(exist_ok=True)
 
-    # ---- 1. Run 5a/5b/5c/5d in parallel (no inter-dependencies) ----
-    # 5e depends on 5d (eval seed), so it runs after this gather.
-    print(f"  [5a/5b/5c/5d] generating SKILL.md × {len(skills.skills)} + orchestrator + rationale + eval seed (parallel)...")
-    skill_md_tasks = [
-        step_generate_skill_md(client, skill, workload, architecture, runtime, role_context_json)
-        for skill in skills.skills
-    ]
-    results = await asyncio.gather(
-        asyncio.gather(*skill_md_tasks),
-        step_generate_orchestrator_stub(client, skills, architecture, runtime),
-        step_generate_design_rationale(client, workload, skills, architecture, runtime, spec_md),
-        step_generate_eval_seed(client, workload, skills, architecture, spec_md, role_context_json),
-    )
-    skill_md_results: list[SkillMdContent] = results[0]
-    stub: OrchestratorStub = results[1]
-    rationale: DesignRationale = results[2]
-    eval_seed: EvalSeed = results[3]
-
-    for content in skill_md_results:
-        skill_dir = output_dir / "skills" / content.skill_name
-        skill_dir.mkdir(exist_ok=True)
-        (skill_dir / "SKILL.md").write_text(content.skill_md)
-        print(f"       ✓ skills/{content.skill_name}/SKILL.md")
-
-    (output_dir / stub.filename).write_text(stub.orchestrator_py)
-    print(f"       ✓ {stub.filename} (imports: {len(stub.imports_needed)}, env vars: {len(stub.env_vars_needed)})")
-
-    (output_dir / "design_rationale.md").write_text(rationale.rationale_md)
-    print("       ✓ design_rationale.md")
-
-    (output_dir / "eval" / "questions.json").write_text(eval_seed.model_dump_json(indent=2))
-    print(f"       ✓ eval/questions.json ({len(eval_seed.questions)} seed questions)")
-
-    # ---- 2. judge harness (depends on eval_seed) ----
-    # Step 5e generates a multi-hundred-line Python file inside a JSON
-    # string field. The model occasionally emits triple-quotes (`"""`) inside
-    # the generated docstring without escaping them, which makes the
-    # structured-output parse fail. The rest of the scaffold is already on
-    # disk by this point — we degrade gracefully rather than tanking the
-    # whole run when 5e specifically fails. The builder can re-generate the
-    # judge harness in isolation or write one by hand against eval/questions.json.
-    judge: JudgeHarness | None = None
-    judge_error: str | None = None
-    print("  [5e] generating eval/judge.py (LLM-as-judge harness)...")
-    try:
-        judge = await step_generate_judge_harness(
-            client, workload, skills, runtime, eval_seed, role_context_json
-        )
-        (output_dir / "eval" / "judge.py").write_text(judge.judge_py)
-        print(
-            f"       ✓ eval/judge.py ({len(judge.dimensions)} scoring dimensions, "
-            f"judge model: {judge.judging_model_recommended})"
-        )
-    except Exception as exc:
-        judge_error = f"{type(exc).__name__}: {str(exc)[:300]}"
-        # Write a stub judge.py with a clear TODO so the builder sees what
-        # was supposed to be there + the eval/questions.json to score against.
-        stub_judge = (
-            '"""LLM-as-judge harness for this agent.\n\n'
-            "Auto-generation of this file failed during inception. The eval seed\n"
-            "(eval/questions.json) is still present and usable. To regenerate the\n"
-            "judge harness, re-run inception or write one by hand following the\n"
-            "pattern in patterns/skill-design/inner-pipeline.md §judge-harnesses.\n\n"
-            f"Failure: {judge_error}\n"
-            '"""\n\n'
-            "raise NotImplementedError(\n"
-            '    "Judge harness was not generated during scaffold. "\n'
-            '    "Regenerate via inception or implement by hand against eval/questions.json."\n'
-            ")\n"
-        )
-        (output_dir / "eval" / "judge.py").write_text(stub_judge)
-        print(
-            f"       ! eval/judge.py generation failed; wrote stub. Error: {judge_error[:120]}"
-        )
-        print("       (Steps 5a-5d landed cleanly; scaffold is otherwise complete.)")
-
-    # ---- 3. meta/ — deterministic copies of upstream Pydantic outputs ----
-    print("  [5*] writing meta/ artifacts (deterministic)...")
+    # ---- 0. Persist meta/ FIRST (deterministic; no LLM cost) ----
+    # The four upstream LLM steps' outputs (workload classification, skill
+    # proposal, architecture, runtime) are already computed by the time
+    # scaffold_writer runs. Dumping them to disk upfront means a downstream
+    # 5a–5d failure no longer wastes those four LLM calls — a retry can read
+    # them back, and even if no retry happens the FDE still has the four
+    # decision artifacts to work from.
+    print("  [5*] writing meta/ artifacts upfront (deterministic, pre-LLM)...")
     (output_dir / "meta" / "01_workload_classification.json").write_text(
         workload.model_dump_json(indent=2)
     )
@@ -588,9 +552,120 @@ async def step_scaffold_writer(
     )
     (output_dir / "meta" / "spec_consumed.md").write_text(spec_md)
     (output_dir / "meta" / "role_context_consumed.json").write_text(role_context_json)
-    print("       ✓ meta/ (6 artifacts)")
+    print("       ✓ meta/ (6 artifacts persisted before risky LLM steps)")
 
-    # ---- 5. starter README — deterministic, assembled from upstream + stub metadata ----
+    # ---- 1. Run 5a/5b/5c/5d in parallel; tolerate per-sub-step failures ----
+    # Without return_exceptions=True, any one sub-step failure (truncation on
+    # OrchestratorStub, JSON-escape glitch on SkillMdContent, etc.) tanks the
+    # whole parallel gather and we lose the successful outputs of the others.
+    # With it, each sub-step lands or fails independently; partial scaffolds
+    # are useful (skills/ written even if orchestrator.py failed, etc.) and
+    # the response surfaces what was missed.
+    print(f"  [5a/5b/5c/5d] generating SKILL.md × {len(skills.skills)} + orchestrator + rationale + eval seed (parallel)...")
+    skill_md_tasks = [
+        step_generate_skill_md(client, skill, workload, architecture, runtime, role_context_json)
+        for skill in skills.skills
+    ]
+    results = await asyncio.gather(
+        asyncio.gather(*skill_md_tasks, return_exceptions=True),
+        step_generate_orchestrator_stub(client, skills, architecture, runtime),
+        step_generate_design_rationale(client, workload, skills, architecture, runtime, spec_md),
+        step_generate_eval_seed(client, workload, skills, architecture, spec_md, role_context_json),
+        return_exceptions=True,
+    )
+
+    scaffold_errors: list[str] = []
+
+    # 5a — skill MDs (per-skill tolerance)
+    skill_md_results: list[SkillMdContent] = []
+    skill_md_raw = results[0]
+    if isinstance(skill_md_raw, BaseException):
+        scaffold_errors.append(f"all skill_md generation failed: {type(skill_md_raw).__name__}: {str(skill_md_raw)[:200]}")
+    else:
+        for skill_obj, content in zip(skills.skills, skill_md_raw):
+            if isinstance(content, BaseException):
+                scaffold_errors.append(
+                    f"skills/{skill_obj.name}/SKILL.md: {type(content).__name__}: {str(content)[:200]}"
+                )
+                continue
+            skill_md_results.append(content)
+            skill_dir = output_dir / "skills" / content.skill_name
+            skill_dir.mkdir(exist_ok=True)
+            (skill_dir / "SKILL.md").write_text(content.skill_md)
+            print(f"       ✓ skills/{content.skill_name}/SKILL.md")
+
+    # 5b — orchestrator stub
+    stub: OrchestratorStub | None = None
+    if isinstance(results[1], BaseException):
+        scaffold_errors.append(f"orchestrator.py: {type(results[1]).__name__}: {str(results[1])[:200]}")
+        _write_orchestrator_stub_fallback(output_dir, skills, architecture, runtime, str(results[1])[:300])
+        print("       ! orchestrator.py failed; wrote stub with TODO. See file for details.")
+    else:
+        stub = results[1]
+        (output_dir / stub.filename).write_text(stub.orchestrator_py)
+        print(f"       ✓ {stub.filename} (imports: {len(stub.imports_needed)}, env vars: {len(stub.env_vars_needed)})")
+
+    # 5c — design rationale
+    rationale: DesignRationale | None = None
+    if isinstance(results[2], BaseException):
+        scaffold_errors.append(f"design_rationale.md: {type(results[2]).__name__}: {str(results[2])[:200]}")
+        _write_design_rationale_fallback(output_dir, workload, skills, architecture, runtime, str(results[2])[:300])
+        print("       ! design_rationale.md failed; wrote stub aggregating upstream Pydantic outputs.")
+    else:
+        rationale = results[2]
+        (output_dir / "design_rationale.md").write_text(rationale.rationale_md)
+        print("       ✓ design_rationale.md")
+
+    # 5d — eval seed (judge harness depends on this)
+    eval_seed: EvalSeed | None = None
+    if isinstance(results[3], BaseException):
+        scaffold_errors.append(f"eval/questions.json: {type(results[3]).__name__}: {str(results[3])[:200]}")
+        print("       ! eval/questions.json failed; eval seed unavailable for judge harness.")
+    else:
+        eval_seed = results[3]
+        (output_dir / "eval" / "questions.json").write_text(eval_seed.model_dump_json(indent=2))
+        print(f"       ✓ eval/questions.json ({len(eval_seed.questions)} seed questions)")
+
+    # ---- 2. judge harness (depends on eval_seed; skipped if 5d failed) ----
+    judge: JudgeHarness | None = None
+    judge_error: str | None = None
+    if eval_seed is None:
+        judge_error = "skipped: step 5d (eval seed) failed; no eval_seed available"
+        print("  [5e] eval/judge.py SKIPPED (no eval seed from 5d; will need manual seed + judge).")
+        scaffold_errors.append("eval/judge.py: skipped because 5d eval seed failed")
+    else:
+        print("  [5e] generating eval/judge.py (LLM-as-judge harness)...")
+        try:
+            judge = await step_generate_judge_harness(
+                client, workload, skills, runtime, eval_seed, role_context_json
+            )
+            (output_dir / "eval" / "judge.py").write_text(judge.judge_py)
+            print(
+                f"       ✓ eval/judge.py ({len(judge.dimensions)} scoring dimensions, "
+                f"judge model: {judge.judging_model_recommended})"
+            )
+        except Exception as exc:
+            judge_error = f"{type(exc).__name__}: {str(exc)[:300]}"
+            stub_judge = (
+                '"""LLM-as-judge harness for this agent.\n\n'
+                "Auto-generation of this file failed during inception. The eval seed\n"
+                "(eval/questions.json) is still present and usable. To regenerate the\n"
+                "judge harness, re-run inception or write one by hand following the\n"
+                "pattern in patterns/skill-design/inner-pipeline.md §judge-harnesses.\n\n"
+                f"Failure: {judge_error}\n"
+                '"""\n\n'
+                "raise NotImplementedError(\n"
+                '    "Judge harness was not generated during scaffold. "\n'
+                '    "Regenerate via inception or implement by hand against eval/questions.json."\n'
+                ")\n"
+            )
+            (output_dir / "eval" / "judge.py").write_text(stub_judge)
+            scaffold_errors.append(f"eval/judge.py: {judge_error}")
+            print(
+                f"       ! eval/judge.py generation failed; wrote stub. Error: {judge_error[:120]}"
+            )
+
+    # ---- 3. starter README — deterministic, assembled from whatever landed ----
     print("  [5*] writing starter README.md...")
     readme = _starter_readme(
         skill_md_results=skill_md_results,
@@ -601,32 +676,131 @@ async def step_scaffold_writer(
     (output_dir / "README.md").write_text(readme)
     print("       ✓ README.md")
 
+    if scaffold_errors:
+        print()
+        print(f"  ! scaffold completed with {len(scaffold_errors)} non-fatal error(s):")
+        for err in scaffold_errors:
+            print(f"     - {err[:160]}")
+
     return {
         "output_dir": str(output_dir),
         "skills_written": [c.skill_name for c in skill_md_results],
-        "orchestrator_filename": stub.filename,
-        "imports_needed": stub.imports_needed,
-        "env_vars_needed": stub.env_vars_needed,
-        "rationale_length": len(rationale.rationale_md),
-        "eval_questions": len(eval_seed.questions),
+        "orchestrator_filename": stub.filename if stub else "(generation failed; see stub)",
+        "imports_needed": stub.imports_needed if stub else [],
+        "env_vars_needed": stub.env_vars_needed if stub else [],
+        "rationale_length": len(rationale.rationale_md) if rationale else 0,
+        "eval_questions": len(eval_seed.questions) if eval_seed else 0,
         "judge_dimensions": judge.dimensions if judge else [],
         "judge_generation_error": judge_error,  # None on success; str on graceful failure
+        "scaffold_errors": scaffold_errors,
         "meta_artifacts": 6,
     }
 
 
+def _write_orchestrator_stub_fallback(
+    output_dir: Path,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+    failure_reason: str,
+) -> None:
+    """Write an orchestrator.py stub when the LLM generation failed.
+
+    The stub is honest: it declares the architecture + runtime + skill list
+    in a docstring, raises NotImplementedError on import, and points at
+    meta/ for the structured upstream outputs the builder can re-fed into
+    a fresh inception run or use as the basis for hand-writing the loop.
+    """
+    skills_list = "\n".join(f"  - {s.name}: {s.purpose[:80]}" for s in skills.skills)
+    body = (
+        f'"""Orchestrator stub for this agent (LLM generation failed during inception).\n\n'
+        f"Selected architecture: {architecture.selected_pattern_slug}\n"
+        f"Selected runtime: {runtime.selected_runtime} + {runtime.selected_model_family}\n\n"
+        f"Proposed skills (see skills/<name>/SKILL.md for details where written):\n"
+        f"{skills_list}\n\n"
+        f"LLM-side generation of orchestrator.py failed in this run. Reasons in\n"
+        f"meta/04_runtime_proposal.json + meta/03_architecture_proposal.json should\n"
+        f"give a builder enough to hand-wire the orchestrator. To re-generate via\n"
+        f"the pipeline, re-run `agent.cli inception --session-id <sid>` — the meta/\n"
+        f"artifacts are already on disk, so only this step needs to retry.\n\n"
+        f"Failure detail: {failure_reason}\n"
+        f'"""\n\n'
+        f"raise NotImplementedError(\n"
+        f'    "Orchestrator stub generation failed during inception. "\n'
+        f'    "Re-run `agent.cli inception --session-id <sid>` or hand-wire from meta/."\n'
+        f")\n"
+    )
+    (output_dir / "orchestrator.py").write_text(body)
+
+
+def _write_design_rationale_fallback(
+    output_dir: Path,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    runtime: RuntimeProposal,
+    failure_reason: str,
+) -> None:
+    """Write a deterministic design_rationale.md from the upstream Pydantic
+    outputs when the LLM rationale generation failed. Lossier than the
+    LLM version but still substantive — captures the four decisions and
+    their rationale fields verbatim from the structured outputs.
+    """
+    parts = [
+        "# Design rationale (FALLBACK — LLM aggregation failed)\n",
+        "The narrative aggregation of the inception pipeline's decisions failed mid-run. ",
+        "This file is assembled deterministically from the four upstream Pydantic outputs. ",
+        "For richer prose, re-run inception (the meta/ artifacts are on disk, so a retry ",
+        "can pick up where this run failed).\n\n",
+        f"**Failure detail:** {failure_reason}\n\n",
+        "---\n\n",
+        "## Workload classification\n\n",
+        f"- Interaction shape: `{workload.interaction_shape}`\n",
+        f"- Latency sensitivity: `{workload.latency_sensitivity}`\n",
+        f"- Decision complexity: `{workload.decision_complexity}`\n",
+        f"- Data intensity: `{workload.data_intensity}`\n",
+        f"- Multi-step or single-step: `{workload.multi_step_or_single_step}`\n",
+        f"- State shape: `{workload.state_shape}`\n",
+        f"- Confidence: `{workload.confidence:.2f}`\n\n",
+        f"Rationale: {workload.rationale}\n\n",
+        "## Proposed skills\n\n",
+    ]
+    for s in skills.skills:
+        parts.append(f"### `{s.name}`\n\n")
+        parts.append(f"**Purpose:** {s.purpose}\n\n")
+        parts.append(f"**Type:** {s.skill_type}\n\n")
+    parts.append("## Architecture\n\n")
+    parts.append(f"- Pattern: `{architecture.selected_pattern_slug}`\n")
+    parts.append(f"- Rationale: {architecture.rationale}\n\n")
+    parts.append("## Runtime\n\n")
+    parts.append(f"- Runtime: `{runtime.selected_runtime}`\n")
+    parts.append(f"- Model: `{runtime.selected_model_family}`\n")
+    parts.append(f"- Rationale: {runtime.rationale}\n")
+    (output_dir / "design_rationale.md").write_text("".join(parts))
+
+
 def _starter_readme(
     skill_md_results: list[SkillMdContent],
-    stub: OrchestratorStub,
+    stub: OrchestratorStub | None,
     architecture: ArchitectureProposal,
     runtime: RuntimeProposal,
 ) -> str:
     """Deterministic README assembler. No LLM call — pure templating from upstream data."""
-    skills_list = "\n".join(
-        f"- `skills/{c.skill_name}/SKILL.md`" for c in skill_md_results
+    skills_list = (
+        "\n".join(f"- `skills/{c.skill_name}/SKILL.md`" for c in skill_md_results)
+        if skill_md_results
+        else "(skill generation failed — see scaffold_errors)"
     )
-    imports_list = "\n".join(f"- `{imp}`" for imp in stub.imports_needed) if stub.imports_needed else "(none listed)"
-    env_vars_list = "\n".join(f"- `{var}`" for var in stub.env_vars_needed) if stub.env_vars_needed else "(none listed)"
+    imports_list = (
+        "\n".join(f"- `{imp}`" for imp in stub.imports_needed)
+        if (stub and stub.imports_needed)
+        else "(none listed)"
+    )
+    env_vars_list = (
+        "\n".join(f"- `{var}`" for var in stub.env_vars_needed)
+        if (stub and stub.env_vars_needed)
+        else "(none listed)"
+    )
 
     return (
         f"# agent_starter/\n\n"
