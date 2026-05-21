@@ -144,6 +144,7 @@ async def _async_main(args: argparse.Namespace) -> None:
                 session_id=args.session_id,
                 output_dir=args.output_dir,
                 prior_feedback_path=args.prior_feedback,
+                force_fresh=args.force,
             )
         else:
             result = {"ok": False, "error": f"Unknown command: {cmd}"}
@@ -256,6 +257,8 @@ def main() -> None:
                    help="Optional output path. Default: agent_starter/<role_id_or_session_id>.")
     p.add_argument("--prior-feedback", default=None,
                    help="Optional path to a PriorIterationFeedback JSON file (Loop 2 — re-running with builder feedback).")
+    p.add_argument("--force", action="store_true",
+                   help="Ignore any meta/ checkpoint from a prior run and re-execute all 4 upstream LLM steps. Use when the spec has been re-finalized.")
 
     args = parser.parse_args()
     asyncio.run(_async_main(args))

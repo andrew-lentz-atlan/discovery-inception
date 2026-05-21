@@ -60,6 +60,27 @@ Respond with valid JSON. No prose outside the JSON.
 }
 ```
 
+### CRITICAL: JSON-string escaping rules for `judge_py`
+
+`judge_py` is a JSON string. Python source frequently contains characters that have special meaning in JSON. **All of these MUST be escaped properly**, or the JSON parse will fail and the whole step fails:
+
+- **Triple-quoted docstrings:** Python uses `"""..."""` for docstrings. Inside a JSON string, every `"` MUST be escaped. The model frequently forgets this for the OPENING `"""` and the JSON parse fails at line 2 col 22 every time. **Solution: do NOT emit Python docstrings using `"""` syntax. Use single-line `#` comments instead.** Comments render the same way for human readers and parse reliably. So write:
+  ```python
+  # LLM-as-judge harness for <agent_name>.
+  # Methodology: 5 dimensions, 0-20 each, total 0-100.
+  ```
+  NOT:
+  ```python
+  """LLM-as-judge harness for <agent_name>.
+  Methodology: 5 dimensions, 0-20 each, total 0-100.
+  """
+  ```
+- **Newlines:** Always `\n`, never raw line breaks.
+- **Internal double-quotes** (e.g., dict keys, string literals): always `\"`, never raw `"`.
+- **Backslashes** (e.g., regex patterns, escape sequences): always `\\`, never raw `\`.
+
+**Self-check before you emit:** does every `"` and `\` inside `judge_py` have a `\` in front of it? If you used `"""` anywhere, the JSON will break — switch those constructs to `#` comments.
+
 ## Inputs
 
 ### Workload classification (step 1)

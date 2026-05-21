@@ -361,6 +361,7 @@ async def tool_run_inception(
     session_id: str,
     output_dir: str | None = None,
     prior_feedback_path: str | None = None,
+    force_fresh: bool = False,
 ) -> dict[str, Any]:
     """Run the inception pipeline against a finalized discovery session.
 
@@ -369,9 +370,15 @@ async def tool_run_inception(
     session has no role_id). Defaults --output-dir to
     agent_starter/<role_id_or_session_id>.
 
+    Resume from checkpoint: if `output_dir/meta/` contains the 4 upstream
+    outputs from a previous (possibly partial) run, those steps are loaded
+    from disk and the LLM calls skipped. To force a fresh run (e.g., the
+    spec has been re-finalized), set `force_fresh=True`.
+
     `prior_feedback_path` (optional) points to a JSON file matching the
     PriorIterationFeedback schema — used for re-runs against builder
-    feedback (Loop 2).
+    feedback (Loop 2). Feedback runs always bypass the checkpoint cache
+    since the whole point is feeding feedback INTO the upstream steps.
     """
     from agent.inception.run import run_inception
     from agent.inception.schemas import PriorIterationFeedback
@@ -445,6 +452,7 @@ async def tool_run_inception(
         role_context_json=role_context_json,
         output_dir=Path(output_dir),
         prior_feedback=prior_feedback,
+        force_fresh=force_fresh,
     )
 
     summary: dict[str, Any] = {
@@ -932,6 +940,11 @@ async def list_tools() -> list[types.Tool]:
                     "prior_feedback_path": {
                         "type": "string",
                         "description": "Optional path to a PriorIterationFeedback JSON file (Loop 2 — re-running inception with builder feedback).",
+                    },
+                    "force_fresh": {
+                        "type": "boolean",
+                        "description": "Default false. If true, ignores any meta/ checkpoint from a prior run and re-executes all 4 upstream LLM steps. Use when the spec has been re-finalized since the last inception run.",
+                        "default": False,
                     },
                 },
                 "required": ["session_id"],

@@ -129,10 +129,29 @@ async def run_intake_all(
     failures: list[tuple[Path, str]] = []
     for path, result in zip(artifact_paths, results):
         if isinstance(result, BaseException):
-            failures.append((path, f"{type(result).__name__}: {str(result)[:200]}"))
+            failures.append((path, _summarize_intake_failure(result)))
         else:
             successes.append(result)
     return successes, failures
+
+
+def _summarize_intake_failure(exc: BaseException) -> str:
+    """Compress noisy Pydantic-validation errors into a single-line diagnosis.
+
+    The common case — an artifact that classifies as 'other' and yields an
+    empty `{}` extraction — produces a 6-line Pydantic error block. Collapse
+    that into 'not role-shaped (extraction yielded empty result)' so the
+    warnings list stays readable. Other failure shapes pass through with a
+    short head of the original message.
+    """
+    msg = str(exc)
+    if "ExtractionResult" in msg and ("role_name" in msg or "role_summary" in msg) and (
+        "Field required" in msg or "input_value={}" in msg or "Parsed JSON: {}" in msg
+    ):
+        return "not role-shaped (extraction yielded empty result; fact extraction still ran)"
+    # Default: type + first 140 chars, one line.
+    head = msg.splitlines()[0] if msg else ""
+    return f"{type(exc).__name__}: {head[:140]}"
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +326,7 @@ async def extract_facts_all(
     failures: list[tuple[Path, str]] = []
     for path, result in zip(artifact_paths, results):
         if isinstance(result, BaseException):
-            failures.append((path, f"{type(result).__name__}: {str(result)[:200]}"))
+            failures.append((path, _summarize_intake_failure(result)))
         else:
             successes.append(result)
     return successes, failures

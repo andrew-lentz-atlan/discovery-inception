@@ -852,11 +852,37 @@ def _starter_readme(
 # Pipeline
 # ---------------------------------------------------------------------------
 
+def _try_resume_step(
+    output_dir: Path | None,
+    filename: str,
+    model_cls: type[BaseModel],
+) -> BaseModel | None:
+    """Try to load a checkpointed Pydantic output from `output_dir/meta/`.
+
+    Returns the parsed model on success, None when the file is absent or
+    fails to parse. Used to skip steps 1-4 on retries when a previous
+    inception run already checkpointed the upstream LLM outputs to disk.
+
+    Resume is opt-in by file existence — no flag needed. If you want a
+    fresh run, delete the meta/ directory (or pass --force on the CLI).
+    """
+    if output_dir is None:
+        return None
+    path = output_dir / "meta" / filename
+    if not path.exists():
+        return None
+    try:
+        return model_cls.model_validate_json(path.read_text())
+    except Exception:
+        return None
+
+
 async def run_inception(
     spec_md: str,
     role_context_json: str,
     output_dir: Path | None = None,
     prior_feedback: PriorIterationFeedback | None = None,
+    force_fresh: bool = False,
 ) -> dict:
     """Run the inception pipeline.
 
@@ -864,13 +890,25 @@ async def run_inception(
     is provided — that's the step that materializes the agent_starter/
     directory on disk.
 
-    When `prior_feedback` is provided (intra-session iteration), each
-    sub-agent's prompt gains a "Prior iteration feedback" section that the
-    model treats as constraints. Feedback is filtered per-step
-    (workload_classifier sees only items targeting 'workload', etc.);
-    session-level free_text_lessons apply across all steps.
+    Resume from checkpoint: when `output_dir` is provided AND
+    `force_fresh=False`, each of steps 1-4 checks for a corresponding
+    `meta/<step>.json` artifact from a prior run and loads it instead of
+    re-calling the LLM. A previous step-5 crash that wasted nothing thanks
+    to this — retries pay zero LLM cost for the four upstream decisions.
+    To force a clean re-run (e.g., the spec changed), pass `force_fresh=True`
+    or delete `output_dir/meta/`.
+
+    `prior_feedback` (intra-session iteration): each sub-agent's prompt
+    gains a "Prior iteration feedback" section. Feedback presence forces
+    fresh upstream LLM calls — checkpoints from before the feedback would
+    bake in the rejected decisions.
     """
     client = _client()
+
+    # Feedback runs always re-execute upstream — the whole point is the
+    # constraints flow into those sub-agents.
+    effective_force = force_fresh or (prior_feedback is not None)
+
     try:
         if prior_feedback:
             print(
@@ -878,16 +916,24 @@ async def run_inception(
                 f"({len(prior_feedback.items)} items, "
                 f"{sum(1 for i in prior_feedback.items if i.feedback_type == 'wrong_for_this_use_case')} wrong / "
                 f"{sum(1 for i in prior_feedback.items if i.feedback_type == 'missing')} missing). "
-                "Sub-agents will consume as constraints."
+                "Sub-agents will consume as constraints; checkpoints will be bypassed."
             )
             if prior_feedback.source:
                 print(f"   source: {prior_feedback.source}")
             print()
 
-        print("→ Step 1/6: workload_classifier...")
-        classification = await step_workload_classifier(
-            client, spec_md, role_context_json, prior_feedback=prior_feedback
+        # ---- Step 1: workload classifier (with resume check) ----
+        classification = (
+            None if effective_force
+            else _try_resume_step(output_dir, "01_workload_classification.json", WorkloadClassification)
         )
+        if classification is not None:
+            print("→ Step 1/6: workload_classifier  [resumed from meta/01_workload_classification.json]")
+        else:
+            print("→ Step 1/6: workload_classifier...")
+            classification = await step_workload_classifier(
+                client, spec_md, role_context_json, prior_feedback=prior_feedback
+            )
         print(f"   interaction_shape:        {classification.interaction_shape}")
         print(f"   latency_sensitivity:      {classification.latency_sensitivity}")
         print(f"   decision_complexity:      {classification.decision_complexity}")
@@ -902,10 +948,17 @@ async def run_inception(
                 print(f"     - {q}")
 
         print()
-        print("→ Step 2/6: skill_proposer...")
-        proposal = await step_skill_proposer(
-            client, classification, spec_md, role_context_json, prior_feedback=prior_feedback
+        proposal = (
+            None if effective_force
+            else _try_resume_step(output_dir, "02_skill_proposal.json", SkillProposalResult)
         )
+        if proposal is not None:
+            print(f"→ Step 2/6: skill_proposer  [resumed from meta/02_skill_proposal.json]")
+        else:
+            print("→ Step 2/6: skill_proposer...")
+            proposal = await step_skill_proposer(
+                client, classification, spec_md, role_context_json, prior_feedback=prior_feedback
+            )
         print(f"   skills proposed:        {len(proposal.skills)}")
         for i, s in enumerate(proposal.skills, 1):
             shape = s.suggested_body_shape
@@ -923,10 +976,17 @@ async def run_inception(
         print(f"   granularity_argument:   {proposal.granularity_argument}")
 
         print()
-        print("→ Step 3/6: architecture_proposer...")
-        architecture = await step_architecture_proposer(
-            client, classification, proposal, prior_feedback=prior_feedback
+        architecture = (
+            None if effective_force
+            else _try_resume_step(output_dir, "03_architecture_proposal.json", ArchitectureProposal)
         )
+        if architecture is not None:
+            print(f"→ Step 3/6: architecture_proposer  [resumed from meta/03_architecture_proposal.json]")
+        else:
+            print("→ Step 3/6: architecture_proposer...")
+            architecture = await step_architecture_proposer(
+                client, classification, proposal, prior_feedback=prior_feedback
+            )
         print(f"   selected:     {architecture.selected_pattern_slug}  ({architecture.selected_pattern_title})")
         print(f"   confidence:   {architecture.confidence:.2f}")
         print(f"   rationale:    {architecture.selection_rationale}")
@@ -944,10 +1004,17 @@ async def run_inception(
                 print(f"     - {v}")
 
         print()
-        print("→ Step 4/6: runtime_proposer...")
-        runtime = await step_runtime_proposer(
-            client, classification, proposal, architecture, prior_feedback=prior_feedback
+        runtime = (
+            None if effective_force
+            else _try_resume_step(output_dir, "04_runtime_proposal.json", RuntimeProposal)
         )
+        if runtime is not None:
+            print(f"→ Step 4/6: runtime_proposer  [resumed from meta/04_runtime_proposal.json]")
+        else:
+            print("→ Step 4/6: runtime_proposer...")
+            runtime = await step_runtime_proposer(
+                client, classification, proposal, architecture, prior_feedback=prior_feedback
+            )
         print(f"   selected:     {runtime.selected_runtime}")
         print(f"   model:        {runtime.selected_model_family}")
         print(f"   confidence:   {runtime.confidence:.2f}")
