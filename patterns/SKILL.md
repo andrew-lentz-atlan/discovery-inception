@@ -32,16 +32,25 @@ Example query: "what architecture for a conversational workload where output qua
 
 ## Entry shape
 
-Every entry has:
+**Always present:**
 
-- **YAML frontmatter** — queryable metadata. Always present.
+- **YAML frontmatter** — queryable metadata. The standardized contract.
 - **One-paragraph summary** — what the pattern is, in plain English.
-- **`## Use when`** — bullet list. The decision-time payload.
-- **`## Don't use when`** — bullet list. The boundary conditions.
-- **`## Key gotchas`** — implementation pitfalls.
-- **`## Empirical anchor`** — one paragraph citing supporting evidence (a finding, an external source, both).
+
+**Default body template** (for operational-decision entries — architectures, anti-patterns, decision-guides):
+
+- `## Use when` — the decision-time payload
+- `## Don't use when` — boundary conditions
+- `## Key gotchas` — implementation pitfalls
+- `## Empirical anchor` — one paragraph citing supporting evidence
+
+This template covers the most common kind of pattern entry. Use it as the default starting shape.
+
+**Other body shapes when the knowledge warrants:** comparative surveys use tables + cross-cutting observations; theoretical entries use premises + implications; historical retrospectives use trajectory + what-it-enabled; code-pattern entries use pattern + code + variants. The frontmatter stays the same — the body adapts to what the knowledge actually is.
 
 Some entries have a `<entry-name>.reference.md` companion with deeper justification — deprecation history, full empirical comparisons, maintenance notes. **Consult only when needed for review or audit.** A `reference:` field in frontmatter signals when one exists.
+
+**Length follows content, not a target.** A simple pattern might be 30 lines; a pattern with real complexity might warrant 100+. The discipline is what NOT to include (ceremony, padding, recapitulation of cited sources), not how many lines to hit.
 
 ## Naming conventions
 

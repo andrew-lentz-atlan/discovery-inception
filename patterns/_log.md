@@ -4,6 +4,23 @@ Append-only record of additions, edits, status changes, and deprecations. Hand-m
 
 ---
 
+## 2026-05-20 (evening — convention loosening)
+
+Two rules in the previous afternoon refactor were over-prescriptive on second-pass review:
+
+1. **Line-count target (~30–50 lines).** Useful as a forcing function against my own first-pass bloat. Bad as a codified rule — the curator agent could learn "compress to 50 no matter what." Replaced with the principle "every line earns its place" — length follows content, not the other way around. Some entries will be 30 lines; some warranting real complexity will be 100+.
+
+2. **Strict 5-section body template.** Suits operational-decision entries (architectures, anti-patterns, decision-guides), but boxes out comparative surveys, theoretical foundations, historical retrospectives, code-pattern entries, and open-questions entries — all of which are legitimate knowledge types this base should be able to hold. Reframed as a *suggested default template* with explicit alternative shapes named for other knowledge types. Frontmatter stays standardized (queries depend on it); body adapts to what the knowledge actually is.
+
+Specific changes:
+
+- **EDIT** `patterns/README.md` — split authoring conventions into "Mandatory" / "Suggested defaults" / "Principle, not rule" sections. Added a table mapping knowledge types to body shapes. Replaced "~30–50 lines" target with the line-earns-its-place principle.
+- **EDIT** `patterns/SKILL.md` — same loosening applied to the agent-facing entry-shape section. Defaults preserved; flexibility explicit.
+
+No existing entries are changed by this update. The 5 seeded entries are operational-decision entries that fit the default template; the loosening is about what's *allowed*, not what's *required*.
+
+---
+
 ## 2026-05-20 (afternoon — gold-standard refactor)
 
 Restructure pass on the initial 5 seed entries based on feedback from Andrew. Three problems fixed:
