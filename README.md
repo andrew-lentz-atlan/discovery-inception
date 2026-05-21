@@ -140,7 +140,7 @@ discovery-inception/
 | **[`plans/07-patterns-knowledge-base.md`](plans/07-patterns-knowledge-base.md)** | The "Karpathy wiki" for agentic patterns. Externalizes opinion out of prompts. |
 | **[`plans/08-inception-agent.md`](plans/08-inception-agent.md)** | The inception half — skill / architecture / runtime proposers + scaffold writer |
 | **[`plans/09-context-debt-migration-backlog.md`](plans/09-context-debt-migration-backlog.md)** | What's still baked into prompts that should migrate to patterns. Read before touching any prompt. |
-| **[`plans/10-feedback-loop-and-knowledge-promotion.md`](plans/10-feedback-loop-and-knowledge-promotion.md)** | The compounding mechanism — per-session iteration + cross-session promotion of generic lessons into the patterns wiki |
+| **[`plans/10-feedback-loop-and-knowledge-promotion.md`](plans/10-feedback-loop-and-knowledge-promotion.md)** | The three-loop architecture: discovery iteration + inception iteration + cross-stage knowledge promotion through the patterns library |
 
 ## Note on the planning docs
 
