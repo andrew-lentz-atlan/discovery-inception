@@ -26,7 +26,11 @@ from pydantic import BaseModel
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
 
-from agent.inception.schemas import SkillProposalResult, WorkloadClassification  # noqa: E402
+from agent.inception.schemas import (  # noqa: E402
+    ArchitectureProposal,
+    SkillProposalResult,
+    WorkloadClassification,
+)
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 MODEL = os.environ.get("INCEPTION_MODEL", "claude-haiku-4-5")
@@ -51,6 +55,37 @@ def load_prompt(name: str, **substitutions: str) -> str:
     for key, value in substitutions.items():
         text = text.replace("{" + key + "}", value)
     return text
+
+
+PATTERNS_DIR = PROJECT_ROOT / "patterns"
+
+
+def load_pattern_category(category: str) -> str:
+    """Read all primary entries (skip .reference.md) under patterns/<category>/.
+
+    Returns concatenated markdown — each entry preceded by a divider showing
+    the slug. Used to bundle pattern context into proposer prompts at runtime.
+
+    Naïve loader; works for the current scale (~3-15 entries per category).
+    When patterns/ grows past ~50 entries, swap to a tool-based lookup
+    (lookup_pattern(filter)) per plans/07.
+    """
+    category_dir = PATTERNS_DIR / category
+    if not category_dir.is_dir():
+        return f"(no patterns/{category}/ directory found)"
+
+    chunks: list[str] = []
+    for path in sorted(category_dir.iterdir()):
+        if not path.is_file() or not path.name.endswith(".md"):
+            continue
+        if path.name.endswith(".reference.md"):
+            # Reference companions are for human review, not agent payload
+            continue
+        slug = path.stem
+        chunks.append(f"### Pattern: `{category}/{slug}`\n\n{path.read_text()}")
+    if not chunks:
+        return f"(patterns/{category}/ is empty)"
+    return "\n\n---\n\n".join(chunks)
 
 
 def parse_json_response(content: str) -> dict | list:
@@ -165,10 +200,30 @@ async def step_skill_critic(*args: Any, **kwargs: Any) -> Any:
     )
 
 
-async def step_architecture_proposer(*args: Any, **kwargs: Any) -> Any:
-    raise NotImplementedError(
-        "architecture_proposer: filters patterns/architectures/ by workload axes; "
-        "picks one + justifies; specifies bake-off variables."
+async def step_architecture_proposer(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+) -> ArchitectureProposal:
+    """Pick an architectural shape, citing patterns/architectures/ + workload axes.
+
+    Reads every primary entry under patterns/architectures/ (skipping
+    .reference.md companions) and bundles them into the prompt. The model
+    surveys candidates, selects one, explicitly rejects the others, and
+    surfaces any patterns that should LAYER on top of the selection
+    (e.g., adversarial-decomposition on single-agent-react).
+    """
+    prompt = load_prompt(
+        "03_architecture_proposer.md",
+        WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
+        ARCHITECTURE_PATTERNS=load_pattern_category("architectures"),
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=ArchitectureProposal,
+        max_tokens=4096,
     )
 
 
@@ -243,14 +298,34 @@ async def run_inception(spec_md: str, role_context_json: str) -> dict:
         print(f"   granularity_argument:   {proposal.granularity_argument}")
 
         print()
-        print("→ Steps 3-6: NOT YET IMPLEMENTED.")
-        print("   Next: architecture_proposer will consume the workload + skills to filter")
-        print("   patterns/architectures/ and pick an architectural shape with citation.")
+        print("→ Step 3/6: architecture_proposer...")
+        architecture = await step_architecture_proposer(client, classification, proposal)
+        print(f"   selected:     {architecture.selected_pattern_slug}  ({architecture.selected_pattern_title})")
+        print(f"   confidence:   {architecture.confidence:.2f}")
+        print(f"   rationale:    {architecture.selection_rationale}")
+        if architecture.rejected_alternatives:
+            print(f"   rejected ({len(architecture.rejected_alternatives)}):")
+            for r in architecture.rejected_alternatives:
+                print(f"     - {r.pattern_slug}: {r.reason}")
+        if architecture.candidate_addons:
+            print(f"   candidate add-ons ({len(architecture.candidate_addons)}):")
+            for a in architecture.candidate_addons:
+                print(f"     - {a.pattern_slug} ({a.recommendation}) — addresses: {a.addresses_concern}")
+        if architecture.bake_off_variables:
+            print(f"   bake-off variables ({len(architecture.bake_off_variables)}):")
+            for v in architecture.bake_off_variables:
+                print(f"     - {v}")
+
+        print()
+        print("→ Steps 4-6: NOT YET IMPLEMENTED.")
+        print("   Next: runtime_proposer will consume the architecture choice to filter")
+        print("   patterns/harnesses/ and pick a runtime that preserves the architectural shape.")
 
         return {
             "classification": classification.model_dump(),
             "skill_proposal": proposal.model_dump(),
-            "next_step": "step_architecture_proposer (not yet implemented)",
+            "architecture_proposal": architecture.model_dump(),
+            "next_step": "step_runtime_proposer (not yet implemented)",
         }
     finally:
         await client.close()

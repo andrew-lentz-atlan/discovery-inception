@@ -256,9 +256,116 @@ class SkillProposalResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Step 3: architecture_proposer
+# ---------------------------------------------------------------------------
+
+
+class RejectedAlternative(BaseModel):
+    """A candidate architecture that was considered and rejected, with reasoning."""
+
+    pattern_slug: str = Field(
+        ..., description="The slug of the rejected pattern entry (e.g., 'chained-pipeline')."
+    )
+    pattern_title: str = Field(
+        ..., description="The title of the rejected pattern (e.g., 'Chained Pipeline (Pure Sub-Agent Decomposition)')."
+    )
+    reason: str = Field(
+        ...,
+        description=(
+            "Why this architecture was rejected for this workload. Cite specific "
+            "evidence: pattern's `applies_when`/`don't use when` sections, status "
+            "(deprecated), or contradiction with the workload classification."
+        ),
+    )
+
+
+class CandidateAddon(BaseModel):
+    """A pattern that layers on top of the selected architecture (not a replacement)."""
+
+    pattern_slug: str = Field(
+        ..., description="Pattern slug (e.g., 'adversarial-decomposition')."
+    )
+    pattern_title: str = Field(..., description="Title of the add-on pattern.")
+    addresses_concern: str = Field(
+        ...,
+        description=(
+            "Which orchestrator_level_concern (from skill_proposer's output) or workload "
+            "axis motivates considering this add-on. E.g., 'Evaluation and Quality "
+            "Gating' → adversarial-decomposition for LLM-as-judge review."
+        ),
+    )
+    recommendation: Literal["strongly_recommended", "recommended", "optional", "not_now"] = Field(
+        ...,
+        description=(
+            "How strongly to recommend the add-on. strongly_recommended = the workload "
+            "axes plus concerns clearly call for it. optional = useful but not load-bearing."
+        ),
+    )
+    rationale: str = Field(
+        ..., description="1-2 sentences citing both the pattern entry and the workload/concern that motivates it."
+    )
+
+
+class ArchitectureProposal(BaseModel):
+    """Output of step 3 — architecture_proposer."""
+
+    selected_pattern_slug: str = Field(
+        ...,
+        description=(
+            "The slug of the chosen architecture pattern (e.g., 'single-agent-react'). "
+            "Must be the slug of an entry currently in patterns/architectures/."
+        ),
+    )
+    selected_pattern_title: str = Field(
+        ...,
+        description="The title of the chosen pattern, pulled verbatim from the pattern entry.",
+    )
+    selection_rationale: str = Field(
+        ...,
+        description=(
+            "Why this architecture was selected. Must cite specific evidence from the "
+            "pattern entry (Use when, Empirical anchor) AND from the workload "
+            "classification (which axes pointed to this pattern)."
+        ),
+    )
+    rejected_alternatives: list[RejectedAlternative] = Field(
+        default_factory=list,
+        description=(
+            "Other candidates considered and rejected, each with reasoning. The model "
+            "should rule out every non-selected architecture explicitly — not silently."
+        ),
+    )
+    candidate_addons: list[CandidateAddon] = Field(
+        default_factory=list,
+        description=(
+            "Patterns to LAYER on top of the selected architecture. E.g., "
+            "adversarial-decomposition on single-agent-react when the workload has "
+            "Evaluation and Quality Gating as an orchestrator-level concern."
+        ),
+    )
+    bake_off_variables: list[str] = Field(
+        default_factory=list,
+        description=(
+            "If we ran an empirical bake-off across candidate architectures, what would "
+            "vary? E.g., 'orchestration loop shape', 'sub-agent count', 'whether the "
+            "critic has rewrite authority'. Used to scope the bake-off harness."
+        ),
+    )
+    open_questions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Aspects of the architecture choice the spec doesn't fully settle. Flag "
+            "explicitly so the next step (runtime_proposer) treats them as constraints."
+        ),
+    )
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="0.0-1.0; how settled is this architecture choice given the inputs."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Subsequent steps' schemas will be added as implemented:
 #   - SkillCritique         (skill_critic)
-#   - ArchitectureProposal  (architecture_proposer)
 #   - ArchitectureCritique  (architecture_critic)
 #   - RuntimeProposal       (runtime_proposer)
 #   - ScaffoldArtifact      (scaffold_writer — the agent_starter/ contents)
