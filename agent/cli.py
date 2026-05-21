@@ -125,6 +125,7 @@ async def _async_main(args: argparse.Namespace) -> None:
             result = await tool_submit_customer_turn(
                 session_id=args.session_id,
                 message=args.message,
+                no_probe=args.no_probe,
             )
         elif cmd == "state":
             result = tool_get_session_state(session_id=args.session_id)
@@ -195,9 +196,25 @@ def main() -> None:
     )
 
     # submit-turn
-    p = sub.add_parser("submit-turn", help="Submit a customer turn → agent response")
+    p = sub.add_parser(
+        "submit-turn",
+        help=(
+            "Submit a customer turn → agent response. Pass --no-probe for "
+            "FDE chat-fill mode (capture the fact, skip the follow-up question)."
+        ),
+    )
     p.add_argument("--session-id", required=True)
     p.add_argument("--message", required=True)
+    p.add_argument(
+        "--no-probe",
+        action="store_true",
+        help=(
+            "FDE chat-fill mode: skip the mega-agent's follow-up probe. "
+            "The fact still gets captured via triage + distill. Use when "
+            "you're answering known gaps from gap_list.md and don't need "
+            "the agent to ask anything next."
+        ),
+    )
 
     # state
     p = sub.add_parser("state", help="Inspect session state — spec, working theory, gaps")

@@ -267,13 +267,20 @@ async def tool_start_discovery_session(
 async def tool_submit_customer_turn(
     session_id: str,
     message: str,
+    no_probe: bool = False,
 ) -> dict[str, Any]:
     """Submit a customer turn. Runs the v0.8 pipeline (triage → distill →
     mega-agent with 4 tools → probe-sharpener) and returns the agent's
-    response + state summary."""
+    response + state summary.
+
+    When `no_probe=True`, the mega-agent + sharpener stages are skipped —
+    only triage + distill run, which still captures the fact to the spec.
+    Used for FDE chat-fill mode: the FDE is answering known gaps from
+    `gap_list.md` and doesn't need the agent's follow-up question.
+    """
     client = _llm_client()
     session, mega = _get_or_rehydrate_session(session_id)
-    turn, checklist = await run_v08_turn(client, session, mega, message)
+    turn, checklist = await run_v08_turn(client, session, mega, message, skip_probe=no_probe)
     return {
         "ok": True,
         "session_id": session_id,
@@ -285,6 +292,7 @@ async def tool_submit_customer_turn(
         ),
         "checklist_missing": checklist.missing,
         "declared_ready": session.spec.declared_ready,
+        "mode": "chat_fill" if no_probe else "interview",
     }
 
 
@@ -616,7 +624,13 @@ async def list_tools() -> list[types.Tool]:
                 "Submit a customer turn (the user, playing customer, speaks). "
                 "Runs triage → distill → optional mega-agent lazy synth → "
                 "mega-agent response. Returns the agent's next message + "
-                "state summary (triage label, checklist gaps)."
+                "state summary (triage label, checklist gaps).\n\n"
+                "Set `no_probe=true` for FDE chat-fill mode (the FDE is "
+                "filling a gap they already know the answer to from "
+                "gap_list.md). In chat-fill mode the fact is still captured "
+                "via triage + distill but the mega-agent's follow-up question "
+                "is skipped — saves cost and avoids interrupting the FDE's "
+                "flow of filling multiple gaps in a row."
             ),
             inputSchema={
                 "type": "object",
@@ -624,7 +638,12 @@ async def list_tools() -> list[types.Tool]:
                     "session_id": {"type": "string"},
                     "message": {
                         "type": "string",
-                        "description": "The customer's verbatim response to the agent's last probe.",
+                        "description": "The customer's verbatim response to the agent's last probe — or, in chat-fill mode, the FDE's authoritative answer phrased as if the customer said it.",
+                    },
+                    "no_probe": {
+                        "type": "boolean",
+                        "description": "If true, skip the mega-agent + probe-sharpener stages. Fact still gets captured. Use for FDE chat-fill against gap_list.md.",
+                        "default": False,
                     },
                 },
                 "required": ["session_id", "message"],

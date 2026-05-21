@@ -442,11 +442,13 @@ def render_gap_list(
     lines.append("## What to do next")
     lines.append("")
     lines.append(
-        "- **You know the answer to a gap?** Use `submit-turn` to add it (FDE plays customer):"
+        "- **You know the answer to a gap?** Use `submit-turn --no-probe` to chat-fill it. "
+        "The fact gets captured; the agent doesn't generate a follow-up question (saves "
+        "cost + keeps your flow uninterrupted when you're filling multiple gaps in a row):"
     )
     lines.append("")
     lines.append(
-        f"  `uv run python -m agent.cli submit-turn --session-id {session.session_id} "
+        f"  `uv run python -m agent.cli submit-turn --no-probe --session-id {session.session_id} "
         f"--message \"<your answer phrased as if the customer said it>\"`"
     )
     lines.append("")

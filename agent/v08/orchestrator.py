@@ -284,9 +284,19 @@ async def run_v08_turn(
     session: DiscoverySession,
     mega_session: MegaAgentSession,
     customer_message: str,
+    *,
+    skip_probe: bool = False,
 ) -> tuple[Turn, ChecklistResult]:
     """v0.8 hybrid: triage + distill eager, mega-agent with 4 tools,
-    probe-sharpener post-processor on every response."""
+    probe-sharpener post-processor on every response.
+
+    When `skip_probe=True`, the mega-agent + probe-sharpener stages are
+    skipped. Triage + distill still run (so the fact gets captured to the
+    spec), and the turn ends with a placeholder agent message marking the
+    chat-fill mode. Used by `agent.cli submit-turn --no-probe` so an FDE
+    answering known gaps doesn't pay for follow-up question generation
+    they don't intend to use.
+    """
     turn = session.start_turn(customer_message)
     session.save()
 
@@ -393,6 +403,20 @@ async def run_v08_turn(
                 model=None,
             )
         )
+
+    # ---- Chat-fill mode short-circuit ----
+    # When --no-probe was set, we've already captured the fact via triage +
+    # distill. Skip the mega-agent + sharpener and end the turn with a
+    # placeholder so the message log stays honest about what happened.
+    if skip_probe:
+        placeholder = "(chat-fill — FDE recorded the answer; no follow-up probe generated)"
+        checklist_fast = evaluate_checklist(session.spec)
+        session.end_turn(turn, placeholder)
+        # Mirror into the mega_session message history so subsequent live
+        # discovery turns see continuity, not a missing reply.
+        mega_session.messages.append({"role": "assistant", "content": placeholder})
+        session.save()
+        return turn, checklist_fast
 
     # ---- Mega-agent (v0.8 system prompt + 4 tools) ----
     mega_session.system_prompt = _build_v08_system_prompt(session)
