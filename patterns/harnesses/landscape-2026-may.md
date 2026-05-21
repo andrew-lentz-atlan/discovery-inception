@@ -2,21 +2,22 @@
 title: Agent Harness Landscape — May 2026
 category: harnesses
 status: validated
-last_updated: 2026-05-20
+last_updated: 2026-05-22
 source_findings: []
 source_external:
   - Internal Atlan research doc — "Agent Harnesses: A Builder's Deep Dive" (2026-05)
+  - Internal Atlan research doc — "Agentforce — Builder's Deep Dive" (2026-05-21, owner Himanshu Sikaria)
 applies_when:
   workloads: [picking-a-harness, surveying-the-field, comparing-frameworks]
   constraints: []
 contradicts: []
-related: [architectures/single-agent-react, architectures/adversarial-decomposition]
-snapshot_date: 2026-05
+related: [architectures/single-agent-react, architectures/adversarial-decomposition, harnesses/agentforce-deep-dive]
+snapshot_date: 2026-05-22
 ---
 
 # Agent Harness Landscape — May 2026
 
-Survey of 15 production-grade agent harnesses as of May 2026. Snapshot of the field at a point in time — the field moves fast, so revisit when authoring agents 3+ months after the snapshot date. Sourced from an internal Atlan research doc reviewing each framework's architecture, code patterns, gotchas, and applicability.
+Survey of 16 production-grade agent harnesses as of May 2026. Snapshot of the field at a point in time — the field moves fast, so revisit when authoring agents 3+ months after the snapshot date. Sourced from internal Atlan research docs reviewing each framework's architecture, code patterns, gotchas, and applicability.
 
 The single most useful observation from the source review (validated independently by our own work): **runtime choice matters less than it did a year ago. The portable artifacts you author — skills, MCP servers, prompts — matter more than ever.** Six of the fifteen harnesses below already consume the Anthropic `SKILL.md` format; MCP works in all fifteen. If you encode the work in skills + MCP, the runtime is substitutable.
 
@@ -39,20 +40,24 @@ The single most useful observation from the source review (validated independent
 | 13 | Smolagents (HF) | ~1K-line minimalist; "code-as-actions" | Local exec is sandboxed but not invincible; weak models loop forever |
 | 14 | Strands (AWS) | Lightweight SDK that pairs with AgentCore | Skills not native; bidi streaming experimental |
 | 15 | OpenHarness / ohmo | Open-source CC-clone, multi-provider | DIY teams only; not battle-tested |
+| 16 | Agentforce (Salesforce) | Vertically-integrated agent platform on Atlas Reasoning Engine + Data Cloud + Trust Layer | The 15/15/20 wall (15 topics per agent × 15 actions per topic × 20 active agents per org); hit fast on enterprise workloads — multi-agent A2A orchestration is the official workaround |
 
 Plus **Pi (pi.dev)** — same category as OpenHarness; missing from the source doc but should be included in future revisions.
 
-## The five that actually matter for most decisions
+## The five (now six) that actually matter for most decisions
 
-For the majority of agent-building decisions, the live shortlist collapses to five:
+For the majority of agent-building decisions, the live shortlist collapses to:
 
 - **Claude Agent SDK** — if you're on Claude
 - **OpenAI Agents SDK** — if you're on OpenAI (post the Apr 2026 release)
 - **LangGraph** — if you need durable graph workflows with checkpointing and HITL (often with Deep Agents on top)
 - **Pydantic AI** — if you care about type safety in Python
 - **MS Agent Framework** — if you're enterprise .NET / Azure-native
+- **Agentforce** — if you're on Salesforce and the agent acts on Salesforce data + processes (see `harnesses/agentforce-deep-dive.md` for depth)
 
-The conditionally useful five are constraint-driven (CrewAI for 2-hour demos throwaway, Mastra for TS-first, Google ADK for GCP-first, Strands+AgentCore for AWS-first, Smolagents for code-as-actions). The remaining five are either niche, hosting infrastructure, or reference implementations rather than production choices.
+Note: Agentforce isn't a framework in the same sense as the others — it's a vertically-integrated agent product. You don't write the loop, you configure topics and write actions. For a huge class of Salesforce-resident problems that opinion is exactly right; outside that footprint, one of the other five fits better.
+
+The conditionally useful set is constraint-driven (CrewAI for 2-hour demos throwaway, Mastra for TS-first, Google ADK for GCP-first, Strands+AgentCore for AWS-first, Smolagents for code-as-actions). The remaining set is niche, hosting infrastructure, or reference implementations rather than production choices.
 
 ## Decision tree (when to pick which)
 
@@ -68,6 +73,8 @@ The conditionally useful five are constraint-driven (CrewAI for 2-hour demos thr
 10. **Minimalism, code-as-actions, open-weight models:** Smolagents.
 11. **Building your own Claude Code:** OpenHarness, Pi, or Deep Agents as starting point.
 12. **Work is document-heavy (contracts, compliance, knowledge extraction):** LlamaIndex AgentWorkflow.
+13. **You're a Salesforce shop and the agent needs to act on Salesforce data and processes:** Agentforce. Don't try to bolt LangGraph onto Salesforce — the Trust Layer, Data Cloud grounding, identity model, and audit trail are extremely hard to replicate from outside.
+14. **You're *not* on Salesforce but want to integrate with Agentforce-owned data:** use Salesforce-Hosted MCP from your other harness (Claude Agent SDK, OpenAI Agents SDK, etc.). The MCP bridge means you don't migrate to Agentforce to leverage its data layer.
 
 ## Cross-cutting observation (the load-bearing point)
 
@@ -90,5 +97,5 @@ Prompts authored against one harness/model don't always port cleanly across boun
 
 - This is a **comparative survey** entry, not an operational-decision entry. The body shape is intentionally different from `architectures/*.md` entries — tables + per-item analysis + decision tree + cross-cutting observation, rather than `Use when / Don't use when / Gotchas / Empirical anchor`.
 - Survey entries date faster than operational-decision entries. The `snapshot_date` field is added to the frontmatter for this category — when the date is stale, the entry needs a refresh ingest pass.
-- Per-harness deep-dive entries (e.g., `harnesses/claude-agent-sdk.md`, `harnesses/pydantic-ai.md`) will live alongside this survey when the curator ingests the source doc fully. They're operational-decision shaped and cover one framework each in depth. This entry is the meta-view.
-- Source: internal Atlan research doc reviewed 2026-05-19 in conversation. Cited but not co-located in this repo; if the doc is committed, link directly.
+- Per-harness deep-dive entries live alongside this survey (the first is `harnesses/agentforce-deep-dive.md`, added 2026-05-22). They're code-pattern shaped (gotchas + code excerpts + decision criteria) and cover one framework each in depth. This entry is the meta-view; deep-dives are the detail. Each deep-dive is cited from the relevant row in this survey's table.
+- Source: internal Atlan research docs reviewed in conversation. Cited but not co-located in this repo; if the source docs are committed, link directly.

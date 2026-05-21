@@ -4,6 +4,22 @@ Append-only record of additions, edits, status changes, and deprecations. Hand-m
 
 ---
 
+## 2026-05-22 (Agentforce knowledge — landscape + first deep-dive)
+
+A new internal Atlan research doc surfaced — "Agentforce — Builder's Deep Dive" (2026-05-21, owner Himanshu Sikaria). Hand-distilled into two updates:
+
+- **EDIT** `patterns/harnesses/landscape-2026-may.md` — added Agentforce as the 16th framework. New row in the summary table; new bullet in "the five that actually matter" (now six); new entries 13–14 in the decision tree; `snapshot_date` bumped to 2026-05-22. The doc literally provided the comparison-table rows.
+- **CREATE** `patterns/harnesses/agentforce-deep-dive.md` — first per-framework deep-dive in `patterns/harnesses/`. Code-pattern body shape (Apex example + the five primitives + Atlas Reasoning Engine internals + the twelve gotchas + MCP support story + when-to-use/when-not). Cross-references `anti-patterns/definitions-without-context.md` because the "deep module" pattern (return synthesized verdicts, not raw rows) is the same principle expressed in Salesforce vocabulary.
+
+This is the first time `patterns/harnesses/` carries both a survey + a deep-dive for a single framework. Establishes the precedent: survey is the meta-view; deep-dives are the detail for any framework that warrants depth (e.g., Atlan-internal builders making a real Agentforce vs. Claude Agent SDK call).
+
+Updates:
+- `patterns/_index.md` — 9 → 10 entries; body-shape diversity bumps from 1 code-pattern to 2.
+
+Source attribution policy reminder: Glean URLs / Google Doc IDs are NOT in frontmatter (private links). Attribution by doc title + date + owner.
+
+---
+
 ## 2026-05-22 (findings → patterns promotion, round 1)
 
 Two unpromoted findings docs were load-bearing for inception's downstream proposers but had never landed in `patterns/`. Promoting them by hand (curator's `ingest` ships only step 1 today; doing the work directly until steps 2–5 land).

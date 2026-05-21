@@ -32,7 +32,8 @@ Auto-discoverable list of entries with status + last-updated. Hand-maintained du
 
 | Entry | Status | Last updated | Body shape | Reference companion? |
 |---|---|---|---|---|
-| [landscape-2026-may](harnesses/landscape-2026-may.md) | validated | 2026-05-20 | comparative-survey | — |
+| [landscape-2026-may](harnesses/landscape-2026-may.md) | validated | 2026-05-22 | comparative-survey | — |
+| [agentforce-deep-dive](harnesses/agentforce-deep-dive.md) | validated | 2026-05-22 | code-pattern | — |
 
 ## decision-guides/
 
@@ -44,8 +45,8 @@ Auto-discoverable list of entries with status + last-updated. Hand-maintained du
 
 ## Coverage summary
 
-- **9 entries** across all 5 active categories (first decision-guides entry shipped 2026-05-22)
-- **8 validated**, 1 deprecated
+- **10 entries** across all 5 active categories
+- **9 validated**, 1 deprecated
 - **1 reference companion** (`chained-pipeline.reference.md`) — the only seeded entry with substantive non-source-resident content
 - All entries have empirical receipts cited in frontmatter (`source_findings` or `source_external`)
-- **Body-shape diversity:** 7 operational-decision entries + 1 code-pattern + 1 comparative-survey. The curator agent has three distinct shapes to learn from.
+- **Body-shape diversity:** 7 operational-decision entries + 2 code-pattern (inner-pipeline + agentforce-deep-dive) + 1 comparative-survey. The curator agent has three distinct shapes to learn from.
