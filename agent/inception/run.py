@@ -29,6 +29,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 from agent.inception.schemas import (  # noqa: E402
     ArchitectureProposal,
     DesignRationale,
+    EvalSeed,
+    JudgeHarness,
     OrchestratorStub,
     ProposedSkill,
     RuntimeProposal,
@@ -336,6 +338,56 @@ async def step_generate_design_rationale(
     )
 
 
+async def step_generate_eval_seed(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+    architecture: ArchitectureProposal,
+    spec_md: str,
+    role_context_json: str,
+) -> EvalSeed:
+    """Generate 10-15 seed questions covering the agent's expected scenarios."""
+    prompt = load_prompt(
+        "05d_eval_seed.md",
+        WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
+        ARCHITECTURE_PROPOSAL_JSON=architecture.model_dump_json(indent=2),
+        SPEC_MD=spec_md,
+        ROLE_CONTEXT_JSON=role_context_json,
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=EvalSeed,
+        max_tokens=8192,  # 10-15 structured questions can run long
+    )
+
+
+async def step_generate_judge_harness(
+    client: AsyncOpenAI,
+    workload: WorkloadClassification,
+    skills: SkillProposalResult,
+    runtime: RuntimeProposal,
+    eval_seed: EvalSeed,
+    role_context_json: str,
+) -> JudgeHarness:
+    """Generate the eval/judge.py source — LLM-as-judge harness."""
+    prompt = load_prompt(
+        "05e_judge_harness.md",
+        WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
+        RUNTIME_PROPOSAL_JSON=runtime.model_dump_json(indent=2),
+        EVAL_SEED_JSON=eval_seed.model_dump_json(indent=2),
+        ROLE_CONTEXT_JSON=role_context_json,
+    )
+    return await call_step(
+        client,
+        user_prompt=prompt,
+        output_model=JudgeHarness,
+        max_tokens=8192,  # judge.py source with N dimension scorers
+    )
+
+
 async def step_scaffold_writer(
     client: AsyncOpenAI,
     workload: WorkloadClassification,
@@ -368,14 +420,23 @@ async def step_scaffold_writer(
     (output_dir / "meta").mkdir(exist_ok=True)
     (output_dir / "eval").mkdir(exist_ok=True)
 
-    # ---- 1. SKILL.md per skill (parallelized) ----
-    print(f"  [5a] generating SKILL.md for {len(skills.skills)} skills (parallel)...")
-    skill_md_results: list[SkillMdContent] = await asyncio.gather(
-        *(
-            step_generate_skill_md(client, skill, workload, architecture, runtime, role_context_json)
-            for skill in skills.skills
-        )
+    # ---- 1. Run 5a/5b/5c/5d in parallel (no inter-dependencies) ----
+    # 5e depends on 5d (eval seed), so it runs after this gather.
+    print(f"  [5a/5b/5c/5d] generating SKILL.md × {len(skills.skills)} + orchestrator + rationale + eval seed (parallel)...")
+    skill_md_tasks = [
+        step_generate_skill_md(client, skill, workload, architecture, runtime, role_context_json)
+        for skill in skills.skills
+    ]
+    results = await asyncio.gather(
+        asyncio.gather(*skill_md_tasks),
+        step_generate_orchestrator_stub(client, skills, architecture, runtime),
+        step_generate_design_rationale(client, workload, skills, architecture, runtime, spec_md),
+        step_generate_eval_seed(client, workload, skills, architecture, spec_md, role_context_json),
     )
+    skill_md_results: list[SkillMdContent] = results[0]
+    stub: OrchestratorStub = results[1]
+    rationale: DesignRationale = results[2]
+    eval_seed: EvalSeed = results[3]
 
     for content in skill_md_results:
         skill_dir = output_dir / "skills" / content.skill_name
@@ -383,19 +444,24 @@ async def step_scaffold_writer(
         (skill_dir / "SKILL.md").write_text(content.skill_md)
         print(f"       ✓ skills/{content.skill_name}/SKILL.md")
 
-    # ---- 2. orchestrator stub ----
-    print("  [5b] generating orchestrator.py stub...")
-    stub = await step_generate_orchestrator_stub(client, skills, architecture, runtime)
     (output_dir / stub.filename).write_text(stub.orchestrator_py)
     print(f"       ✓ {stub.filename} (imports: {len(stub.imports_needed)}, env vars: {len(stub.env_vars_needed)})")
 
-    # ---- 3. design_rationale ----
-    print("  [5c] generating design_rationale.md (audit trail)...")
-    rationale = await step_generate_design_rationale(client, workload, skills, architecture, runtime, spec_md)
     (output_dir / "design_rationale.md").write_text(rationale.rationale_md)
     print("       ✓ design_rationale.md")
 
-    # ---- 4. meta/ — deterministic copies of upstream Pydantic outputs ----
+    (output_dir / "eval" / "questions.json").write_text(eval_seed.model_dump_json(indent=2))
+    print(f"       ✓ eval/questions.json ({len(eval_seed.questions)} seed questions)")
+
+    # ---- 2. judge harness (depends on eval_seed) ----
+    print("  [5e] generating eval/judge.py (LLM-as-judge harness)...")
+    judge = await step_generate_judge_harness(
+        client, workload, skills, runtime, eval_seed, role_context_json
+    )
+    (output_dir / "eval" / "judge.py").write_text(judge.judge_py)
+    print(f"       ✓ eval/judge.py ({len(judge.dimensions)} scoring dimensions, judge model: {judge.judging_model_recommended})")
+
+    # ---- 3. meta/ — deterministic copies of upstream Pydantic outputs ----
     print("  [5*] writing meta/ artifacts (deterministic)...")
     (output_dir / "meta" / "01_workload_classification.json").write_text(
         workload.model_dump_json(indent=2)
@@ -431,6 +497,8 @@ async def step_scaffold_writer(
         "imports_needed": stub.imports_needed,
         "env_vars_needed": stub.env_vars_needed,
         "rationale_length": len(rationale.rationale_md),
+        "eval_questions": len(eval_seed.questions),
+        "judge_dimensions": judge.dimensions,
         "meta_artifacts": 6,
     }
 
@@ -466,7 +534,7 @@ def _starter_readme(
         f"├── design_rationale.md  ← audit trail (READ FIRST)\n"
         f"├── orchestrator.py      ← runnable stub; skill bodies are TODOs\n"
         f"├── skills/              ← SKILL.md per skill\n"
-        f"├── eval/                ← (currently empty; eval seed deferred to next iteration)\n"
+        f"├── eval/                ← questions.json (seed) + judge.py (LLM-as-judge harness)\n"
         f"└── meta/                ← upstream inception outputs (audit-trail copies)\n"
         f"```\n\n"
         f"## Skills\n\n"

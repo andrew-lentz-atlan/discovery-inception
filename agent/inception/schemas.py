@@ -569,9 +569,120 @@ class DesignRationale(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Step 5d: eval seed generation
+# ---------------------------------------------------------------------------
+
+
+class EvalQuestion(BaseModel):
+    """One seed question for the agent's eval harness."""
+
+    id: str = Field(..., description="Stable identifier like 'Q01'. Used for tracking and reporting.")
+    question: str = Field(
+        ..., description="The user-facing natural-language question (e.g., 'Why did Gain lose share at Target?')."
+    )
+    category: str = Field(
+        ...,
+        description=(
+            "What the question is testing — a short label like 'share-decline-diagnosis', "
+            "'growth-driver-analysis', 'cross-retailer-comparison', 'ambiguous-market', etc. "
+            "Used to organize the eval set + report coverage."
+        ),
+    )
+    expected_entities: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Entities the agent should extract from the question. Keys depend on the workload domain "
+            "(e.g., 'brand', 'market', 'time_context', 'channel'). Values can be canonical strings, "
+            "lists (e.g., market_def_candidates), nulls (when the question deliberately omits a "
+            "dimension), or booleans (e.g., requires_clarification). The shape matches whatever the "
+            "agent's question_parser is expected to output for that question."
+        ),
+    )
+    expected_skills_invoked: list[str] = Field(
+        default_factory=list,
+        description="Which skills should fire (by snake_case name) for this question.",
+    )
+    expected_output_features: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Features the final output must include for a passing answer. E.g., 'signal week identified', "
+            "'BCA classification provided', 'competitor share-shift quantified'. These are the binary "
+            "checks the judge can apply."
+        ),
+    )
+    test_intent: str = Field(
+        ...,
+        description=(
+            "Why this question is in the seed set. Specifically: what edge case or capability "
+            "does it stress-test? E.g., 'ambiguity handling: Target without channel hint'."
+        ),
+    )
+
+
+class EvalSeed(BaseModel):
+    """Output of `generate_eval_seed`. Single call producing 10-15 questions."""
+
+    questions: list[EvalQuestion] = Field(
+        ...,
+        description="The seed question set, typically 10-15 questions covering distinct scenarios.",
+    )
+    coverage_notes: str = Field(
+        ...,
+        description=(
+            "1-2 paragraphs explaining what the seed set covers — which brands / markets / "
+            "ambiguity scenarios / edge cases — and what it deliberately doesn't cover yet "
+            "(builder follow-up scope)."
+        ),
+    )
+    data_requirements: str = Field(
+        ...,
+        description=(
+            "What synthetic-or-real data the builder needs to actually run these questions "
+            "through the agent. E.g., 'AOS table with 52 weeks of brand × market × week share "
+            "data; Trade Panel / Decon / HHP tables with DPSM metrics; embedded ground-truth "
+            "signal (e.g., Bala's week-20 distribution drop pattern) so judge can verify accuracy.'"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Step 5e: LLM-as-judge harness generation
+# ---------------------------------------------------------------------------
+
+
+class JudgeHarness(BaseModel):
+    """Output of `generate_judge_harness`. Single call producing eval/judge.py source."""
+
+    judge_py: str = Field(
+        ...,
+        description=(
+            "Python source for the eval/judge.py scaffold. Should implement the LLM-as-judge "
+            "pattern with N scoring dimensions adapted to the workload (Bala's 5-dimension "
+            "canonical: accuracy / root-cause-classification / hallucination / reasoning / "
+            "actionability — adapt as workload requires). Includes a Judge class, score() function "
+            "with TODO markers for the dimension-specific scoring prompts, and a CLI entry."
+        ),
+    )
+    dimensions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The scoring dimensions the judge uses. Bala's canonical 5 for diagnostic agents are "
+            "a strong default; adapt for different workloads (e.g., a conversational agent might "
+            "score 'question quality' instead of 'root-cause classification')."
+        ),
+    )
+    judging_model_recommended: str = Field(
+        default="claude-opus-4-7",
+        description=(
+            "Recommended model for the judge. Should be at least as capable as the agent being "
+            "judged. Independent of the agent's model family is good practice — reduces "
+            "self-evaluation bias."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Subsequent steps' schemas (when implemented):
 #   - SkillCritique         (skill_critic)
 #   - ArchitectureCritique  (architecture_critic)
-#   - EvalSeed              (later iteration of scaffold_writer)
-#   - JudgeHarness          (later iteration of scaffold_writer)
 # ---------------------------------------------------------------------------
