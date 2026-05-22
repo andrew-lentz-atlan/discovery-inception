@@ -40,9 +40,15 @@ Use these consistent tags after the `<br/>`:
 - `(inner-pipeline)` — for `inner_pipeline`
 - `(deterministic)` — for `deterministic`
 
+**CRITICAL: quote any node label that contains parentheses, slashes, or other Mermaid-special characters.** This includes EVERY label using `(LLM)` / `(inner-pipeline)` / `(deterministic)` because those parentheses break stricter Mermaid parsers (GitHub's, VSCode's, etc.) without quotes around the whole label.
+
+- Rectangle node with special chars: `skill_id["skill_name<br/>(LLM)"]` ✓ (already quoted)
+- Hexagon node with special chars: `orchestrator{{"Orchestrator<br/>(ReAct loop)"}}` ✓ (note the quotes inside the braces)
+- Hexagon node WITHOUT quotes when label has parens: `orchestrator{{Orchestrator<br/>(ReAct loop)}}` ✗ (Mermaid parse error)
+
 **Edges:** show typical invocation order or data dependency. Adapt to the architecture:
 
-- **single-agent-react**: a center "orchestrator" node connects to every skill as a tool. Show as `orchestrator{{Orchestrator<br/>(ReAct loop)}}` (using `{{...}}` for the hexagon shape that marks the loop). Edges go orchestrator → skill (with `-->|invokes|` if you want labels).
+- **single-agent-react**: a center "orchestrator" node connects to every skill as a tool. Show as `orchestrator{{"Orchestrator<br/>(ReAct loop)"}}` (using `{{"..."}}` for the hexagon shape with a quoted label, since the label has parens). Edges go orchestrator → skill (with `-->|invokes|` if you want labels).
 - **chained-pipeline**: linear `A --> B --> C --> D`. Each skill feeds the next.
 - **inner-pipeline-skill**: orchestrator → one big skill (with its own inner steps shown as a subgraph if useful).
 - **adversarial-decomposition**: producer skill → critic skill, with a loopback edge if the critic gates retry.

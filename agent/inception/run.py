@@ -16,6 +16,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -750,12 +751,63 @@ async def step_scaffold_writer(
     }
 
 
+def _sanitize_mermaid_node_labels(mermaid_src: str) -> str:
+    """Defensive post-processor: wrap node labels with Mermaid-special chars
+    in double quotes if they aren't already.
+
+    Mermaid's parser chokes on unquoted node labels containing `(`, `/`,
+    `:`, `,`, etc. — most commonly hit by hexagon nodes like
+    `orchestrator{{Foo (loop)}}` which need to be `orchestrator{{"Foo (loop)"}}`.
+    Rectangle labels `[Foo (LLM)]` need the same treatment if the LLM
+    forgets the quotes. GitHub's and VSCode's Mermaid renderers are
+    strict; the inline GitHub markdown view + most preview extensions
+    fail on the unquoted form.
+
+    Idempotent — labels already wrapped in double quotes are left alone.
+    Belt-and-suspenders with the prompt's quoting instructions; this catches
+    the cases where the LLM forgot.
+    """
+    def _needs_quoting(label: str) -> bool:
+        if label.startswith('"') and label.endswith('"'):
+            return False
+        # Strip <br/> / <br> before checking — those are legitimate HTML inline.
+        stripped = re.sub(r"<br\s*/?>", "", label)
+        return any(c in stripped for c in "()/:,&;")
+
+    def _wrap_hex(m: re.Match[str]) -> str:
+        label = m.group(1)
+        if _needs_quoting(label):
+            return "{{\"" + label + "\"}}"
+        return m.group(0)
+
+    def _wrap_rect(m: re.Match[str]) -> str:
+        label = m.group(1)
+        if _needs_quoting(label):
+            return '["' + label + '"]'
+        return m.group(0)
+
+    # Hexagons: `{{ ... }}` where ... doesn't already start with `"`.
+    mermaid_src = re.sub(r"\{\{(?!\")([^{}\n]+?)\}\}", _wrap_hex, mermaid_src)
+    # Rectangles: `[ ... ]` where ... doesn't already start with `"` and isn't
+    # a pipe-labeled edge (`-->|label|`). The `[^|]` exclusion in the body
+    # rules out the edge-label case.
+    mermaid_src = re.sub(r"\[(?!\")([^\[\]\n|]+?)\]", _wrap_rect, mermaid_src)
+    return mermaid_src
+
+
 def _render_architecture_md(
     diagram: ArchitectureDiagram,
     architecture: ArchitectureProposal,
     runtime: RuntimeProposal,
 ) -> str:
-    """Wrap the LLM's diagram source in fenced mermaid blocks + header/footer."""
+    """Wrap the LLM's diagram source in fenced mermaid blocks + header/footer.
+
+    Applies _sanitize_mermaid_node_labels to wrap any node label containing
+    Mermaid-special chars (parens, slashes, etc.) in double quotes so
+    stricter renderers (GitHub, VSCode) don't choke on unquoted forms.
+    """
+    skill_graph_safe = _sanitize_mermaid_node_labels(diagram.skill_graph_mermaid.strip())
+    execution_flow_safe = _sanitize_mermaid_node_labels(diagram.execution_flow_mermaid.strip())
     return (
         f"# Architecture — {architecture.selected_pattern_slug}\n\n"
         f"**Runtime:** {runtime.selected_runtime} + {runtime.selected_model_family}  \n"
@@ -763,10 +815,10 @@ def _render_architecture_md(
         f"{diagram.summary_md.strip()}\n\n"
         f"## Skill graph\n\n"
         f"What skills the agent has and how they relate. Each node shows the skill's name and type (LLM / inner-pipeline / deterministic).\n\n"
-        f"```mermaid\n{diagram.skill_graph_mermaid.strip()}\n```\n\n"
+        f"```mermaid\n{skill_graph_safe}\n```\n\n"
         f"## Execution flow (one turn)\n\n"
         f"What happens from the user's input to the agent's response. Conditional branches (escalation gates, retries) are shown where relevant.\n\n"
-        f"```mermaid\n{diagram.execution_flow_mermaid.strip()}\n```\n\n"
+        f"```mermaid\n{execution_flow_safe}\n```\n\n"
         f"---\n\n"
         f"*Read [`design_rationale.md`](./design_rationale.md) for the audit trail of why these decisions were made (with citations into `patterns/`).*\n"
     )
