@@ -36,7 +36,9 @@ You convert the customer's concrete answer into a structured `(topic, content, s
     - "what surface does the customer interact with" / "dashboard" / "working layer" → `existing_context`
     - "how is auth handled" / "per-user vs service account" → `identity_model`
 
-    Only mint a fresh `snake_case` slug if NO canonical topic fits — and even then, prefer to extend the closest canonical fit over inventing a new one. The earlier "Stage 3 will normalize" hand-wave doesn't hold; there is no Stage 3 yet, and ad-hoc slugs persist forever.
+    Only mint a fresh `snake_case` slug if NO canonical topic fits. The earlier "Stage 3 will normalize" hand-wave doesn't hold; there is no Stage 3 yet, and ad-hoc slugs persist forever.
+
+    **Critical clarification: snapping is about which canonical topic SLOT the fact goes into, NOT whether to record the fact.** Every customer answer carrying new information must produce a new `DistilledFact`, even if existing facts on the same topic seem adjacent. Multiple facts can (and should) live under the same canonical topic — `record_fact` appends, never deduplicates. The distiller's job is to extract this turn's content; downstream readers handle redundancy. Skipping a fact because "it's already covered" silently loses signal. If unsure whether the new content adds anything, record it — the cost of an extra fact is far lower than the cost of a missed one.
 - **Source classification:**
     - `stated` — the customer said it directly in their answer.
     - `inferred_from_priors` — you're recording something from the RoleContext priors that the customer just confirmed (or didn't contradict). Rare.
