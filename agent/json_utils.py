@@ -51,6 +51,26 @@ _MISSING_COMMA_BETWEEN_FIELDS = re.compile(
 _TRAILING_COMMA = re.compile(r",(\s*[\]\}])")
 
 
+# Matches an annotation-after-value pattern the model emits when it's
+# trying to add a docstring-style note to a JSON value, e.g.:
+#   "metrics": ["string"] (optional customer-provided metrics)
+#   "flags": [{"id": "string"}] (optional)
+# That's a comment in JS-style syntax — invalid in strict JSON.
+#
+# Conservative: requires the value to end in `]` or `}` (composite closers
+# that can never appear inside an open JSON string), followed by whitespace
+# and a parenthesized expression. We strip the annotation, preserving the
+# value. False-positive risk is low because `]/}` outside a string position
+# is always a structural token.
+#
+# Surfaced from SkillProposalResult during atlan-se-copilot inception runs
+# after the patterns-deepening branch added harness deep-dives with embedded
+# Python dict literals in their code samples (the model started mimicking
+# that annotation style). Codified in findings/09 as the fourth instance of
+# the deterministic-post-processor pattern.
+_TRAILING_ANNOTATION = re.compile(r"([\]\}])\s+\([^)]*\)")
+
+
 def _strip_fences(text: str) -> str:
     """Strip ```json ... ``` or ``` ... ``` fences that LLMs sometimes
     wrap output in despite the prompt asking for raw JSON. Idempotent."""
@@ -80,15 +100,31 @@ def parse_json_lenient(text: str) -> Any:
     try:
         return json.loads(stripped)
     except json.JSONDecodeError as primary_error:
-        # Apply both fixes (order matters: missing-comma first, then trailing-comma
-        # in case the trailing-comma fix uncovers a missing-comma case)
+        # Apply all three fixes (order matters: missing-comma first so we
+        # see all field boundaries; trailing-annotation second since it
+        # strips the annotation that would otherwise be inside a missing
+        # comma; trailing-comma last in case earlier fixes uncovered one)
         candidate = _MISSING_COMMA_BETWEEN_FIELDS.sub(r"\1,\2\3", stripped)
+        candidate = _TRAILING_ANNOTATION.sub(r"\1", candidate)
         candidate = _TRAILING_COMMA.sub(r"\1", candidate)
         if candidate != stripped:
             try:
                 return json.loads(candidate)
             except json.JSONDecodeError:
                 pass
-        # Couldn't recover; re-raise the primary error so the caller sees
-        # the original syntax problem (not a downstream effect of our patching).
+        # Couldn't recover. If the env var DISCOVERY_DUMP_BAD_JSON is set,
+        # write the raw content to that path so we can inspect what shape
+        # the model emitted. Lets us iterate on the parser without
+        # repeatedly running expensive inception calls just to see the bad
+        # output. The dump is overwrite-on-each-failure (1 file per process).
+        import os
+        dump_path = os.environ.get("DISCOVERY_DUMP_BAD_JSON")
+        if dump_path:
+            try:
+                from pathlib import Path
+                Path(dump_path).write_text(stripped)
+            except Exception:
+                pass
+        # Re-raise the primary error so the caller sees the original syntax
+        # problem (not a downstream effect of our patching).
         raise primary_error
