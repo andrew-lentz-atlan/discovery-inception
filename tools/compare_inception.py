@@ -17,6 +17,14 @@ Usage:
         --ref-a main \\
         --ref-b feature/patterns-deepening-v1
 
+    # Run inception against a session that lives outside this repo (e.g. a
+    # baseline persisted on the desktop). The path is forwarded as the
+    # SESSIONS_DIR env var to the inception subprocess:
+    python tools/compare_inception.py \\
+        --session-id sess_abc \\
+        --ref-b feature/patterns-deepening-v1 \\
+        --sessions-dir ~/Desktop/discovery-inception/sessions
+
     # Re-render report without re-running inception (useful when iterating
     # on a new entry — you saved the ref-a baseline once, then run with
     # --skip-ref-a to only re-run ref-b):
@@ -83,12 +91,23 @@ def extract_patterns_at_ref(ref: str, dest: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def run_inception(session_id: str, output_dir: Path, patterns_dir: Path) -> dict[str, Any]:
+def run_inception(
+    session_id: str,
+    output_dir: Path,
+    patterns_dir: Path,
+    sessions_dir: Path | None = None,
+) -> dict[str, Any]:
     """Run inception against the session, with PATTERNS_DIR pointing at the
-    extracted patterns. Forces fresh upstream LLM calls (no resume cache)."""
+    extracted patterns. Forces fresh upstream LLM calls (no resume cache).
+
+    If `sessions_dir` is provided, it is forwarded as the SESSIONS_DIR env var
+    so inception reads the session from an external location (e.g. a baseline
+    persisted on the desktop) instead of this repo's sessions/."""
     output_dir.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env["PATTERNS_DIR"] = str(patterns_dir.resolve())
+    if sessions_dir is not None:
+        env["SESSIONS_DIR"] = str(sessions_dir.resolve())
 
     cmd = (
         f"uv run python -m agent.cli inception "
@@ -97,6 +116,8 @@ def run_inception(session_id: str, output_dir: Path, patterns_dir: Path) -> dict
         f"--output-dir {output_dir}"
     )
     print(f"  → PATTERNS_DIR={env['PATTERNS_DIR']}")
+    if sessions_dir is not None:
+        print(f"  → SESSIONS_DIR={env['SESSIONS_DIR']}")
     print(f"  → {cmd}")
     result = subprocess.run(
         cmd, shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT, env=env,
@@ -282,6 +303,16 @@ def main() -> None:
         default=str(PROJECT_ROOT / ".compare_inception"),
         help="Where to write per-ref agent_starter dirs (default: .compare_inception/; gitignored)",
     )
+    parser.add_argument(
+        "--sessions-dir",
+        default=None,
+        help=(
+            "External sessions directory to read the session from "
+            "(e.g. ~/Desktop/discovery-inception/sessions). "
+            "Forwarded as the SESSIONS_DIR env var to the inception subprocess. "
+            "Default: this repo's sessions/."
+        ),
+    )
     parser.add_argument("--skip-ref-a", action="store_true", help="Skip ref-a's inception run; re-read its cached artifacts")
     parser.add_argument("--skip-ref-b", action="store_true", help="Skip ref-b's inception run; re-read its cached artifacts")
     args = parser.parse_args()
@@ -295,15 +326,30 @@ def main() -> None:
     a_patterns = a_dir / "_patterns"
     b_patterns = b_dir / "_patterns"
 
+    # Resolve external sessions dir if provided; expand `~` and verify the
+    # session actually lives there before we waste a patterns/ extraction.
+    sessions_dir: Path | None = None
+    if args.sessions_dir:
+        sessions_dir = Path(args.sessions_dir).expanduser().resolve()
+        if not sessions_dir.exists():
+            raise SystemExit(f"sessions-dir not found: {sessions_dir}")
+        session_path = sessions_dir / args.session_id
+        if not session_path.exists():
+            raise SystemExit(
+                f"session {args.session_id} not found under {sessions_dir} "
+                f"(expected {session_path})"
+            )
+        print(f"  ↳ using external sessions dir: {sessions_dir}")
+
     if not args.skip_ref_a:
         print(f"\n→ ref-a ({args.ref_a}): extracting patterns/ and running inception")
         extract_patterns_at_ref(args.ref_a, a_patterns)
-        run_inception(args.session_id, a_dir, a_patterns)
+        run_inception(args.session_id, a_dir, a_patterns, sessions_dir=sessions_dir)
 
     if not args.skip_ref_b:
         print(f"\n→ ref-b ({args.ref_b}): extracting patterns/ and running inception")
         extract_patterns_at_ref(args.ref_b, b_patterns)
-        run_inception(args.session_id, b_dir, b_patterns)
+        run_inception(args.session_id, b_dir, b_patterns, sessions_dir=sessions_dir)
 
     art_a = load_artifacts(a_dir)
     art_b = load_artifacts(b_dir)
