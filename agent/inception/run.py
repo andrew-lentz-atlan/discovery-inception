@@ -68,7 +68,11 @@ def load_prompt(name: str, **substitutions: str) -> str:
     return text
 
 
-PATTERNS_DIR = PROJECT_ROOT / "patterns"
+PATTERNS_DIR = (
+    Path(os.environ["PATTERNS_DIR"])
+    if os.environ.get("PATTERNS_DIR")
+    else PROJECT_ROOT / "patterns"
+)
 
 
 def feedback_block(feedback: PriorIterationFeedback | None, step: FeedbackTargetStep) -> str:

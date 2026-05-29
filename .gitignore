@@ -72,3 +72,9 @@ docs/examples/
 # approved promotions; `.promotion_runs/*.json` are run-level audit JSON
 # that adds little to history.
 patterns/.promotion_runs/
+patterns/.audit_runs/
+
+# Phase 0 of patterns-deepening: compare_inception.py writes per-ref
+# inception outputs here for local diffing. Multi-MB worth of generated
+# scaffolds + extracted patterns/ snapshots per run. Never committed.
+.compare_inception/
