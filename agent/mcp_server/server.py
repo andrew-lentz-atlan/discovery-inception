@@ -63,7 +63,15 @@ from agent.v08.orchestrator import run_v08_turn, run_final_synthesis  # noqa: E4
 from intake.run import run_intake  # noqa: E402
 
 SKILLS_DIR = PROJECT_ROOT / "skills"
-SESSIONS_DIR = PROJECT_ROOT / "sessions"
+# SESSIONS_DIR respects the SESSIONS_DIR env var so tools/compare_inception.py
+# (and other comparison harnesses) can point inception at sessions that live
+# outside this repo — e.g. baselines persisted under ~/Desktop/discovery-inception/
+# without having to copy them into the working tree.
+SESSIONS_DIR = (
+    Path(os.environ["SESSIONS_DIR"])
+    if os.environ.get("SESSIONS_DIR")
+    else PROJECT_ROOT / "sessions"
+)
 
 
 # ---------------------------------------------------------------------------

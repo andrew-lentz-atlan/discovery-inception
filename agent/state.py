@@ -11,6 +11,7 @@ they emerge.
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,7 +33,14 @@ from agent.schemas import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SESSIONS_DIR = PROJECT_ROOT / "sessions"
+# SESSIONS_DIR respects the SESSIONS_DIR env var so comparison harnesses
+# (e.g. tools/compare_inception.py) can point at session directories that
+# live outside the working tree. Default is the in-repo sessions/ dir.
+SESSIONS_DIR = (
+    Path(os.environ["SESSIONS_DIR"])
+    if os.environ.get("SESSIONS_DIR")
+    else PROJECT_ROOT / "sessions"
+)
 
 
 # ---------------------------------------------------------------------------
