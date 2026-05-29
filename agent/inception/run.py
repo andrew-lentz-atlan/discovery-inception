@@ -170,13 +170,15 @@ def load_pattern_category(category: str) -> str:
 
 
 def parse_json_response(content: str) -> dict | list:
-    s = (content or "").strip()
-    if s.startswith("```"):
-        s = s.split("\n", 1)[1] if "\n" in s else s
-        if s.endswith("```"):
-            s = s[:-3]
-        s = s.strip()
-    return json.loads(s)
+    """Lenient JSON parser — see agent/json_utils.py. Critical for the
+    scaffold_writer sub-agents (OrchestratorStub, SkillMdContent,
+    DesignRationale, JudgeHarness) which embed Python source as JSON
+    strings — model occasionally emits trailing commas or missing
+    delimiters that strict json.loads rejects but are deterministically
+    fixable."""
+    from agent.json_utils import parse_json_lenient
+
+    return parse_json_lenient(content or "")
 
 
 async def call_step(
