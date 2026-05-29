@@ -103,14 +103,12 @@ def use_case_orientation(use_case: str | None) -> str:
 
 
 def parse_json_response(content: str) -> dict | list:
-    """Pull JSON out of a model response, tolerating ```json fences."""
-    s = (content or "").strip()
-    if s.startswith("```"):
-        s = s.split("\n", 1)[1] if "\n" in s else s
-        if s.endswith("```"):
-            s = s[:-3]
-        s = s.strip()
-    return json.loads(s)
+    """Pull JSON out of a model response, tolerating ```json fences and
+    common LLM-emitted syntax errors (trailing commas, missing commas
+    between fields). See agent/json_utils.py for the lenient parser."""
+    from agent.json_utils import parse_json_lenient
+
+    return parse_json_lenient(content or "")
 
 
 async def call_step(

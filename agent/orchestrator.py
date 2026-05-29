@@ -95,13 +95,11 @@ def load_prompt(name: str, **substitutions: str) -> str:
 
 
 def parse_json_response(content: str) -> dict | list:
-    s = (content or "").strip()
-    if s.startswith("```"):
-        s = s.split("\n", 1)[1] if "\n" in s else s
-        if s.endswith("```"):
-            s = s[:-3]
-        s = s.strip()
-    return json.loads(s)
+    """Lenient JSON parser — see agent/json_utils.py. Tolerates ``` fences
+    and common LLM syntax errors (trailing commas, missing commas)."""
+    from agent.json_utils import parse_json_lenient
+
+    return parse_json_lenient(content or "")
 
 
 async def _call_sub_agent_once(
