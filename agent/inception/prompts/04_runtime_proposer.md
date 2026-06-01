@@ -11,7 +11,8 @@ This step is downstream of architecture_proposer. The architectural shape is set
 1. **Workload classification** (step 1's output)
 2. **Proposed skills + orchestrator-level concerns** (step 2's output) — relevant for runtime fit (e.g., LangGraph for durable checkpointing; Pydantic AI for type-safe Python)
 3. **Selected architecture** (step 3's output) — the chosen pattern (e.g., `single-agent-react`). Different architectures map to different runtime ecosystems.
-4. **`patterns/harnesses/` knowledge base** — the harness landscape entries. Each lists per-framework "when to use," gotchas, lock-in concerns, and a decision tree.
+4. **`patterns/harnesses/` knowledge base** — the harness landscape entries + per-framework deep-dives. Each lists per-framework "when to use," gotchas, lock-in concerns, and a decision tree.
+5. **`patterns/decision-guides/` knowledge base** — taxonomies and decision frameworks. The 5-class taxonomy (`what-kind-of-agent-are-you-building.md`) gives you the implied default runtimes per class — and, more importantly, the explicit "don't reach for" list per class. Cite the class when explaining runtime fit and rejection.
 
 ## Your job
 
@@ -75,3 +76,7 @@ Respond with valid JSON matching this schema. No prose outside the JSON.
 ## patterns/harnesses/ knowledge base
 
 {HARNESS_PATTERNS}
+
+## patterns/decision-guides/ knowledge base
+
+{DECISION_GUIDES}
