@@ -117,7 +117,7 @@ Produce a markdown document with these sections:
 ## Hard rules
 
 - **Quote verbatim where you can.** The rationale fields, the granularity_argument, the calibration_cost descriptions — these are already written. Use them. Don't paraphrase or rewrite.
-- **Every architecture/runtime claim cites a pattern entry.** Use the slugs (e.g., `patterns/architectures/single-agent-react.md`) — these are clickable in markdown.
+- **Citations come ONLY from the upstream JSON, verbatim.** When you cite a pattern entry (e.g., `patterns/architectures/single-agent-react.md`), the slug MUST appear in the upstream proposers' JSON — look for `selected_pattern_slug`, `rejected_alternatives[].slug`, the harness rationale's `pattern_slugs_cited`, and any explicit `patterns/...` paths in their `rationale` fields. **You may NOT invent slugs.** You may NOT substitute a plausible-looking variant (e.g., `langraph-deep-dive` for `langgraph-deep-dive`, `cortex-agents-deep-dive` for `cortex-deep-dive`, or `architectures/inner-pipeline` when the entry actually lives at `skill-design/inner-pipeline`). If a concept feels relevant but no upstream slug supports it, describe the concept in prose WITHOUT a citation.
 - **Provenance per skill must reference specific RoleContext fields** (decision_criteria names, workflow names, flagged_unknowns).
 - **Don't add new analysis.** This is an aggregation document, not a fresh analysis. If you find yourself reasoning, you've stepped outside the role.
 - **Keep it readable.** Markdown tables for structured comparisons. Prose only where the upstream output is already prose. Don't pad.
