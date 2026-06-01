@@ -300,6 +300,8 @@ async def step_skill_proposer(
     prompt = load_prompt(
         "02_skill_proposer.md",
         WORKLOAD_CLASSIFICATION_JSON=workload.model_dump_json(indent=2),
+        DECISION_GUIDES=load_pattern_category("decision-guides"),
+        ANTI_PATTERNS=load_pattern_category("anti-patterns"),
         SPEC_MD=spec_md,
         ROLE_CONTEXT_JSON=role_context_json,
         PRIOR_FEEDBACK=feedback_block(prior_feedback, "skills"),
@@ -338,6 +340,7 @@ async def step_architecture_proposer(
         SKILL_PROPOSAL_JSON=skills.model_dump_json(indent=2),
         ARCHITECTURE_PATTERNS=load_pattern_category("architectures"),
         DECISION_GUIDES=load_pattern_category("decision-guides"),
+        ANTI_PATTERNS=load_pattern_category("anti-patterns"),
         PRIOR_FEEDBACK=feedback_block(prior_feedback, "architecture"),
     )
     return await call_step(
@@ -374,6 +377,7 @@ async def step_runtime_proposer(
         ARCHITECTURE_PROPOSAL_JSON=architecture.model_dump_json(indent=2),
         HARNESS_PATTERNS=load_pattern_category("harnesses"),
         DECISION_GUIDES=load_pattern_category("decision-guides"),
+        ANTI_PATTERNS=load_pattern_category("anti-patterns"),
         PRIOR_FEEDBACK=feedback_block(prior_feedback, "runtime"),
     )
     return await call_step(

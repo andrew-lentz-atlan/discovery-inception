@@ -80,3 +80,7 @@ Respond with valid JSON matching this schema. No prose outside the JSON.
 ## patterns/decision-guides/ knowledge base
 
 {DECISION_GUIDES}
+
+## patterns/anti-patterns/ knowledge base
+
+{ANTI_PATTERNS}
