@@ -162,6 +162,15 @@ def load_artifacts(output_dir: Path) -> dict[str, Any]:
                 art[f"{label}_confidence"] = None
 
     # design_rationale.md stats + citations
+    #
+    # Citations are split into REAL (the cited entry actually exists on disk
+    # under output_dir/_patterns/) and HALLUCINATED (the model emitted a
+    # plausible-looking slug that doesn't resolve to a real file). The
+    # hallucinated bucket surfaces a quality signal that's otherwise invisible
+    # — e.g. PG FHC iteration cited `harnesses/langraph-deep-dive` (typo) and
+    # `architectures/inner-pipeline` (fabricated), neither of which exist.
+    # Counting them as real citations inflates the apparent lift; surfacing
+    # them separately makes the fabrication rate observable.
     dr = output_dir / "design_rationale.md"
     if dr.exists():
         text = dr.read_text()
@@ -170,12 +179,37 @@ def load_artifacts(output_dir: Path) -> dict[str, Any]:
         # Match `patterns/<category>/<slug>` (with or without .md)
         # AND `<category>/<slug>.md` inside backticks (the citation style we use)
         citations = re.findall(r"(?:patterns/|`)([a-z][a-z\-]+)/([a-z0-9][a-z0-9\-]+)(?:\.md)?(?:`|\s)", text)
-        cite_counts: dict[str, int] = {}
+        # Verify each cited entry against its expected location. Two location
+        # classes:
+        #   - patterns/<category>/<slug>.md → check against output_dir/_patterns/
+        #     (the patterns/ extracted for this specific ref via git archive)
+        #   - findings/<N>... → check against $PROJECT_ROOT/findings/ via glob
+        #     (findings/ lives at repo root, not under patterns/)
+        # Anything that resolves to neither location is bucketed as hallucinated.
+        patterns_dir = output_dir / "_patterns"
+        real_cites: dict[str, int] = {}
+        hallucinated_cites: dict[str, int] = {}
         for cat, slug in citations:
             key = f"{cat}/{slug}"
-            cite_counts[key] = cite_counts.get(key, 0) + 1
-        art["citations"] = cite_counts
-        art["total_citations"] = sum(cite_counts.values())
+            resolved = False
+            if cat == "findings":
+                # findings are cited by leading-number slug (e.g. `findings/01`);
+                # glob the project-root findings/ dir to confirm existence
+                matches = list((PROJECT_ROOT / "findings").glob(f"{slug}*.md"))
+                resolved = bool(matches)
+            else:
+                # everything else is expected to be a patterns/ entry; verify
+                # against the ref-specific extracted patterns dir
+                entry_path = patterns_dir / cat / f"{slug}.md"
+                resolved = patterns_dir.exists() and entry_path.exists()
+            if resolved:
+                real_cites[key] = real_cites.get(key, 0) + 1
+            else:
+                hallucinated_cites[key] = hallucinated_cites.get(key, 0) + 1
+        art["citations"] = real_cites
+        art["hallucinated_citations"] = hallucinated_cites
+        art["total_citations"] = sum(real_cites.values())
+        art["total_hallucinated"] = sum(hallucinated_cites.values())
 
     # architecture.md
     ar = output_dir / "architecture.md"
@@ -237,7 +271,7 @@ def print_report(ref_a: str, ref_b: str, art_a: dict, art_b: dict) -> None:
         b = art_b.get(f"{name}_confidence")
         print(f"  {name:<14}  {_fmt(a):>22}  {_fmt(b):>22}  {_delta(a, b):>6}")
 
-    # Citations
+    # Citations (real entries — verified to exist in patterns/)
     print("\nCitations to patterns/ entries in design_rationale.md")
     print("-" * 72)
     cites_a = art_a.get("citations", {})
@@ -255,6 +289,26 @@ def print_report(ref_a: str, ref_b: str, art_a: dict, art_b: dict) -> None:
             marker = "  ← up"
         print(f"  {entry:<48}  {ca:>8}  {cb:>8}{marker}")
     print(f"  {'TOTAL':<48}  {art_a.get('total_citations', 0):>8}  {art_b.get('total_citations', 0):>8}")
+
+    # Hallucinated citations — model fabricated entry names that don't
+    # resolve to real .md files. A quality signal worth surfacing
+    # separately: high hallucination rate means the model is inventing
+    # plausible-looking entries instead of citing what's actually there.
+    halluc_a = art_a.get("hallucinated_citations", {})
+    halluc_b = art_b.get("hallucinated_citations", {})
+    halluc_entries = sorted(set(halluc_a) | set(halluc_b))
+    if halluc_entries:
+        print("\n⚠ Hallucinated citations (entry slug does NOT resolve to a real file)")
+        print("-" * 72)
+        print(f"  {'Entry (fabricated)':<48}  {ref_a:>8}  {ref_b:>8}")
+        for entry in halluc_entries:
+            ca, cb = halluc_a.get(entry, 0), halluc_b.get(entry, 0)
+            print(f"  {entry:<48}  {ca:>8}  {cb:>8}")
+        print(
+            f"  {'TOTAL HALLUCINATED':<48}  "
+            f"{art_a.get('total_hallucinated', 0):>8}  "
+            f"{art_b.get('total_hallucinated', 0):>8}"
+        )
 
     # Length / depth
     print("\nLength / depth")
