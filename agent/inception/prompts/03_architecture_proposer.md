@@ -12,6 +12,7 @@ This step is the most pattern-dense in the entire inception pipeline. Every arch
 2. **Proposed skills + orchestrator-level concerns** (`skill_proposer`'s output) — the agent's skill cut + what doesn't belong inside any single skill (architectural-level concerns).
 3. **`patterns/architectures/` knowledge base** — every architecture pattern entry. Each entry has frontmatter (`applies_when.workloads`, `applies_when.constraints`, `status`, `contradicts`), a one-paragraph summary, `Use when` / `Don't use when` sections, key gotchas, and an empirical anchor.
 4. **`patterns/decision-guides/` knowledge base** — taxonomies and decision frameworks. Most important entry for you is `what-kind-of-agent-are-you-building.md` (the 5-class taxonomy: chatbot / conversational / task / co-pilot / autonomous worker). Each class has implied default architectures and explicit "don't reach for" anti-patterns. Use the class identified by the workload classification as the first filter on `patterns/architectures/`.
+5. **`patterns/skill-design/` knowledge base** — entries describing context-layer integration patterns (the `atlan-*` entries). These shape architectural decisions about HOW the agent connects to its data/context — context repos vs raw SDK vs MCP server vs MDLH. When the agent integrates with Atlan or an Atlan-adjacent context layer, cite the relevant integration-path entry as supporting evidence for architectural decisions about context flow.
 
 ## Your job
 
@@ -99,3 +100,7 @@ Respond with valid JSON matching this schema. No prose outside the JSON.
 ## patterns/anti-patterns/ knowledge base
 
 {ANTI_PATTERNS}
+
+## patterns/skill-design/ knowledge base
+
+{SKILL_DESIGN}
