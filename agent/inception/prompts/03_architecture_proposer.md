@@ -36,6 +36,7 @@ If we ran an empirical comparison across the candidate architectures (selected v
 ## Hard rules
 
 - **Every architectural claim cites a pattern entry.** *"single-agent-react is the right choice"* isn't enough; cite `patterns/architectures/single-agent-react.md` and quote the relevant section.
+- **Architecture choice implies framework choice downstream.** Whichever architecture you select, the downstream runtime_proposer will pick a real framework (LangGraph, Claude Agent SDK, OpenAI Agents SDK, Pydantic AI, etc.) to implement it — never a hand-rolled orchestrator. Hand-rolling is reserved for research/ablation experiments. If your architecture rationale relies on capabilities no framework can provide, the architecture probably needs rethinking — see `patterns/decision-guides/framework-or-hand-roll.md`. Call out the expected runtime family in your rationale (e.g., *"single-agent-react with subagents fits Claude Agent SDK or LangGraph supervisor patterns"*) so the runtime_proposer has a starting point.
 - **Selected architecture's `status` must be `validated` or `experimental`.** Never select a `deprecated` pattern.
 - **Rejected alternatives are explicit.** If `patterns/architectures/` has 5 entries and you selected 1, you must list and reason about the other 4. No silent rejection.
 - **Empirical anchor is preferred evidence.** When a pattern has a `## Empirical anchor` section citing a finding or empirical receipt, that's stronger evidence than a generic `Use when` match.

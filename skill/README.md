@@ -125,13 +125,15 @@ The contract surface CES cares about is `final_spec.json`. The orchestration int
 
 ---
 
-## Why we didn't use LangChain / LangGraph / CrewAI / AutoGen
+## Why our infrastructure is hand-rolled (and yours shouldn't be)
 
-**Short version:** at research stage, framework opinions about orchestration would have entangled with the architectural variables we were measuring. Our orchestrator is ~500 lines; iteration speed across v0.5→v0.6→v0.7→v0.8 mattered more than framework polish.
+**Short version:** discovery-inception is itself an ablation experiment — findings/06-09 measured orchestration-layer variables (sub-agent model choice, context budget, synthesizer timing, sharpener rewrite rate) that stock frameworks (LangChain / LangGraph / CrewAI / AutoGen) would have confounded. Hand-rolling was *required for the experiment*, not a stylistic preference.
 
-**Long version:** see the README at the project root.
+That research case is the narrow exception, not the rule. The skill bundle is **framework-independent by design** — the orchestration_spec is a portable contract you implement on whichever harness fits the consumer's stack. If you're a downstream builder consuming this skill, your default should be a real framework (Claude Agent SDK, LangGraph, OpenAI Agents SDK, Pydantic AI). See `patterns/decision-guides/framework-or-hand-roll.md` for the full reasoning on why.
 
-We use proven libraries (OpenAI SDK, Pydantic, FastAPI, MCP SDK, python-dotenv). We don't use agent frameworks. The distinction: libraries solve specific problems; agent frameworks impose orchestration mental models. Once the patterns are validated, a framework MAY be the right v1.5 production move — but adopting one before patterns were validated would have meant our findings were partly findings about the framework.
+Specifically: the engineering costs of hand-rolling — maintenance burden, cognitive onboarding cost, lost knowledge transfer across builds, weak operational maturity, slow incident response, reviewer illegibility — compound over a system's lifetime. Framework adoption pays back quickly. Discovery-inception's own infrastructure will migrate to a real framework once the research-stage justification expires; v0.10 backlog includes the discovery-layer migration.
+
+**Long version:** see the README at the project root and `patterns/decision-guides/framework-or-hand-roll.md`.
 
 ---
 

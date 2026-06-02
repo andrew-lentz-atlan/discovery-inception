@@ -57,13 +57,14 @@ Auto-discoverable list of entries with status + last-updated. Hand-maintained du
 | [cost-vs-latency-tradeoffs](decision-guides/cost-vs-latency-tradeoffs.md) | validated | 2026-05-22 | — |
 | [what-kind-of-agent-are-you-building](decision-guides/what-kind-of-agent-are-you-building.md) | draft | 2026-05-29 | — |
 | [subagent-vs-skill-tradeoffs](decision-guides/subagent-vs-skill-tradeoffs.md) | draft | 2026-05-29 | — |
+| [framework-or-hand-roll](decision-guides/framework-or-hand-roll.md) | draft | 2026-05-29 | — |
 
 ---
 
 ## Coverage summary
 
-- **27 entries** across all 5 active categories
-- **10 validated**, **16 draft**, 1 deprecated
+- **28 entries** across all 5 active categories
+- **10 validated**, **17 draft**, 1 deprecated
 - **1 reference companion** (`chained-pipeline.reference.md`) — the only seeded entry with substantive non-source-resident content
 - All entries have empirical receipts cited in frontmatter (`source_findings` or `source_external`)
 - **Body-shape diversity:** operational-decision entries (~15), code-pattern (~10), comparative-survey (1). The curator agent has three distinct shapes to learn from.

@@ -89,7 +89,7 @@ intake → discovery → spec + RoleContext               inception ← prior_fe
                                         decision guides)
 ```
 
-Five sub-agents per discovery turn; six sub-agents in the inception pipeline; a separate patterns curator agent maintains the knowledge base. The orchestrator is ~500 lines of plain Python with structured Pydantic outputs at every step. No framework opinions; full per-step trace; no black box.
+Five sub-agents per discovery turn; six sub-agents in the inception pipeline; a separate patterns curator agent maintains the knowledge base. The orchestrator is ~500 lines of plain Python with structured Pydantic outputs at every step; full per-step trace; no black box. The orchestration layer is hand-rolled because **discovery-inception is itself an ablation experiment** — findings/06-09 measured orchestration-layer variables (sub-agent model choice, context budget, synthesizer timing, sharpener rewrite rate) that stock frameworks would have confounded. The inception output it produces, however, recommends real frameworks for downstream builds — see `patterns/decision-guides/framework-or-hand-roll.md`.
 
 See [`ROADMAP.md`](ROADMAP.md) for what's shipped and what's coming next.
 
@@ -117,9 +117,13 @@ discovery-inception/
 
 Everything else is gitignored — generated outputs (intake's priors, discovery's sessions, inception's `agent_starter/`), customer-specific artifacts (transcripts, scoping calls), and our internal design docs (`docs/internal/`) live locally only.
 
-## A note on framework choice
+## A note on framework choice (our infra vs. our recommendations)
 
-We didn't use LangChain / LangGraph / CrewAI / AutoGen. At research stage, framework opinions about orchestration would have entangled with the architectural variables we were measuring. We use boring libraries (OpenAI SDK, Pydantic, FastAPI, MCP SDK) and a hand-rolled orchestrator. The architectural findings are framework-independent — anyone can re-implement on LangGraph with the skill bundle (prompts + schemas + orchestration spec) as the contract.
+Discovery-inception's own orchestration layer is hand-rolled (OpenAI SDK, Pydantic, FastAPI, MCP SDK + ~500 lines of plain Python). That's because the research phase needed to ablate orchestration-layer variables — sub-agent model choice, context budget, synthesizer timing, sharpener rewrite rate — that stock frameworks (LangChain / LangGraph / CrewAI / AutoGen) would have confounded. Hand-rolling was *required for the experiment*, not a stylistic choice.
+
+That research case is the **narrow exception**, not the rule. Inception's runtime_proposer recommends a real framework for every downstream build it scopes, because the engineering costs of hand-rolling (maintenance burden, cognitive onboarding cost, lost knowledge transfer across builds, weak operational maturity, slow incident response, reviewer illegibility) compound over a system's lifetime — see `patterns/decision-guides/framework-or-hand-roll.md` for the full reasoning.
+
+The architectural findings are framework-independent — the skill bundle (prompts + schemas + orchestration spec) is the contract. Anyone can re-implement on LangGraph or Claude Agent SDK, and discovery-inception's own infrastructure will migrate to a real framework once the research-stage justification expires. The v0.10 backlog includes a discovery-layer migration to Claude Agent SDK + LangGraph hybrid.
 
 ## Where to read deeper
 
