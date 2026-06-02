@@ -13,6 +13,7 @@ This step is downstream of architecture_proposer. The architectural shape is set
 3. **Selected architecture** (step 3's output) — the chosen pattern (e.g., `single-agent-react`). Different architectures map to different runtime ecosystems.
 4. **`patterns/harnesses/` knowledge base** — the harness landscape entries + per-framework deep-dives. Each lists per-framework "when to use," gotchas, lock-in concerns, and a decision tree.
 5. **`patterns/decision-guides/` knowledge base** — taxonomies and decision frameworks. The 5-class taxonomy (`what-kind-of-agent-are-you-building.md`) gives you the implied default runtimes per class — and, more importantly, the explicit "don't reach for" list per class. Cite the class when explaining runtime fit and rejection.
+6. **`patterns/skill-design/` knowledge base** — context-layer integration patterns (the `atlan-*` entries) and skill body shapes. Especially relevant for runtime selection when the agent integrates with Atlan: `atlan-mcp-integration` favors MCP-native runtimes (Claude Agent SDK, Claude Code, Cursor); `atlan-context-without-repo` favors Python-native runtimes that can wrap pyatlan; `atlan-context-repos` and `atlan-skills-as-assets` shape how skills are loaded at runtime. Cite the relevant entry when the runtime choice depends on the context-layer integration shape.
 
 ## Your job
 
@@ -84,3 +85,7 @@ Respond with valid JSON matching this schema. No prose outside the JSON.
 ## patterns/anti-patterns/ knowledge base
 
 {ANTI_PATTERNS}
+
+## patterns/skill-design/ knowledge base
+
+{SKILL_DESIGN}
