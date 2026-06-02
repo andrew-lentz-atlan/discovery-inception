@@ -1,5 +1,24 @@
 # patterns/
 
+> ⚠️ **Work in progress — please audit and share opinions.**
+>
+> This knowledge base is actively being designed. Many entries are marked
+> `status: draft` and have been validated against a small number of real
+> inception runs (n=2 so far: an SE copilot use case and a P&G FHC use
+> case). Critique is more valuable than approval — if an entry's framing
+> is wrong, misleading, or missing context, please flag it. If a pattern
+> you'd expect to see isn't here, please name it. The whole point of
+> externalizing opinions into a versioned substrate is making them
+> easier to challenge.
+>
+> Specifically welcome:
+> - Disagreements with the 5-class taxonomy (`decision-guides/what-kind-of-agent-are-you-building`)
+> - Pushback on the Atlan context-layer entries (`skill-design/atlan-*`)
+> - Counter-examples to the anti-patterns
+> - Missing harnesses, missing decision points, missing failure modes
+>
+> Drop comments inline, raise issues against the repo, or flag in `#bu-ai`.
+
 Curated knowledge base of agentic patterns: architectures, skill-design choices, anti-patterns, harness comparisons, decision guides. Externalizes design opinions out of agent prompts and into a versioned, queryable substrate.
 
 **Inspired by:** Karpathy's LLM-maintained wiki gist (https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
@@ -10,9 +29,11 @@ Prompts encode invariants. This directory encodes opinions. When the field shift
 
 ## Status
 
-**Phase 1 (gold-standard seed):** complete — 5 hand-authored entries serving as the reference target for the eventual `patterns_curator` agent.
+**Phase 1 gold-standard seed:** complete (5 hand-authored entries).
 
-Phase 2 builds the curator's `ingest` operation and validates it by reproducing these seed entries from their source materials. Phase 3 has the curator ingest the remaining ~20 entries (harnesses, more anti-patterns, builder lessons, decision guides).
+**Phase 1 expansion (2026-05-29):** ~17 additional entries staged. Adds per-framework harness deep-dives (Claude Agent SDK, LangGraph, OpenAI Agents SDK, Pydantic AI, Cortex, Genie), the 5-class system taxonomy, 4 new anti-patterns, and 4 Atlan context-layer entries. Most are marked `status: draft` — they pass internal sanity checks against n=2 real inception comparison runs but haven't been audited by peers yet. That's the prompt for the WIP banner above.
+
+Phase 2 builds the curator's `ingest` operation and validates it by reproducing these seed entries from their source materials. Phase 3 has the curator ingest the remaining ~20 entries (more harnesses, more anti-patterns, builder lessons, decision guides).
 
 ## How to consume this directory
 
@@ -67,6 +88,7 @@ When authoring (or when the curator authors), pick the shape that fits the knowl
 |---|---|
 | `validated` | Empirically supported; default choice for that decision |
 | `experimental` | Promising but single-source evidence or anecdotal |
+| `draft` | Authored, internally sanity-checked, awaiting peer audit. Treat as opinionated-but-unvalidated. Most Phase 1 expansion entries land here. |
 | `deprecated` | Once valid, now superseded — kept readable for traceability. Follow `superseded_by:` pointer |
 
 ## Adding entries (for now, by hand)
