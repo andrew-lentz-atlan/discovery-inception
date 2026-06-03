@@ -388,7 +388,7 @@ async def tool_run_inception(
     feedback (Loop 2). Feedback runs always bypass the checkpoint cache
     since the whole point is feeding feedback INTO the upstream steps.
     """
-    from agent.inception.run import run_inception
+    from agent.inception.run import build_spec_digest, run_inception
     from agent.inception.schemas import PriorIterationFeedback
 
     session_dir = SESSIONS_DIR / session_id
@@ -455,12 +455,27 @@ async def tool_run_inception(
             }
 
     spec_md = spec_md_path.read_text()
+
+    # Build the structured spec digest (Issue B): the typed spec fields the
+    # rendered spec.md prose summarizes (bounded_context counts) or omits
+    # (internal_tensions). Deserializing the raw spec dict also runs the
+    # schema-v2 migration validator, so old sessions up-convert cleanly here.
+    # If the spec dict is malformed, fall back to prose-only (None) rather than
+    # failing inception — the digest is additive, not required.
+    spec_structured: str | None = None
+    try:
+        spec_obj = DiscoverySpec.model_validate(spec)
+        spec_structured = build_spec_digest(spec_obj)
+    except Exception as exc:  # noqa: BLE001 — additive signal; never block inception
+        print(f"   ! could not build structured spec digest ({exc}); using prose only")
+
     result = await run_inception(
         spec_md=spec_md,
         role_context_json=role_context_json,
         output_dir=Path(output_dir),
         prior_feedback=prior_feedback,
         force_fresh=force_fresh,
+        spec_structured=spec_structured,
     )
 
     summary: dict[str, Any] = {

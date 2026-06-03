@@ -90,6 +90,15 @@ Respond with valid JSON matching this schema. No prose outside the JSON.
 
 {SKILL_PROPOSAL_JSON}
 
+## Structured spec digest (higher-fidelity than the prose brief)
+
+Typed spec fields that the rendered spec.md summarizes or omits:
+
+- **`bounded_context`** — the actual cataloged context the agent operates over (Atlan glossary terms, tables, values), not just counts. This shapes context-layer architecture decisions: an agent grounded in a rich existing Atlan catalog favors the context-layer integration patterns in `patterns/skill-design/atlan-*` (and you should cite the specific one); an agent starting cold doesn't. Let the presence/richness of `bounded_context` inform whether context-layer integration is load-bearing in the architecture.
+- **`internal_tensions`** — unresolved contradictions from discovery. If a tension bears on the architecture (e.g. "real-time vs batch" is unresolved), name it rather than silently architecting for one side.
+
+{SPEC_STRUCTURED}
+
 ## patterns/architectures/ knowledge base
 
 {ARCHITECTURE_PATTERNS}

@@ -99,6 +99,15 @@ Respond with valid JSON matching this schema. No prose outside the JSON.
 
 {ROLE_CONTEXT_JSON}
 
+## Structured spec digest (higher-fidelity than the prose brief)
+
+Typed spec fields the rendered spec.md summarizes or omits. Use where present:
+
+- **`bounded_context`** — the actual cataloged assets the agent will work over (Atlan glossary terms, tables, values), not just the counts the prose shows. This is load-bearing for skill proposals: a skill that reads "the customer's `revenue_net` glossary term" is more grounded than one that reads "some revenue metric." When a skill's job touches cataloged context, name the specific terms/tables from here in its `provenance` and `data_sources`.
+- **`internal_tensions`** — unresolved contradictions from discovery. A skill cut that silently picks one side of a tension is fragile; surface the tension in the relevant skill's `open_questions` instead.
+
+{SPEC_STRUCTURED}
+
 ## patterns/decision-guides/ knowledge base
 
 {DECISION_GUIDES}

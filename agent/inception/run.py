@@ -264,6 +264,57 @@ async def call_step(
 
 
 # ---------------------------------------------------------------------------
+# Structured spec digest — the typed signal the rendered spec.md prose drops
+# ---------------------------------------------------------------------------
+
+# Fallback when inception runs from a rendered spec.md alone (the standalone
+# `--spec-md` path) with no typed DiscoverySpec available. The prose brief is
+# then the only signal; the steps degrade gracefully to it.
+NO_SPEC_STRUCTURED = (
+    "(No structured spec digest available — working from the rendered brief "
+    "above. This is expected when inception is run from a spec.md file directly "
+    "rather than a discovery session.)"
+)
+
+
+def build_spec_digest(spec: Any) -> str:
+    """Render the structured spec fields that spec.md prose summarizes or drops.
+
+    Issue B (typed-spec handoff): the rendered spec.md is a faithful brief for
+    most of the spec, but two fields lose fidelity in the render:
+
+      - `bounded_context` — prose shows only COUNTS ("12 terms, 5 tables").
+        The actual cataloged Atlan glossary terms / table names / values are
+        load-bearing for Atlan-aware skill + architecture proposals, and they
+        never reach inception through the prose. This is the high-value one.
+      - `working_theory.internal_tensions` — the unresolved contradictions the
+        synthesizer flagged are not rendered into the brief at all.
+
+    This digest carries those forward as structured JSON ADDITIVE to the prose
+    (not a replacement — the prose-grounded judgment in the steps stays). The
+    steps treat it as higher-fidelity signal where it's present.
+
+    `spec` is a DiscoverySpec; typed loosely as Any so this module needn't
+    import the discovery-side schema. Returns a JSON string ready to substitute
+    into a prompt, or NO_SPEC_STRUCTURED when there's nothing extra to add.
+    """
+    bounded_context = getattr(spec, "bounded_context", None)
+    wt = getattr(spec, "working_theory", None)
+    internal_tensions = list(getattr(wt, "internal_tensions", []) or []) if wt else []
+
+    # Nothing the prose doesn't already cover well → don't add noise.
+    if not bounded_context and not internal_tensions:
+        return NO_SPEC_STRUCTURED
+
+    digest: dict[str, Any] = {
+        "schema_version": getattr(spec, "schema_version", None),
+        "bounded_context": bounded_context,
+        "internal_tensions": internal_tensions,
+    }
+    return json.dumps(digest, indent=2, default=str)
+
+
+# ---------------------------------------------------------------------------
 # Step 1: workload_classifier — IMPLEMENTED
 # ---------------------------------------------------------------------------
 
@@ -272,6 +323,7 @@ async def step_workload_classifier(
     spec_md: str,
     role_context_json: str,
     prior_feedback: PriorIterationFeedback | None = None,
+    spec_structured: str | None = None,
 ) -> WorkloadClassification:
     """Classify the workload's interaction shape, latency sensitivity, etc."""
     prompt = load_prompt(
@@ -279,6 +331,7 @@ async def step_workload_classifier(
         SPEC_MD=spec_md,
         ROLE_CONTEXT_JSON=role_context_json,
         DECISION_GUIDES=load_pattern_category("decision-guides"),
+        SPEC_STRUCTURED=spec_structured or NO_SPEC_STRUCTURED,
         PRIOR_FEEDBACK=feedback_block(prior_feedback, "workload"),
     )
     return await call_step(
@@ -299,6 +352,7 @@ async def step_skill_proposer(
     spec_md: str,
     role_context_json: str,
     prior_feedback: PriorIterationFeedback | None = None,
+    spec_structured: str | None = None,
 ) -> SkillProposalResult:
     """Propose the agent's skills given workload + spec + RoleContext."""
     prompt = load_prompt(
@@ -309,6 +363,7 @@ async def step_skill_proposer(
         SKILL_DESIGN=load_pattern_category("skill-design"),
         SPEC_MD=spec_md,
         ROLE_CONTEXT_JSON=role_context_json,
+        SPEC_STRUCTURED=spec_structured or NO_SPEC_STRUCTURED,
         PRIOR_FEEDBACK=feedback_block(prior_feedback, "skills"),
     )
     return await call_step(
@@ -330,6 +385,7 @@ async def step_architecture_proposer(
     workload: WorkloadClassification,
     skills: SkillProposalResult,
     prior_feedback: PriorIterationFeedback | None = None,
+    spec_structured: str | None = None,
 ) -> ArchitectureProposal:
     """Pick an architectural shape, citing patterns/architectures/ + workload axes.
 
@@ -347,6 +403,7 @@ async def step_architecture_proposer(
         DECISION_GUIDES=load_pattern_category("decision-guides"),
         ANTI_PATTERNS=load_pattern_category("anti-patterns"),
         SKILL_DESIGN=load_pattern_category("skill-design"),
+        SPEC_STRUCTURED=spec_structured or NO_SPEC_STRUCTURED,
         PRIOR_FEEDBACK=feedback_block(prior_feedback, "architecture"),
     )
     return await call_step(
@@ -1069,6 +1126,7 @@ async def run_inception(
     output_dir: Path | None = None,
     prior_feedback: PriorIterationFeedback | None = None,
     force_fresh: bool = False,
+    spec_structured: str | None = None,
 ) -> dict:
     """Run the inception pipeline.
 
@@ -1118,7 +1176,8 @@ async def run_inception(
         else:
             print("→ Step 1/6: workload_classifier...")
             classification = await step_workload_classifier(
-                client, spec_md, role_context_json, prior_feedback=prior_feedback
+                client, spec_md, role_context_json, prior_feedback=prior_feedback,
+                spec_structured=spec_structured,
             )
         print(f"   interaction_shape:        {classification.interaction_shape}")
         print(f"   latency_sensitivity:      {classification.latency_sensitivity}")
@@ -1143,7 +1202,8 @@ async def run_inception(
         else:
             print("→ Step 2/6: skill_proposer...")
             proposal = await step_skill_proposer(
-                client, classification, spec_md, role_context_json, prior_feedback=prior_feedback
+                client, classification, spec_md, role_context_json, prior_feedback=prior_feedback,
+                spec_structured=spec_structured,
             )
         print(f"   skills proposed:        {len(proposal.skills)}")
         for i, s in enumerate(proposal.skills, 1):
@@ -1171,7 +1231,8 @@ async def run_inception(
         else:
             print("→ Step 3/6: architecture_proposer...")
             architecture = await step_architecture_proposer(
-                client, classification, proposal, prior_feedback=prior_feedback
+                client, classification, proposal, prior_feedback=prior_feedback,
+                spec_structured=spec_structured,
             )
         print(f"   selected:     {architecture.selected_pattern_slug}  ({architecture.selected_pattern_title})")
         print(f"   confidence:   {architecture.confidence:.2f}")

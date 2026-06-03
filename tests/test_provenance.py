@@ -207,3 +207,72 @@ def test_build_session_without_artifact_ids_records_no_provenance():
         ],
     )
     assert session.spec.topics[0].facts[0].artifact_id is None
+
+
+# ---------------------------------------------------------------------------
+# Issue B: structured spec digest — the typed signal prose drops
+# ---------------------------------------------------------------------------
+
+
+def test_spec_digest_falls_back_when_nothing_extra():
+    """A spec with no bounded_context and no tensions adds nothing the prose
+    doesn't already cover → digest is the fallback sentinel, not empty JSON."""
+    import json as _json
+
+    from agent.inception.run import NO_SPEC_STRUCTURED, build_spec_digest
+
+    digest = build_spec_digest(DiscoverySpec(use_case_seed="x"))
+    assert digest == NO_SPEC_STRUCTURED
+    # Must not be parseable JSON — it's a human-readable sentinel.
+    try:
+        _json.loads(digest)
+        assert False, "fallback should not be JSON"
+    except _json.JSONDecodeError:
+        pass
+
+
+def test_spec_digest_carries_bounded_context_and_tensions():
+    """The two fields the prose render drops/summarizes are carried in full."""
+    import json as _json
+
+    from agent.inception.run import build_spec_digest
+    from agent.schemas import WorkingTheory
+
+    spec = DiscoverySpec(
+        use_case_seed="x",
+        bounded_context={
+            "source_tenant": "acme.atlan.com",
+            "glossary_terms": ["revenue_net", "churn_rate"],
+            "tables": ["orders", "customers"],
+        },
+    )
+    spec.working_theory = WorkingTheory(
+        one_line_framing="f",
+        sharpest_disconfirmer="d",
+        confidence="medium",
+        internal_tensions=["real-time vs batch unresolved"],
+    )
+    parsed = _json.loads(build_spec_digest(spec))
+    # Full bounded_context, not just counts — the specific terms are present.
+    assert parsed["bounded_context"]["glossary_terms"] == ["revenue_net", "churn_rate"]
+    assert parsed["internal_tensions"] == ["real-time vs batch unresolved"]
+    assert parsed["schema_version"] == SPEC_SCHEMA_VERSION
+
+
+def test_spec_digest_with_only_tensions():
+    """Tensions alone (no Atlan context) still produce a digest, not fallback."""
+    import json as _json
+
+    from agent.inception.run import build_spec_digest
+    from agent.schemas import WorkingTheory
+
+    spec = DiscoverySpec(use_case_seed="x")
+    spec.working_theory = WorkingTheory(
+        one_line_framing="f",
+        sharpest_disconfirmer="d",
+        confidence="low",
+        internal_tensions=["A contradicts B"],
+    )
+    parsed = _json.loads(build_spec_digest(spec))
+    assert parsed["internal_tensions"] == ["A contradicts B"]
+    assert parsed["bounded_context"] is None

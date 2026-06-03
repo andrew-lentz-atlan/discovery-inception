@@ -90,6 +90,15 @@ Respond with valid JSON matching this schema (no prose outside the JSON):
 
 {ROLE_CONTEXT_JSON}
 
+### Structured spec digest (higher-fidelity than the prose brief)
+
+These are typed spec fields that the rendered spec.md above summarizes or omits. Use them as higher-fidelity signal where present — they do not replace the prose, they sharpen it:
+
+- **`bounded_context`** — the actual cataloged context the agent will operate over (e.g. Atlan glossary terms, table names, values). The prose brief shows only counts ("12 terms"); here you get the specifics. When present, let it inform `data_intensity` and the workload framing — an agent grounded in a rich existing catalog is a different workload than one starting cold.
+- **`internal_tensions`** — unresolved contradictions the discovery synthesizer flagged. Not in the prose brief. A workload with live tensions is less settled — let it temper your `confidence` and populate `open_questions`.
+
+{SPEC_STRUCTURED}
+
 ## patterns/decision-guides/ knowledge base
 
 {DECISION_GUIDES}
