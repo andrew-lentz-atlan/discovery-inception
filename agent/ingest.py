@@ -57,6 +57,7 @@ from openai import AsyncOpenAI
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(PROJECT_ROOT / ".env")
 
+from agent.artifacts import Artifact, normalize_artifact  # noqa: E402
 from agent.orchestrator import call_sub_agent, load_prompt  # noqa: E402
 from agent.schemas import (  # noqa: E402
     DiscoverySpec,
@@ -92,6 +93,7 @@ MAX_FACTS_PER_ARTIFACT = 50
 async def run_intake_all(
     artifact_paths: list[Path],
     use_case_seed: str | None,
+    artifacts_by_path: dict[Path, Artifact],
 ) -> tuple[list[RoleContext], list[tuple[Path, str]]]:
     """Run intake.run_intake on each artifact in parallel.
 
@@ -114,10 +116,14 @@ async def run_intake_all(
         return [], []
 
     async def _one(path: Path) -> RoleContext:
-        text = path.read_text()
+        # Source already normalized via the artifact seam in run_ingest; intake
+        # consumes the universal normalized_text. (A rich modality's
+        # structured_observations would be consumed here too once an extractor
+        # produces them — see agent/artifacts.py.)
+        artifact = artifacts_by_path[path]
         return await run_intake(
-            artifact_text=text,
-            source_filename=path.name,
+            artifact_text=artifact.normalized_text,
+            source_filename=artifact.source_name,
             use_case=use_case_seed,
         )
 
@@ -306,6 +312,7 @@ async def extract_facts_all(
     client: AsyncOpenAI,
     artifact_paths: list[Path],
     use_case_seed: str,
+    artifacts_by_path: dict[Path, Artifact],
 ) -> tuple[list[tuple[Path, list[DistilledFact]]], list[tuple[Path, str]]]:
     """Extract facts from each artifact in parallel; tolerate per-artifact failures.
 
@@ -314,8 +321,9 @@ async def extract_facts_all(
     """
 
     async def _one(path: Path) -> tuple[Path, list[DistilledFact]]:
-        text = path.read_text()
-        result = await extract_facts_from_artifact(client, text, use_case_seed)
+        # Already normalized via the artifact seam; extract from normalized_text.
+        artifact = artifacts_by_path[path]
+        result = await extract_facts_from_artifact(client, artifact.normalized_text, use_case_seed)
         return (path, result.facts)
 
     results = await asyncio.gather(
@@ -558,13 +566,18 @@ async def run_ingest(
     if not artifact_paths:
         raise ValueError("run_ingest: at least one --artifact is required")
 
-    # Validate paths up front so we fail fast — directories, missing files,
-    # and empty files all surface clean errors instead of crashing mid-pipeline.
+    # Validate + normalize up front so we fail fast. Directories and missing
+    # files surface clean errors; everything else goes through the artifact
+    # seam (agent/artifacts.py), which dispatches to a per-modality extractor
+    # and produces a normalized Artifact. Normalizing ONCE here (rather than
+    # re-reading in each downstream pass) matters for expensive future
+    # extractors — a screen-recording extractor shouldn't transcribe 3x.
+    artifacts_by_path: dict[Path, Artifact] = {}
     for p in artifact_paths:
         if not p.exists():
             raise FileNotFoundError(
                 f"Artifact not found: {p}\n"
-                f"Pass an absolute or relative path to a readable text file."
+                f"Pass an absolute or relative path to a readable artifact."
             )
         if p.is_dir():
             raise IsADirectoryError(
@@ -573,20 +586,17 @@ async def run_ingest(
                 f"To ingest every file in a directory, expand it in shell first: "
                 f"`for f in {p}/*; do … --artifact \"$f\"; done` (or similar)."
             )
-        try:
-            content = p.read_text()
-        except UnicodeDecodeError as exc:
-            raise ValueError(
-                f"Artifact is not valid text (binary file?): {p}\n"
-                f"Decode error: {exc}. discovery-inception only accepts text "
-                f"artifacts (markdown, txt, transcripts). Convert PDFs / docx first."
-            ) from exc
-        if not content.strip():
+        # normalize_artifact raises UnsupportedModalityError for binary / unknown
+        # modalities, with an actionable message (the old "convert PDFs first"
+        # case, now extended to "register an ArtifactExtractor for this modality").
+        artifact = normalize_artifact(p)
+        if not artifact.normalized_text.strip():
             raise ValueError(
                 f"Artifact is empty: {p}\n"
                 f"Skipping empty files would silently shrink the corpus, so we error "
                 f"loudly instead. Remove the --artifact flag for this file, or fill it."
             )
+        artifacts_by_path[p] = artifact
 
     client_base_url = os.environ.get("LITELLM_BASE_URL", "").strip()
     client_api_key = os.environ.get("LITELLM_API_KEY", "").strip()
@@ -601,7 +611,9 @@ async def run_ingest(
         # are tolerated — non-role-shaped artifacts often have nothing to
         # extract and shouldn't tank the run).
         print(f"→ Step 1: intake on {len(artifact_paths)} artifact(s) (parallel)...")
-        role_contexts, intake_failures = await run_intake_all(artifact_paths, use_case_seed)
+        role_contexts, intake_failures = await run_intake_all(
+            artifact_paths, use_case_seed, artifacts_by_path
+        )
         if intake_failures:
             print(
                 f"   ! {len(intake_failures)} of {len(artifact_paths)} artifact(s) "
@@ -630,7 +642,7 @@ async def run_ingest(
         # Step 3: fact extraction (parallel; same per-artifact tolerance).
         print(f"→ Step 2: fact extraction on {len(artifact_paths)} artifact(s) (parallel)...")
         facts_per_artifact, fact_failures = await extract_facts_all(
-            client, artifact_paths, use_case_seed
+            client, artifact_paths, use_case_seed, artifacts_by_path
         )
         total_facts = sum(len(f) for _, f in facts_per_artifact)
         print(f"   {total_facts} fact(s) extracted across {len(facts_per_artifact)} artifact(s).")
