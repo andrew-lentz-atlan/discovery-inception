@@ -337,21 +337,39 @@ async def extract_facts_all(
 # ---------------------------------------------------------------------------
 
 
+def artifact_id_for(index: int, path: Path) -> str:
+    """The stable per-artifact id: matches the stored copy filename under
+    sessions/<id>/artifacts/ (see run_ingest's copy loop). Keeping the id and
+    the on-disk copy name identical means a fact's `artifact_id` is a direct
+    pointer to the preserved source — provenance you can actually follow."""
+    return f"{index:02d}_{path.name}"
+
+
 def build_session(
     use_case_seed: str,
     role_id: str | None,
     merged_role_context: RoleContext | None,
     facts_per_artifact: list[tuple[Path, list[DistilledFact]]],
+    artifact_ids: dict[str, str] | None = None,
 ) -> DiscoverySession:
-    """Create a fresh DiscoverySession; record facts; persist."""
+    """Create a fresh DiscoverySession; record facts with provenance; persist.
+
+    `artifact_ids` maps a source Path (as string) to its stable artifact_id —
+    computed once in run_ingest so the id matches the preserved copy filename.
+    When absent (e.g. a direct unit-test caller), facts are recorded without an
+    artifact_id, which is the same as live-discovery provenance.
+    """
     spec = DiscoverySpec(use_case_seed=use_case_seed, role_id=role_id)
     session = DiscoverySession(spec=spec)
 
-    # Record every extracted fact. The session.record_fact() helper handles
-    # topic-entry creation; same path the distiller uses during live discovery.
-    for _path, facts in facts_per_artifact:
+    # Record every extracted fact WITH its source artifact. The source Path is
+    # no longer discarded here (it used to be `for _path, facts in ...`): each
+    # fact now carries which artifact it came from, so a downstream consumer can
+    # trace "this unwritten rule came from 02_screen-recording.txt".
+    for path, facts in facts_per_artifact:
+        aid = (artifact_ids or {}).get(str(path))
         for fact in facts:
-            session.record_fact(fact)
+            session.record_fact(fact, artifact_id=aid)
 
     # If RoleContext flagged unknowns, surface them as session gaps so the
     # gap_list and downstream discovery see them as questions to fill. We
@@ -404,7 +422,7 @@ def render_gap_list(
     spec = session.spec
     topic_facts: dict[str, list[str]] = {}
     for t in spec.topics:
-        topic_facts.setdefault(t.topic, []).extend(t.facts)
+        topic_facts.setdefault(t.topic, []).extend(fr.content for fr in t.facts)
 
     lines: list[str] = []
     lines.append(f"# Gap list — `{spec.use_case_seed}`")
@@ -621,21 +639,31 @@ async def run_ingest(
             for path, err in fact_failures:
                 print(f"     - {path.name}: {err[:120]}")
 
-        # Step 4: build the session + record facts.
+        # Stable artifact ids, computed ONCE so the fact's artifact_id matches
+        # the preserved copy filename below. Keyed by str(path) for the
+        # build_session lookup.
+        artifact_ids = {
+            str(p): artifact_id_for(i, p) for i, p in enumerate(artifact_paths)
+        }
+
+        # Step 4: build the session + record facts (with provenance).
         print("→ Step 3: building session + recording facts...")
         session = build_session(
             use_case_seed=use_case_seed,
             role_id=role_id,
             merged_role_context=merged,
             facts_per_artifact=facts_per_artifact,
+            artifact_ids=artifact_ids,
         )
 
         # Step 5: persist artifacts + merged RoleContext + gap_list.md.
+        # The copy filename here MUST match artifact_id_for() above so each
+        # fact's artifact_id resolves to a real file in artifacts/.
         session_dir = session.session_dir
         artifacts_dir = session_dir / "artifacts"
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         for i, p in enumerate(artifact_paths):
-            target = artifacts_dir / f"{i:02d}_{p.name}"
+            target = artifacts_dir / artifact_id_for(i, p)
             shutil.copyfile(p, target)
 
         if merged and save_role_context and role_id:

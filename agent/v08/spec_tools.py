@@ -40,8 +40,8 @@ async def find_tensions(
     recent_facts_lines: list[str] = []
     all_facts: list[tuple[str, str, str]] = []
     for topic in session.spec.topics:
-        for fact, source in zip(topic.facts, topic.sources):
-            all_facts.append((topic.topic, fact, source))
+        for fr in topic.facts:
+            all_facts.append((topic.topic, fr.content, fr.source))
     for topic_name, fact, source in all_facts[-10:]:
         recent_facts_lines.append(f"- [{topic_name}, {source}] {fact}")
     recent_facts = "\n".join(recent_facts_lines) if recent_facts_lines else "(no facts captured yet)"

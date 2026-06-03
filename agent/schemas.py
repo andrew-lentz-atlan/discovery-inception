@@ -11,7 +11,17 @@ before splitting the schema.
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
+
+
+# Bump when DiscoverySpec's shape changes in a way that affects deserialization
+# of on-disk session.json files. Stamped onto every DiscoverySpec; the
+# discovery→inception handoff reads it so a consumer can refuse a spec it
+# doesn't understand instead of silently mis-parsing.
+#   1 = pre-provenance (parallel facts[]/sources[] arrays on TopicEntry)
+#   2 = FactRecord provenance (facts[] is list[FactRecord]; artifact_id +
+#       provenance_unit per fact; sources[] folded into FactRecord)
+SPEC_SCHEMA_VERSION = 2
 
 
 def _coerce_to_list_of_str(value: Any) -> Any:
@@ -96,6 +106,61 @@ class DistilledFact(BaseModel):
             "inferred_from_priors = lifted from RoleContext priors and the "
             "customer didn't contradict. "
             "stated_overrides_prior = the customer contradicted the priors."
+        ),
+    )
+    provenance_unit: str | None = Field(
+        default=None,
+        description=(
+            "Optional locator WITHIN the source where this fact was found: "
+            "'line 88', 't=14:03', 'slide 4', 'msg from @alice'. The extractor "
+            "fills this when it can cite a precise location; null otherwise. "
+            "Which artifact the fact came from (artifact_id) is assigned by the "
+            "ingest pipeline at record time, not by the extractor — the "
+            "extractor only knows the position inside the text it was handed."
+        ),
+    )
+
+
+class FactRecord(BaseModel):
+    """One captured fact with its provenance, as STORED in a TopicEntry.
+
+    Distinct from DistilledFact (the sub-agent OUTPUT type): FactRecord is the
+    stored form. `record_fact()` converts a DistilledFact into a FactRecord,
+    attaching the `artifact_id` the extractor doesn't know (assigned by the
+    ingest pipeline based on which artifact was being processed) and carrying
+    forward any `provenance_unit` the extractor emitted.
+
+    Why this exists (provenance):
+      Before this, TopicEntry held two parallel arrays — facts: list[str] and
+      sources: list[str] — kept in lockstep by index. That couldn't answer
+      "which artifact did this fact come from?", which becomes a trust + UX
+      requirement the moment sources are multimodal ("this unwritten rule came
+      from minute 14 of the screen recording"). Folding content + source +
+      provenance into one record makes each fact self-describing and removes
+      the fragile parallel-array invariant.
+    """
+
+    content: str = Field(..., description="The distilled fact text.")
+    source: Literal["stated", "inferred_from_priors", "stated_overrides_prior"] = Field(
+        ...,
+        description="How the fact was obtained — see DistilledFact.source for semantics.",
+    )
+    artifact_id: str | None = Field(
+        default=None,
+        description=(
+            "Which artifact this fact came from — the stored artifact filename "
+            "(e.g. '00_call-transcript.txt', matching sessions/<id>/artifacts/). "
+            "None means the fact came from live conversation, not an ingested "
+            "artifact. The absence of an artifact_id IS the signal a fact is "
+            "conversation-sourced."
+        ),
+    )
+    provenance_unit: str | None = Field(
+        default=None,
+        description=(
+            "Locator within the artifact: 'line 88', 't=14:03', 'slide 4'. "
+            "Carried from DistilledFact.provenance_unit when the extractor "
+            "emitted one. Becomes load-bearing for multimodal sources."
         ),
     )
 
@@ -328,10 +393,13 @@ class TopicEntry(BaseModel):
     """A captured topic in the running spec."""
 
     topic: str
-    facts: ListOfStr = Field(default_factory=list, description="Distilled fact entries on this topic.")
-    sources: ListOfStr = Field(
+    facts: list[FactRecord] = Field(
         default_factory=list,
-        description="One entry per fact: 'stated' | 'inferred_from_priors' | 'stated_overrides_prior'.",
+        description=(
+            "Captured facts on this topic, each self-describing (content + "
+            "source + provenance). Was two parallel arrays (facts/sources) "
+            "before schema v2; see the migration validator below."
+        ),
     )
     superseded_facts: ListOfStr = Field(
         default_factory=list,
@@ -353,6 +421,41 @@ class TopicEntry(BaseModel):
         ),
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_parallel_arrays(cls, data: Any) -> Any:
+        """Migrate pre-v2 on-disk shape (parallel facts[]/sources[]) → FactRecord.
+
+        Old sessions persisted `facts: list[str]` + `sources: list[str]` kept
+        in lockstep by index. New code expects `facts: list[FactRecord]`. When
+        we deserialize an old session.json, `facts` is a list of strings; zip it
+        with `sources` (popped) into FactRecord dicts. New-shape data (facts
+        already list[dict]) and empty topics pass through untouched.
+
+        Provenance for migrated facts is null — pre-v2 facts genuinely had no
+        artifact_id captured, and inventing one would be worse than admitting
+        the gap. The null is honest: "this fact predates provenance capture."
+        """
+        if not isinstance(data, dict):
+            return data
+        facts = data.get("facts")
+        if facts and isinstance(facts[0], str):
+            sources = data.get("sources") or []
+            migrated = []
+            for i, content in enumerate(facts):
+                src = sources[i] if i < len(sources) else "stated"
+                migrated.append(
+                    {
+                        "content": content,
+                        "source": src,
+                        "artifact_id": None,
+                        "provenance_unit": None,
+                    }
+                )
+            data = {**data, "facts": migrated}
+            data.pop("sources", None)
+        return data
+
 
 DiscoveryPhase = Literal["lay_of_the_land", "drilling"]
 
@@ -362,6 +465,17 @@ class DiscoverySpec(BaseModel):
 
     This is the artifact handed to Stage 4 (Build Bridge) when ready.
     """
+
+    schema_version: int = Field(
+        default=SPEC_SCHEMA_VERSION,
+        description=(
+            "Schema version of this spec. Stamped at creation; carried through "
+            "the discovery→inception handoff so a consumer can detect a shape it "
+            "doesn't understand instead of silently mis-parsing. Old sessions on "
+            "disk without this field default to the current version after the "
+            "TopicEntry migration validator has already up-converted their facts."
+        ),
+    )
 
     use_case_seed: str = Field(..., description="The one-line use-case seed the session started with.")
     role_id: str | None = Field(

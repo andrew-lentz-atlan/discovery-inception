@@ -647,8 +647,14 @@ def _render_spec_markdown(session: DiscoverySession) -> str:
         block: list[str] = []
         bedrock = " — **BEDROCK**" if t.bedrock_reached else ""
         block.append(f"### `{t.topic}`{bedrock}")
-        for fact, source in zip(t.facts, t.sources):
-            block.append(f"- **[{source}]** {fact}")
+        for fr in t.facts:
+            # Provenance suffix: which artifact (+ locator) the fact came from.
+            # Omitted for live-discovery facts (artifact_id is None).
+            prov = ""
+            if fr.artifact_id:
+                loc = f":{fr.provenance_unit}" if fr.provenance_unit else ""
+                prov = f" _(from {fr.artifact_id}{loc})_"
+            block.append(f"- **[{fr.source}]** {fr.content}{prov}")
         if t.superseded_facts:
             block.append("")
             block.append("Superseded:")

@@ -12,6 +12,7 @@ Read the artifact and emit a list of `DistilledFact`s — one per atomic fact. A
 - A `topic` — a snake_case slug. Prefer the canonical topics below when one fits. If none fit, mint a fresh slug (the curator/normalizer will reconcile later).
 - A `content` — your distillation of what the artifact says about that topic. One sentence; concrete, testable.
 - A `source` — always `"stated"` for facts extracted from artifacts.
+- A `provenance_unit` (OPTIONAL) — a locator pointing at WHERE in this artifact the fact came from, when you can cite one precisely: `"line 88"` for line-numbered text, `"t=14:03"` for a timestamped transcript, `"slide 4"` for a deck, `"msg from @alice"` for a chat thread. Omit it (or null) when there's no clean locator. This is a best-effort trail back to the source, not a requirement — never invent a locator you're unsure of.
 
 ## Canonical topics
 
@@ -60,11 +61,19 @@ Return a JSON object with one field `facts` — a list of DistilledFact objects:
     {
       "topic": "desired_outcome",
       "content": "<one-sentence distillation>",
+      "source": "stated",
+      "provenance_unit": "line 88"
+    },
+    {
+      "topic": "current_pain",
+      "content": "<one-sentence distillation>",
       "source": "stated"
     },
     ...
   ]
 }
 ```
+
+`provenance_unit` is optional — include it only when you can cite a precise locator; omit the field otherwise (as in the second example above).
 
 If the artifact contains no use-case facts, return `{"facts": []}`.

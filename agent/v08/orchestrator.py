@@ -208,8 +208,8 @@ async def _run_probe_sharpener(
     # Build recent_facts string
     all_facts: list[tuple[str, str, str]] = []
     for topic in session.spec.topics:
-        for fact, source in zip(topic.facts, topic.sources):
-            all_facts.append((topic.topic, fact, source))
+        for fr in topic.facts:
+            all_facts.append((topic.topic, fr.content, fr.source))
     recent_facts_lines = [
         f"- [{topic_name}, {source}] {fact}"
         for topic_name, fact, source in all_facts[-10:]

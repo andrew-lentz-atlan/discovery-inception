@@ -24,6 +24,7 @@ from agent.schemas import (
     ConfidenceLevel,
     DiscoverySpec,
     DistilledFact,
+    FactRecord,
     FlaggedGap,
     Probe,
     TopicEntry,
@@ -109,8 +110,15 @@ class DiscoverySession(BaseModel):
     # ---- Mutations (these are the four "tools" from the original design,
     #      but called by the orchestrator, not by an LLM) ----
 
-    def record_fact(self, fact: DistilledFact) -> TopicEntry:
-        """Record a distilled fact under its topic.
+    def record_fact(self, fact: DistilledFact, artifact_id: str | None = None) -> TopicEntry:
+        """Record a distilled fact under its topic, with provenance.
+
+        `artifact_id` identifies which ingested artifact this fact came from
+        (the stored filename, e.g. '00_call-transcript.txt'). The ingest
+        pipeline passes it; live-discovery callers omit it (the fact came from
+        conversation, so artifact_id stays None — that absence is the signal).
+        Any `provenance_unit` the extractor emitted on the DistilledFact is
+        carried onto the stored FactRecord.
 
         Special-cases `source = stated_overrides_prior`: instead of just
         appending the new fact, move all existing facts on this topic to
@@ -123,13 +131,19 @@ class DiscoverySession(BaseModel):
             self.spec.topics.append(entry)
 
         if fact.source == "stated_overrides_prior" and entry.facts:
-            for old_fact, old_source in zip(entry.facts, entry.sources):
-                entry.superseded_facts.append(f"[was {old_source}] {old_fact}")
+            for old in entry.facts:
+                marker = f"[was {old.source}" + (f" @{old.artifact_id}" if old.artifact_id else "") + "]"
+                entry.superseded_facts.append(f"{marker} {old.content}")
             entry.facts = []
-            entry.sources = []
 
-        entry.facts.append(fact.content)
-        entry.sources.append(fact.source)
+        entry.facts.append(
+            FactRecord(
+                content=fact.content,
+                source=fact.source,
+                artifact_id=artifact_id,
+                provenance_unit=fact.provenance_unit,
+            )
+        )
         return entry
 
     def flag_gap(self, gap: FlaggedGap) -> None:
