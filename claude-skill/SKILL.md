@@ -38,7 +38,19 @@ artifacts → ingest → gap_list.md → chat-fill known gaps
 
 Most colleagues testing for the first time will want to run the full pipeline. Some will stop at spec.md. Either is valid; lead the user through Phases 1–5 first, then ask if they want to continue into Phase 6 (inception).
 
-Two entry shapes for the discovery half:
+### Three doors in
+
+The full build is the main door, but it's not the only one. The same `patterns/` knowledge base that powers inception can answer lighter questions without formalizing a whole scaffold:
+
+| Door | The user says something like… | What you do |
+|---|---|---|
+| **Build** (full pipeline) | *"Build me a SoCo agent — here's the transcript."* | Phases 1–6 below. |
+| **Recommend** (light) | *"I'm building X — what's a recommended approach?"* / *"What architecture/runtime should I use for Y?"* | The **Light doors** section below. No session, no scaffold. |
+| **Audit** (light) | *"Here's a scaffold we built and what it does — is this the right path?"* / *"Review this design."* | The **Light doors** section below. No session, no scaffold. |
+
+The two light doors read `patterns/` directly and answer in-conversation — they skip install, credentials, sessions, specs, and scaffolds. Detect the intent in Phase 0; if it's recommend or audit, jump to the Light doors section instead of Phases 1–6.
+
+Two entry shapes for the discovery half (these apply to the **Build** door):
 
 | Shape | When the user picks this |
 |---|---|
@@ -55,14 +67,68 @@ Walk the user through the phases below. Don't skip — if the user already did s
 
 ## Phase 0 — Read the room
 
-Before any commands, parse the user's initial message for:
+Before any commands, first decide **which door** (see "Three doors in" above):
+
+- **Recommend** — the user describes something they're building and asks what approach/architecture/runtime/skills to use, and is NOT handing you artifacts to formalize. Signals: *"what's a good approach for…"*, *"how should I build…"*, *"which framework for…"*, *"is X or Y better for…"*. → Go to the **Light doors** section.
+- **Audit** — the user presents an existing or proposed design (a scaffold, an architecture, a skill cut, a runtime choice) and asks whether it's sound. Signals: *"here's what we built…"*, *"is this the right path?"*, *"review this design"*, *"does this make sense?"*. → Go to the **Light doors** section.
+- **Build** (default) — the user wants a starter agent produced, or hands you artifacts, or the intent is ambiguous and they clearly want to *make* something. → Continue with Phases 1–6 below.
+
+When unsure between recommend/audit and build, ask one question: *"Do you want a quick recommendation / a review of a design, or do you want to build out a starter agent end-to-end?"*
+
+Then parse the message for (relevant to all doors):
 
 - **A use case** (*"churn-prediction agent at FinCo"*) — confirm or refine
-- **Mentions of artifacts** (*"I have the call transcript"*, *"here's the JD"*, *"we ran two scoping sessions"*) — note the count; you'll collect them in Phase 3
+- **Mentions of artifacts** (*"I have the call transcript"*, *"here's the JD"*, *"we ran two scoping sessions"*) — note the count; you'll collect them in Phase 3 (Build door)
 - **Path preferences** for the repo
-- **An Atlan tenant they want primed** (e.g., *"I want this to read from our `ces.atlan.com` glossary"*)
+- **An Atlan tenant they want primed** (e.g., *"I want this to read from our `ces.atlan.com` glossary"*) — also tells you the agent is Atlan-leaning, which matters for recommend/audit too
+- **Org context** — is this an Atlan-internal build (Atlan should be in the architecture as a context layer) or neutral/personal? Affects which patterns you weight.
 
 If any of those are present, note them and don't re-ask in later phases.
+
+---
+
+## Light doors — Recommend & Audit (no session, no scaffold)
+
+Use this section when Phase 0 detected a **recommend** or **audit** intent. These doors answer in-conversation by reading the `patterns/` knowledge base directly. They are deliberately light:
+
+- **No install, no credentials, no LLM-engine call, no session, no spec, no scaffold.** You (Claude) do the reasoning here, grounded in `patterns/`.
+- You DO need the `patterns/` files. Get them the cheap way:
+  1. Check for an existing clone (same locations as Phase 1, step 1). If found, read `patterns/` from there.
+  2. If none, do a shallow clone for the knowledge only — no install, no `.env`:
+     ```bash
+     git clone --depth 1 https://github.com/andrew-lentz-atlan/discovery-inception.git <path>
+     ```
+  3. Read **`patterns/SKILL.md` first** — it's the navigation guide for the library (structure, how to query, how to cite). Then read the specific entries you need.
+
+**Always cite the entries you used** (e.g. `patterns/decision-guides/what-kind-of-agent-are-you-building.md`) so the user can trace the reasoning — same traceability discipline inception uses. Only cite entries that actually exist (read them; don't invent slugs).
+
+### Recommend mode
+
+The user is building something and wants the recommended approach. Produce a concise consultative brief — not a scaffold.
+
+1. **Classify the workload.** Read `decision-guides/what-kind-of-agent-are-you-building.md` and name the class (chatbot / conversational / task / co-pilot / autonomous worker). State which and why.
+2. **Recommend an architecture.** Read `architectures/` + the class's implied defaults. Name one, and briefly name the alternatives you rejected and why (the taxonomy + `anti-patterns/wrong-class-architecture.md` are your guard).
+3. **Recommend a runtime.** Read `decision-guides/framework-or-hand-roll.md` (default to a real framework — never hand-roll outside research) + the relevant `harnesses/*-deep-dive.md`. Name a framework + model family, and cite the deep-dive's "when to use / when not."
+4. **Sketch the skills** (don't formalize). 3–7 skills typical; anchor the count on the class. Flag `anti-patterns/over-decomposition.md` if the natural cut is large.
+5. **Atlan context layer** — if the build is Atlan-leaning (Phase 0 org context), read `skill-design/atlan-*` and recommend a context-layer path (context repo / skills-as-assets / raw SDK / MCP / MDLH), honestly noting when one isn't needed. Neutral builds: skip or mention only as an option.
+6. **Name the top 1–3 anti-patterns** this kind of build should avoid (`anti-patterns/`), especially `silent-tool-fallback` for any tool-using agent.
+
+Keep it to a readable brief with citations. Then offer the escalation: *"Want me to turn this into a full starter scaffold (the Build door, Phases 1–6), or produce the structured/reproducible version via the engine?"*
+
+### Audit mode
+
+The user presents a proposed or existing design and asks if it's the right path. Critique it against the patterns — be direct, not deferential.
+
+1. **Restate the design** as you understand it (workload, proposed architecture, runtime, skills) so the user can correct you before you critique a misread.
+2. **Class fit.** Does the design's architecture match the workload class? Cite `decision-guides/what-kind-of-agent-are-you-building.md` + `anti-patterns/wrong-class-architecture.md`. A co-pilot built as a conversational agent, a task agent built as a claw, etc. — call it out.
+3. **Framework vs hand-roll.** Is the runtime a real framework, or a hand-rolled orchestrator? Per `decision-guides/framework-or-hand-roll.md`, hand-rolling outside research is a smell — flag it and name the framework that fits.
+4. **Decomposition.** Over- or under-decomposed? `anti-patterns/over-decomposition.md` (10+ skills where 4–6 fit), and the subagent-vs-skill split (`decision-guides/subagent-vs-skill-tradeoffs.md` + `anti-patterns/wasteful-subagent-context-reload.md` — a subagent that reloads the same context every call should be a skill).
+5. **Robustness gaps.** Tool-using agent with no failure-surfacing? Cite `anti-patterns/silent-tool-fallback.md`. No provenance / eval / observability plan? Note it.
+6. **Atlan fit** (if Atlan-leaning) — is the context-layer choice sound vs `skill-design/atlan-*`?
+
+Deliver a clear verdict — **right path / right with these fixes / reconsider** — with each point tied to a cited entry. Then offer: *"Want me to draft the corrected approach (Recommend mode), or build it out (Build door)?"*
+
+> **Note on the engine-backed versions:** these light doors are the conversational, zero-setup path. A structured, reproducible engine-backed `recommend` / `audit` (CLI subcommands + MCP tools that run the actual proposer steps and emit a citation-verified artifact) is the planned next step — see `docs/internal/research-log.md`. Until it ships, the skill-native flow above is the way in.
 
 ---
 
@@ -380,6 +446,8 @@ If the user wants discovery-inception always available as MCP tools (so future u
 ## Important rules for you (Claude) during this skill
 
 - **The product is two stages: discovery → inception.** If a user asks "what does this do," lead with the full pipeline (artifacts → spec → starter agent), not just the discovery half. Phase 6 is the second half of the product, not an afterthought.
+- **Three doors, one knowledge base.** Build is the main door, but recommend and audit (the Light doors section) are valid lighter entries — *"what's a good approach for X?"* and *"is this design right?"* — answered straight from `patterns/` with no session or scaffold. Detect the door in Phase 0; don't force a user who wants a 2-minute recommendation through the full pipeline. Always offer the escalation from a light door to a full build.
+- **In the light doors, cite real `patterns/` entries.** Read them before citing; never invent a slug. The citations are the traceability — same discipline as inception's design_rationale.
 - **Default to artifact-first.** If the user hands you any artifact or mentions one, treat ingest as the first move. Don't drop them into interview mode unless they explicitly say they have nothing.
 - **Don't paraphrase or summarize the agent's responses.** Show them verbatim. The structure of the agent's response is part of what the user is evaluating.
 - **One turn at a time in interview mode.** Don't try to batch interview turns.
