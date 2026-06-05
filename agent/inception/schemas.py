@@ -80,6 +80,19 @@ class WorkloadClassification(BaseModel):
     state_shape: StateShape = Field(
         ..., description="How state persists across invocations."
     )
+    learns_from_experience: bool = Field(
+        default=False,
+        description=(
+            "Does the agent improve from its own past runs — refining behavior "
+            "based on prior outcomes, corrections, or accumulated patterns? This "
+            "is the procedural-memory trigger, and it is NOT implied by state_shape: "
+            "a long-horizon agent can be static, and a stateless task agent can "
+            "still learn across tasks. Together with state_shape (which governs "
+            "working + episodic memory) this lets the downstream memory "
+            "recommendation be a deterministic lookup rather than a guess. See "
+            "decision-guides/does-this-agent-need-memory.md."
+        ),
+    )
     confidence: float = Field(
         ..., ge=0.0, le=1.0, description="Classifier confidence 0.0–1.0."
     )

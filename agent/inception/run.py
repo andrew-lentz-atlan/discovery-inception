@@ -1185,6 +1185,7 @@ async def run_inception(
         print(f"   data_intensity:           {classification.data_intensity}")
         print(f"   multi_step_or_single:     {classification.multi_step_or_single_step}")
         print(f"   state_shape:              {classification.state_shape}")
+        print(f"   learns_from_experience:   {classification.learns_from_experience}")
         print(f"   confidence:               {classification.confidence:.2f}")
         print(f"   rationale:                {classification.rationale}")
         if classification.open_questions:

@@ -92,6 +92,14 @@ Produce a markdown document with these sections:
 | Cross-runtime same provider | <tier + notes> |
 | Cross-provider | <tier + notes> |
 
+## Memory
+
+**Memory need:** <the memory KIND(s) the agent requires — working / episodic / semantic / procedural / entity-profile — or "none beyond conversation history". Drawn from the workload classification's `state_shape` + `learns_from_experience` and the architecture proposal's memory concern, per `patterns/decision-guides/does-this-agent-need-memory.md`. REQUIRED — never omit.>
+
+**Memory architecture:** <how it's implemented — harness-native (e.g. LangGraph store/checkpointer, Claude memory tool) or an escalated tool (mem0 / Zep / Letta), per `patterns/decision-guides/memory-architecture-selection.md`. If memory need is "none", state that and stop here.>
+
+**Operational policy** (only when a memory kind is present): <a short sketch of write / retrieve / eviction-or-consolidation policy + conflict-resolution choice, per `patterns/skill-design/memory-operations.md` — a memory store with no operating policy degrades over time (staleness, over-injection, poisoning). Where the spec doesn't settle these, name them as open items for the builder rather than inventing values — do NOT silently drop them.>
+
 ## Patterns consulted
 
 <list of every pattern entry cited in the rationales above, with their slugs and where each was cited (architecture / runtime / add-on)>
@@ -120,6 +128,7 @@ Produce a markdown document with these sections:
 - **Citations come ONLY from the upstream JSON, verbatim.** When you cite a pattern entry (e.g., `patterns/architectures/single-agent-react.md`), the slug MUST appear in the upstream proposers' JSON — look for `selected_pattern_slug`, `rejected_alternatives[].slug`, the harness rationale's `pattern_slugs_cited`, and any explicit `patterns/...` paths in their `rationale` fields. **You may NOT invent slugs.** You may NOT substitute a plausible-looking variant (e.g., `langraph-deep-dive` for `langgraph-deep-dive`, `cortex-agents-deep-dive` for `cortex-deep-dive`, or `architectures/inner-pipeline` when the entry actually lives at `skill-design/inner-pipeline`). If a concept feels relevant but no upstream slug supports it, describe the concept in prose WITHOUT a citation.
 - **Provenance per skill must reference specific RoleContext fields** (decision_criteria names, workflow names, flagged_unknowns).
 - **Don't add new analysis.** This is an aggregation document, not a fresh analysis. If you find yourself reasoning, you've stepped outside the role.
+- **The Memory section is REQUIRED — memory silence is a defect.** Always populate it from the workload classification (`state_shape`, `learns_from_experience`) and the architecture proposal's memory concern. If the agent genuinely needs no memory, the section must say so explicitly with the reason ("none beyond conversation history, because the workload is stateless single-shot"). Never omit the section — a design that's silent on memory is the exact failure this guards against.
 - **Keep it readable.** Markdown tables for structured comparisons. Prose only where the upstream output is already prose. Don't pad.
 - **No emojis. No marketing language.** It's an engineering audit trail.
 

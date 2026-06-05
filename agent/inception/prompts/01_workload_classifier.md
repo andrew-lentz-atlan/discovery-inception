@@ -54,6 +54,15 @@ Classify the workload along these six axes:
 - `session-scoped` — state persists within a session but not across. (Most conversational agents.)
 - `long-horizon` — state persists across many sessions / requires durability. (Multi-day workflows; checkpointing matters.)
 
+### `learns_from_experience` (boolean)
+
+Does the agent **improve from its own past runs** — refining behavior based on prior outcomes, corrections, or accumulated patterns?
+
+- `true` — the spec describes the agent getting better over time, remembering what worked/failed, adapting to a user/account it has seen before, or incorporating feedback across runs.
+- `false` — the agent behaves the same on run N as run 1; any state is just continuity, not learning.
+
+This is the **procedural-memory trigger**, and it is deliberately separate from `state_shape`: `state_shape` governs working + episodic memory (does state persist?), while `learns_from_experience` governs procedural memory (does behavior improve?). They're independent — a `long-horizon` agent can be static, and a `stateless` task agent can still learn across tasks. Capturing both lets the downstream memory recommendation be a near-deterministic lookup instead of a guess. When the spec doesn't settle it, default `false` and flag it in `open_questions`. See `patterns/decision-guides/does-this-agent-need-memory.md`.
+
 ## Hard rules
 
 - **Cite specific evidence in your rationale.** Don't say "judgment-heavy"; say "judgment-heavy because role_summary mentions 'producing executive narratives in analyst voice' which requires subjective rhetorical decisions."
@@ -74,6 +83,7 @@ Respond with valid JSON matching this schema (no prose outside the JSON):
   "data_intensity": "light" | "moderate" | "heavy",
   "multi_step_or_single_step": "single" | "multi",
   "state_shape": "stateless" | "session-scoped" | "long-horizon",
+  "learns_from_experience": true | false,
   "confidence": <0.0 to 1.0>,
   "rationale": "<1-3 sentences citing specific evidence from the spec>",
   "open_questions": ["<specific aspect the spec doesn't settle>", ...]

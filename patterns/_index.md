@@ -36,6 +36,7 @@ Auto-discoverable list of entries with status + last-updated. Hand-maintained du
 | [atlan-skills-as-assets](skill-design/atlan-skills-as-assets.md) | draft | 2026-05-29 | code-pattern | — |
 | [atlan-context-without-repo](skill-design/atlan-context-without-repo.md) | draft | 2026-05-29 | code-pattern | — |
 | [atlan-mcp-integration](skill-design/atlan-mcp-integration.md) | draft | 2026-05-29 | code-pattern | — |
+| [memory-operations](skill-design/memory-operations.md) | draft | 2026-06-03 | code-pattern | — |
 
 ## harnesses/
 
@@ -65,8 +66,8 @@ Auto-discoverable list of entries with status + last-updated. Hand-maintained du
 
 ## Coverage summary
 
-- **30 entries** across all 5 active categories
-- **10 validated**, **19 draft**, 1 deprecated
+- **31 entries** across all 5 active categories
+- **10 validated**, **20 draft**, 1 deprecated
 - **1 reference companion** (`chained-pipeline.reference.md`) — the only seeded entry with substantive non-source-resident content
 - All entries have empirical receipts cited in frontmatter (`source_findings` or `source_external`)
 - **Body-shape diversity:** operational-decision entries (~15), code-pattern (~10), comparative-survey (1). The curator agent has three distinct shapes to learn from.

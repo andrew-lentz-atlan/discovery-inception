@@ -18,6 +18,7 @@ applies_when:
 contradicts: []
 related:
   - decision-guides/does-this-agent-need-memory
+  - skill-design/memory-operations
   - decision-guides/subagent-vs-skill-tradeoffs
   - harnesses/langgraph-deep-dive
   - harnesses/claude-agent-sdk-deep-dive
