@@ -11,6 +11,7 @@ applies_when:
 contradicts: []
 related:
   - decision-guides/cost-vs-latency-tradeoffs
+  - decision-guides/does-this-agent-need-memory
   - harnesses/landscape-2026-may
   - harnesses/agentforce-deep-dive
 snapshot_date: 2026-05-29
