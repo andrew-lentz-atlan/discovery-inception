@@ -312,6 +312,26 @@ The message should be **phrased as if the customer said it** — first-person, c
 
 Each chat-fill takes ~4-5 seconds. Encourage the user to chain several in a row when filling related gaps.
 
+#### Atlan posture — chat-fill these if you know them (v1.0 is Atlan-native)
+
+Inception picks the agent's context layer (an Atlan context repo as the portable home + a live-access surface) from the customer's **Atlan posture**. Discovery probes for it, but the FDE usually already knows it — chat-fill what you know so inception *routes* the live-access surface instead of assuming it (it degrades gracefully when silent, but a known posture is better than an assumed one):
+
+- **Context repo** — does the customer have an Atlan context repo set up? (yes / no / unknown)
+- **Skills-as-assets** — are skills configured as Atlan assets? (yes / no / unknown)
+- **MCP** — is their Atlan MCP server reachable? (Remote MCP at `mcp.atlan.com/mcp` is GA) (yes / no / unknown)
+- **MDLH** — Metadata Lakehouse access tier? (native gold / customer-managed gold / none)
+- **Metadata coverage** — what do they actually maintain? (glossary / lineage / custom metadata / tags / ownership)
+
+Phrase as a customer-style statement, e.g.:
+
+```bash
+cd "$REPO" && uv run python -m agent.cli submit-turn --no-probe \
+    --session-id "<session_id>" \
+    --message "We're on Atlan with the Remote MCP server enabled and gold-tier MDLH; glossary and lineage are well-maintained but custom metadata is sparse. No context repo set up yet."
+```
+
+These land under the `atlan_integration_posture` topic. Unknowns are fine — leave them for the live interview; inception will assume and flag.
+
 ### Interview mode (the user plays customer, OR a real customer responds)
 
 For gaps where the user genuinely doesn't know the answer, they need to interview someone. Same CLI as before, no `--no-probe`:

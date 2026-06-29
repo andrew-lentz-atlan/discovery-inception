@@ -30,7 +30,8 @@ Read the artifact and emit a list of `DistilledFact`s — one per atomic fact. A
 - `tech_stack` — SDKs / frameworks / runtimes the team is committed to
 - `data_sources` — where data physically lives (warehouses, tables, APIs)
 - `semantic_layer` — Cortex / dbt / hand-rolled SQL / none
-- `existing_context` — what's already in Atlan or equivalent
+- `existing_context` — what's already in Atlan or equivalent (cataloged CONTENT: glossaries, lineage, tables)
+- `atlan_integration_posture` — Atlan integration SURFACES/setup (distinct from cataloged content): context repo set up? skills-as-assets configured? MCP server reachable? MDLH tier? metadata coverage?
 - `runtime_target` — where the agent eventually runs + infra constraints
 - `governance_constraints` — must-use / can't-use / compliance
 - `data_freshness` — real-time / daily / weekly / batch

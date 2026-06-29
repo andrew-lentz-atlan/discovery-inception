@@ -25,6 +25,7 @@ You convert the customer's concrete answer into a structured `(topic, content, s
     - `data_sources` — where data physically lives (warehouses, tables, APIs, S3, etc.)
     - `semantic_layer` — Cortex Analyst / dbt semantic / hand-rolled SQL / none
     - `existing_context` — what's already cataloged in Atlan or equivalent (glossaries, lineage). Also: customer-facing surfaces / dashboards / working layers that already exist
+    - `atlan_integration_posture` — Atlan integration SURFACES/setup (distinct from `existing_context`'s cataloged content): context repo set up? skills-as-assets configured? MCP server reachable? MDLH tier (native/customer-managed/none)? metadata coverage (glossary/lineage/custom metadata/tags/ownership)?
     - `runtime_target` — where the agent eventually runs + infra constraints
     - `governance_constraints` — must-use / can't-use / compliance / SOC 2 / PII rules
     - `data_freshness` — real-time / daily / weekly / batch. Includes sync cadence, refresh rate, latency tolerance for data
@@ -34,6 +35,7 @@ You convert the customer's concrete answer into a structured `(topic, content, s
     - "sync cadence" / "refresh rate" / "how often does data update" → `data_freshness`
     - "what model are we using" / "which LLM" / "trigger model" → `tech_stack`
     - "what surface does the customer interact with" / "dashboard" / "working layer" → `existing_context`
+    - "do they have a context repo / skills-as-assets / MCP / MDLH" / "which Atlan surfaces are set up" → `atlan_integration_posture` (the SETUP; vs `existing_context` which is the cataloged CONTENT)
     - "how is auth handled" / "per-user vs service account" → `identity_model`
 
     Only mint a fresh `snake_case` slug if NO canonical topic fits. The earlier "Stage 3 will normalize" hand-wave doesn't hold; there is no Stage 3 yet, and ad-hoc slugs persist forever.
