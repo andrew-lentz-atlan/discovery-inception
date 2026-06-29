@@ -230,6 +230,64 @@ class ProposedSkill(BaseModel):
     )
 
 
+class AtlanContextLayer(BaseModel):
+    """Step 2's distilled Atlan context-layer recommendation.
+
+    v1.0 is an Atlan-native product, so this is ALWAYS produced. The context
+    repo is the portable home for the agent's STATIC scaffold (skills, semantic
+    models, definitions, YAMLs) — recommended unconditionally, even when the
+    tenant is thin (then the move is to SEED it). The live-access surface(s)
+    (MCP / MDLH / SDK) are routed by the customer's Atlan posture facts captured
+    in discovery. Step 2 has the spec prose (posture) and the atlan-* entries;
+    steps 3/4/5c do NOT get the prose, so this typed field is how the decision
+    travels downstream (the pipeline's progressive-distillation boundary)."""
+
+    repo_recommendation: str = Field(
+        ...,
+        description=(
+            "ALWAYS recommend an Atlan context repo as the portable home for the "
+            "agent's static scaffold (skills, semantic models, definitions, YAMLs) — "
+            "write-once, pulled by whatever runtime the customer uses. If the tenant "
+            "is thin/cold, frame this as 'seed the repo'. Cite "
+            "patterns/skill-design/atlan-context-repos.md."
+        ),
+    )
+    live_access_surfaces: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The live-access surface(s) the agent uses at RUNTIME for fresh reads / "
+            "writes, routed by posture: 'mcp' (Remote MCP — live reads + writes), "
+            "'mdlh' (bulk / analytics reads), 'sdk' (pyatlan mutations). A static repo "
+            "can't serve fresh data or writes, so most agents need at least one. Empty "
+            "ONLY when posture genuinely rules out live access — justify in `rationale`."
+        ),
+    )
+    posture_assumptions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The Atlan posture facts (from the spec) this recommendation rests on — "
+            "context repo set up? skills-as-assets configured? MCP reachable? MDLH "
+            "tier? metadata coverage? Where the spec is silent, state the assumption "
+            "and flag it (mirror into open questions) rather than inventing a fact."
+        ),
+    )
+    cited_entries: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Full patterns/skill-design/atlan-*.md slugs supporting this layer, "
+            "verbatim (e.g. 'patterns/skill-design/atlan-context-repos.md', "
+            "'patterns/skill-design/atlan-mcp-integration.md')."
+        ),
+    )
+    rationale: str = Field(
+        ...,
+        description=(
+            "1-3 sentences tying the repo + live-surface choice to the posture facts. "
+            "If live_access_surfaces is empty, justify why posture rules it out."
+        ),
+    )
+
+
 class SkillProposalResult(BaseModel):
     """Output of step 2 — skill_proposer.
 
@@ -264,6 +322,15 @@ class SkillProposalResult(BaseModel):
             "Why this granularity is right for this workload. Anchored in workload "
             "classification axes (e.g., 'judgment-heavy decision_complexity favors "
             "finer skill cuts so each judgment can be tested in isolation')."
+        ),
+    )
+    atlan_context_layer: AtlanContextLayer = Field(
+        ...,
+        description=(
+            "REQUIRED. The distilled Atlan context-layer recommendation: context repo "
+            "as the portable home (always) + the live-access surface(s) routed by "
+            "posture. v1.0 is Atlan-native, so this is always produced and carried to "
+            "steps 3/4/5c, which don't receive the raw spec prose."
         ),
     )
 
