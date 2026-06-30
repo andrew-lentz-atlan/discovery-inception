@@ -100,6 +100,14 @@ Produce a markdown document with these sections:
 
 **Operational policy** (only when a memory kind is present): <a short sketch of write / retrieve / eviction-or-consolidation policy + conflict-resolution choice, per `patterns/skill-design/memory-operations.md` — a memory store with no operating policy degrades over time (staleness, over-injection, poisoning). Where the spec doesn't settle these, name them as open items for the builder rather than inventing values — do NOT silently drop them.>
 
+## Atlan context layer
+
+**Portable home:** <step 2's `atlan_context_layer.repo_recommendation`, verbatim — always present. This is where the agent's static scaffold (skills, semantic models, definitions) lives: write-once in an Atlan context repo, pulled by whatever runtime the customer uses.>
+
+**Live-access surface(s):** <from `atlan_context_layer.live_access_surfaces` — `mcp` / `mdlh` / `sdk`, with the posture each rests on; or "none, because <reason>" when empty.>
+
+**Posture assumptions:** <from `atlan_context_layer.posture_assumptions` — the Atlan setup facts this rests on, and any assumption made where the spec was silent (mirror those into "What's still open").>
+
 ## Patterns consulted
 
 <list of every pattern entry cited in the rationales above, with their slugs and where each was cited (architecture / runtime / add-on)>
@@ -129,6 +137,7 @@ Produce a markdown document with these sections:
 - **Provenance per skill must reference specific RoleContext fields** (decision_criteria names, workflow names, flagged_unknowns).
 - **Don't add new analysis.** This is an aggregation document, not a fresh analysis. If you find yourself reasoning, you've stepped outside the role.
 - **The Memory section is REQUIRED — memory silence is a defect.** Always populate it from the workload classification (`state_shape`, `learns_from_experience`) and the architecture proposal's memory concern. If the agent genuinely needs no memory, the section must say so explicitly with the reason ("none beyond conversation history, because the workload is stateless single-shot"). Never omit the section — a design that's silent on memory is the exact failure this guards against.
+- **The Atlan context layer section is REQUIRED.** v1.0 is Atlan-native — render step 2's `atlan_context_layer` verbatim (repo home + live-access surface + posture assumptions). Never omit it. Where posture was assumed rather than known, surface the assumption in "What's still open".
 - **Keep it readable.** Markdown tables for structured comparisons. Prose only where the upstream output is already prose. Don't pad.
 - **No emojis. No marketing language.** It's an engineering audit trail.
 

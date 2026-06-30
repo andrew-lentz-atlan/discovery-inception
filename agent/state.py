@@ -220,7 +220,8 @@ TECHNICAL_TOPICS = (
     "tech_stack",              # SDKs / frameworks / runtimes the team is committed to
     "data_sources",            # warehouses, tables, schemas, where data physically lives
     "semantic_layer",          # Cortex Analyst / dbt semantic / hand-rolled SQL / none
-    "existing_context",        # what's already cataloged in Atlan or equivalent
+    "existing_context",        # what's already cataloged in Atlan or equivalent (CONTENT)
+    "atlan_integration_posture",  # Atlan SURFACES/setup: context repo / skills-as-assets / MCP / MDLH tier / metadata coverage — drives inception's context-layer pick
     "runtime_target",          # where the agent eventually deploys + infra constraints
     "governance_constraints",  # must-use / can't-use / compliance
     "data_freshness",          # real-time / daily / weekly / batch

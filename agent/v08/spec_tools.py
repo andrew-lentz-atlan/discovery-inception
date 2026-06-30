@@ -30,6 +30,7 @@ from agent.state import (
     CANONICAL_CHECKLIST_TOPICS,
     DiscoverySession,
     MULTI_INSTANCE_REQUIREMENTS,
+    TECHNICAL_TOPICS,
     evaluate_checklist,
 )
 
@@ -109,6 +110,13 @@ def get_checklist_progress(session: DiscoverySession) -> str:
         ok = entry is not None and entry.bedrock_reached
         marker = "✓" if ok else "·"
         out.append(f"  {marker} bedrock_on_{topic}")
+    out.append("")
+    out.append("Technical-concern coverage (advisory — inception needs these; does NOT block ready):")
+    for topic in TECHNICAL_TOPICS:
+        entry = topics_by_name.get(topic)
+        n_have = len(entry.facts) if entry else 0
+        marker = "✓" if n_have else "·"
+        out.append(f"  {marker} {topic}: {n_have} fact(s)")
     out.append("")
     out.append(
         f"Hard requirements remaining: {len([m for m in checklist.missing if 'advisory' not in m])}"
