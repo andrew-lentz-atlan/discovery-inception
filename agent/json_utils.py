@@ -112,6 +112,18 @@ def parse_json_lenient(text: str) -> Any:
                 return json.loads(candidate)
             except json.JSONDecodeError:
                 pass
+        # 'Extra data': a valid JSON value followed by trailing content — the model
+        # appended a second block or commentary after the closing brace (the most
+        # common structured-output failure when output isn't schema-enforced).
+        # raw_decode parses the leading value and ignores the rest. Try it on the
+        # cleaned candidate and the raw stripped text. Only RETURNS on success, so
+        # it can't regress any input the strict path already handled.
+        for attempt_text in (candidate, stripped):
+            try:
+                obj, _end = json.JSONDecoder().raw_decode(attempt_text.lstrip())
+                return obj
+            except json.JSONDecodeError:
+                continue
         # Couldn't recover. If the env var DISCOVERY_DUMP_BAD_JSON is set,
         # write the raw content to that path so we can inspect what shape
         # the model emitted. Lets us iterate on the parser without
