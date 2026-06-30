@@ -370,8 +370,16 @@ async def tool_run_inception(
     output_dir: str | None = None,
     prior_feedback_path: str | None = None,
     force_fresh: bool = False,
+    runtime: str = "python",
 ) -> dict[str, Any]:
     """Run the inception pipeline against a finalized discovery session.
+
+    `runtime` selects the orchestration substrate: 'python' (the hand-rolled
+    reference engine — default, supports meta/*.json resume) or 'langgraph' (the
+    StateGraph adapter in agent/inception/graph.py). Both call the SAME step_*
+    contract and produce the same outputs (validated A/B; see findings/10 + the
+    research-log). NOTE: the langgraph adapter has no meta/*.json resume yet, so
+    it always runs fresh — `force_fresh` is moot there.
 
     Auto-resolves spec.md from sessions/<id>/spec.md and role-context from
     skills/<role_id>/context.json (or stubs a minimal RoleContext when the
@@ -469,20 +477,32 @@ async def tool_run_inception(
     except Exception as exc:  # noqa: BLE001 — additive signal; never block inception
         print(f"   ! could not build structured spec digest ({exc}); using prose only")
 
-    result = await run_inception(
-        spec_md=spec_md,
-        role_context_json=role_context_json,
-        output_dir=Path(output_dir),
-        prior_feedback=prior_feedback,
-        force_fresh=force_fresh,
-        spec_structured=spec_structured,
-    )
+    if runtime == "langgraph":
+        from agent.inception.graph import run_inception_graph
+
+        result = await run_inception_graph(
+            spec_md=spec_md,
+            role_context_json=role_context_json,
+            output_dir=Path(output_dir),
+            prior_feedback=prior_feedback,
+            spec_structured=spec_structured,
+        )
+    else:
+        result = await run_inception(
+            spec_md=spec_md,
+            role_context_json=role_context_json,
+            output_dir=Path(output_dir),
+            prior_feedback=prior_feedback,
+            force_fresh=force_fresh,
+            spec_structured=spec_structured,
+        )
 
     summary: dict[str, Any] = {
         "ok": True,
         "session_id": session_id,
         "role_context_source": role_context_source,
         "output_dir": output_dir,
+        "engine": runtime,  # orchestration substrate that ran (python | langgraph)
     }
     if "classification" in result:
         c = result["classification"]
@@ -976,6 +996,12 @@ async def list_tools() -> list[types.Tool]:
                         "type": "boolean",
                         "description": "Default false. If true, ignores any meta/ checkpoint from a prior run and re-executes all 4 upstream LLM steps. Use when the spec has been re-finalized since the last inception run.",
                         "default": False,
+                    },
+                    "runtime": {
+                        "type": "string",
+                        "enum": ["python", "langgraph"],
+                        "description": "Orchestration substrate. 'python' (default) is the hand-rolled reference engine (supports meta/ resume). 'langgraph' is the StateGraph adapter — same step_* contract, same outputs (validated A/B); no meta/ resume yet (always runs fresh).",
+                        "default": "python",
                     },
                 },
                 "required": ["session_id"],

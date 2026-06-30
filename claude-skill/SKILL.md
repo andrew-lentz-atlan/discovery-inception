@@ -415,7 +415,9 @@ This is the second half of the product. The discovery spec is the input; the out
 
    Auto-resolves the spec.md + role-context paths from the session id. Optional `--output-dir <path>` to override where the starter lands (default: `agent_starter/<role_id_or_session_id>/`).
 
-   Each step prints progress; the full run takes ~3–5 minutes. The CLI returns JSON with the selected workload axes, architecture, runtime + model, and scaffold output paths.
+   **Orchestration runtime (optional):** add `--runtime langgraph` to run the pipeline on the LangGraph `StateGraph` adapter instead of the default hand-rolled `python` engine. Both call the same `step_*` contract and produce the same outputs (validated A/B — see `findings/10`); `python` is the reference oracle and supports `meta/` resume, `langgraph` always runs fresh. Default is overridable via the `INCEPTION_RUNTIME` env var. Use `python` unless you're specifically exercising the LangGraph runtime.
+
+   Each step prints progress; the full run takes ~3–5 minutes. The CLI returns JSON with the selected workload axes, architecture, runtime + model, scaffold output paths, and an `engine` field naming which orchestration substrate ran.
 
 2. Surface the high-level decisions to the user:
 

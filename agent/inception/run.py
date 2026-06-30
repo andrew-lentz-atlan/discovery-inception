@@ -1363,6 +1363,17 @@ def main() -> None:
             "inception with builder feedback on a previous starter."
         ),
     )
+    parser.add_argument(
+        "--runtime",
+        choices=["python", "langgraph"],
+        default=os.environ.get("INCEPTION_RUNTIME", "python"),
+        help=(
+            "Orchestration substrate. 'python' (default) is this hand-rolled reference "
+            "engine; 'langgraph' is the StateGraph adapter in agent/inception/graph.py — "
+            "same step_* contract and outputs (validated A/B). Default overridable via "
+            "the INCEPTION_RUNTIME env var."
+        ),
+    )
     args = parser.parse_args()
 
     prior_feedback: PriorIterationFeedback | None = None
@@ -1383,14 +1394,27 @@ def main() -> None:
     spec_md = spec_path.read_text()
     role_context_json = rc_path.read_text()
 
-    result = asyncio.run(
-        run_inception(
-            spec_md,
-            role_context_json,
-            output_dir=args.output_dir,
-            prior_feedback=prior_feedback,
+    if args.runtime == "langgraph":
+        from agent.inception.graph import run_inception_graph
+
+        print(f"→ runtime: langgraph (StateGraph adapter)\n")
+        result = asyncio.run(
+            run_inception_graph(
+                spec_md,
+                role_context_json,
+                output_dir=args.output_dir,
+                prior_feedback=prior_feedback,
+            )
         )
-    )
+    else:
+        result = asyncio.run(
+            run_inception(
+                spec_md,
+                role_context_json,
+                output_dir=args.output_dir,
+                prior_feedback=prior_feedback,
+            )
+        )
 
     print()
     print("─" * 70)

@@ -50,6 +50,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -145,6 +146,7 @@ async def _async_main(args: argparse.Namespace) -> None:
                 output_dir=args.output_dir,
                 prior_feedback_path=args.prior_feedback,
                 force_fresh=args.force,
+                runtime=args.runtime,
             )
         else:
             result = {"ok": False, "error": f"Unknown command: {cmd}"}
@@ -259,6 +261,13 @@ def main() -> None:
                    help="Optional path to a PriorIterationFeedback JSON file (Loop 2 — re-running with builder feedback).")
     p.add_argument("--force", action="store_true",
                    help="Ignore any meta/ checkpoint from a prior run and re-execute all 4 upstream LLM steps. Use when the spec has been re-finalized.")
+    p.add_argument("--runtime", choices=["python", "langgraph"],
+                   default=os.environ.get("INCEPTION_RUNTIME", "python"),
+                   help=("Orchestration substrate. 'python' (default) is the hand-rolled "
+                         "reference engine (supports meta/ resume). 'langgraph' is the "
+                         "StateGraph adapter — same step_* contract and outputs (validated "
+                         "A/B), no meta/ resume yet (always fresh). Default overridable via "
+                         "the INCEPTION_RUNTIME env var."))
 
     args = parser.parse_args()
     asyncio.run(_async_main(args))
