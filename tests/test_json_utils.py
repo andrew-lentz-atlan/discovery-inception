@@ -41,6 +41,24 @@ def test_recovers_object_then_prose_no_fence():
     assert parse_json_lenient(raw) == {"selected": "single-agent-react", "confidence": 0.8}
 
 
+def test_extra_data_does_not_corrupt_string_content():
+    # Regression: the raw_decode fallback must try the PRISTINE text before the
+    # regex-mutated candidate. The annotation regex isn't string-aware — mutated-
+    # first stripped "(per the spec)" from INSIDE this string value.
+    raw = '{"purpose": "shape rows into arrays [] (per the spec) before scoring"}\nDone.'
+    assert parse_json_lenient(raw) == {
+        "purpose": "shape rows into arrays [] (per the spec) before scoring"
+    }
+
+
+def test_extra_data_plus_annotation_still_recovers_via_candidate():
+    # Pristine raw_decode fails (annotation breaks the object mid-parse), so the
+    # mutated candidate must still be tried second: annotation stripped, then
+    # raw_decode ignores the trailing prose.
+    raw = '{"tags": ["a"] (optional)}\nextra prose'
+    assert parse_json_lenient(raw) == {"tags": ["a"]}
+
+
 def test_unrecoverable_raises():
     with pytest.raises(json.JSONDecodeError):
         parse_json_lenient("not json at all {{{")
