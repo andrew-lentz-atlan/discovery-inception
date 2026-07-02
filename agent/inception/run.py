@@ -1108,6 +1108,11 @@ def _try_resume_step(
 
     Resume is opt-in by file existence — no flag needed. If you want a
     fresh run, delete the meta/ directory (or pass --force on the CLI).
+
+    A checkpoint that EXISTS but fails to load (corrupt JSON, or a stale
+    schema — e.g. a meta/02 written before `atlan_context_layer` became
+    required) is warned about, not silently discarded: the caller pays for
+    a fresh LLM call and should know why.
     """
     if output_dir is None:
         return None
@@ -1116,7 +1121,12 @@ def _try_resume_step(
         return None
     try:
         return model_cls.model_validate_json(path.read_text())
-    except Exception:
+    except Exception as exc:
+        print(
+            f"   ! checkpoint meta/{filename} exists but failed to load "
+            f"({type(exc).__name__}: {str(exc)[:120]}) — stale schema or corrupt; "
+            f"re-running this step fresh"
+        )
         return None
 
 
@@ -1166,14 +1176,24 @@ async def run_inception(
                 print(f"   source: {prior_feedback.source}")
             print()
 
+        # Cascade rule: once ANY step runs fresh (checkpoint absent, invalid, or
+        # force), every DOWNSTREAM step must also run fresh. Steps 2-4 consume
+        # upstream outputs; resuming step N from a checkpoint derived from a
+        # DIFFERENT (older) upstream run silently produces an internally
+        # inconsistent decision set — e.g. a stale meta/02 (pre-atlan_context_layer)
+        # re-runs fresh while 03/04 resume from proposals built on the OLD skill
+        # cut, then scaffold_writer bakes the mismatch back into meta/.
+        resume_ok = not effective_force
+
         # ---- Step 1: workload classifier (with resume check) ----
         classification = (
-            None if effective_force
-            else _try_resume_step(output_dir, "01_workload_classification.json", WorkloadClassification)
+            _try_resume_step(output_dir, "01_workload_classification.json", WorkloadClassification)
+            if resume_ok else None
         )
         if classification is not None:
             print("→ Step 1/6: workload_classifier  [resumed from meta/01_workload_classification.json]")
         else:
+            resume_ok = False  # everything downstream must now run fresh
             print("→ Step 1/6: workload_classifier...")
             classification = await step_workload_classifier(
                 client, spec_md, role_context_json, prior_feedback=prior_feedback,
@@ -1195,12 +1215,13 @@ async def run_inception(
 
         print()
         proposal = (
-            None if effective_force
-            else _try_resume_step(output_dir, "02_skill_proposal.json", SkillProposalResult)
+            _try_resume_step(output_dir, "02_skill_proposal.json", SkillProposalResult)
+            if resume_ok else None
         )
         if proposal is not None:
             print(f"→ Step 2/6: skill_proposer  [resumed from meta/02_skill_proposal.json]")
         else:
+            resume_ok = False
             print("→ Step 2/6: skill_proposer...")
             proposal = await step_skill_proposer(
                 client, classification, spec_md, role_context_json, prior_feedback=prior_feedback,
@@ -1224,12 +1245,13 @@ async def run_inception(
 
         print()
         architecture = (
-            None if effective_force
-            else _try_resume_step(output_dir, "03_architecture_proposal.json", ArchitectureProposal)
+            _try_resume_step(output_dir, "03_architecture_proposal.json", ArchitectureProposal)
+            if resume_ok else None
         )
         if architecture is not None:
             print(f"→ Step 3/6: architecture_proposer  [resumed from meta/03_architecture_proposal.json]")
         else:
+            resume_ok = False
             print("→ Step 3/6: architecture_proposer...")
             architecture = await step_architecture_proposer(
                 client, classification, proposal, prior_feedback=prior_feedback,
@@ -1253,12 +1275,13 @@ async def run_inception(
 
         print()
         runtime = (
-            None if effective_force
-            else _try_resume_step(output_dir, "04_runtime_proposal.json", RuntimeProposal)
+            _try_resume_step(output_dir, "04_runtime_proposal.json", RuntimeProposal)
+            if resume_ok else None
         )
         if runtime is not None:
             print(f"→ Step 4/6: runtime_proposer  [resumed from meta/04_runtime_proposal.json]")
         else:
+            resume_ok = False
             print("→ Step 4/6: runtime_proposer...")
             runtime = await step_runtime_proposer(
                 client, classification, proposal, architecture, prior_feedback=prior_feedback

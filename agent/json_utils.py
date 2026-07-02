@@ -115,10 +115,13 @@ def parse_json_lenient(text: str) -> Any:
         # 'Extra data': a valid JSON value followed by trailing content — the model
         # appended a second block or commentary after the closing brace (the most
         # common structured-output failure when output isn't schema-enforced).
-        # raw_decode parses the leading value and ignores the rest. Try it on the
-        # cleaned candidate and the raw stripped text. Only RETURNS on success, so
-        # it can't regress any input the strict path already handled.
-        for attempt_text in (candidate, stripped):
+        # raw_decode parses the leading value and ignores the rest. PRISTINE text
+        # first: the regexes above aren't string-aware, so trying the mutated
+        # candidate first can strip content from INSIDE a string value (e.g. a
+        # "(per the spec)" parenthetical after "[]") even when the pristine prefix
+        # parses fine. Only RETURNS on success, so it can't regress any input the
+        # strict path already handled.
+        for attempt_text in (stripped, candidate):
             try:
                 obj, _end = json.JSONDecoder().raw_decode(attempt_text.lstrip())
                 return obj
