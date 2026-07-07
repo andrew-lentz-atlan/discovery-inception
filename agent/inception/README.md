@@ -14,7 +14,7 @@ Pipeline is **feature-complete** for starter generation as of the current commit
 | 2 | `skill_proposer` | shipped |
 | 3 | `architecture_proposer` | shipped |
 | 4 | `runtime_proposer` | shipped |
-| 5 | `scaffold_writer` (5 sub-steps: SKILL.md per skill / orchestrator.py / design_rationale.md / eval/questions.json / eval/judge.py) | shipped |
+| 5 | `scaffold_writer` (6 sub-steps: SKILL.md per skill / orchestrator.py / design_rationale.md / eval/questions.json / eval/judge.py / architecture.md) | shipped |
 | 6 | critics for steps 2 + 3 | deferred (advisory; lower priority) |
 
 Plus **intra-session feedback**: the pipeline accepts a `--prior-feedback <path>` argument; each sub-agent's prompt gains a "Prior iteration feedback" section that the model treats as constraints. Used to iterate a starter design within a session based on builder feedback on the previous output.
@@ -22,7 +22,7 @@ Plus **intra-session feedback**: the pipeline accepts a `--prior-feedback <path>
 ## Pipeline
 
 ```
-DiscoverySpec (spec.md + RoleContext) + BoundedContext (Atlan, when available)
+DiscoverySpec (spec.md + RoleContext) (+ optional BoundedContext for Atlan catalog priming)
                               │
        optional: prior_feedback for re-runs (Loop 2)
                               ▼
@@ -30,6 +30,7 @@ DiscoverySpec (spec.md + RoleContext) + BoundedContext (Atlan, when available)
                               │
                               ▼
               skill_proposer  ──→  orchestrator_level_concerns
+                                   + atlan_context_layer  (always produced)
                               │
                               ▼
               architecture_proposer  ──→  selected pattern + add-ons
@@ -40,11 +41,12 @@ DiscoverySpec (spec.md + RoleContext) + BoundedContext (Atlan, when available)
                                           (consults patterns/harnesses/)
                               │
                               ▼
-              scaffold_writer (5 parallel/sequential sub-steps)
+              scaffold_writer (6 parallel/sequential sub-steps)
                               │
                               ▼
               agent_starter/   ← portable artifact for the builder
                 ├── README.md
+                ├── architecture.md          (2 Mermaid diagrams + summary)
                 ├── design_rationale.md      (audit trail with citations)
                 ├── orchestrator.py          (ReAct loop + tool stubs + TODOs)
                 ├── skills/<name>/SKILL.md   (per skill, Anthropic skill format)
@@ -53,7 +55,9 @@ DiscoverySpec (spec.md + RoleContext) + BoundedContext (Atlan, when available)
                 └── meta/                    (upstream pydantic outputs)
 ```
 
-Each sub-agent is a single prompt + single Pydantic output, modeled on `intake/` and `agent/patterns_curator/`. `scaffold_writer` runs its 5 sub-steps mostly in parallel; `step 5e` depends on `step 5d` so it's sequential after the gather.
+Each sub-agent is a single prompt + single Pydantic output, modeled on `intake/` and `agent/patterns_curator/`. `scaffold_writer` runs its 6 sub-steps mostly in parallel; `step 5e` depends on `step 5d` so it's sequential after the gather.
+
+Note the BoundedContext **input** is optional, but the pipeline's Atlan **output** is not: step 2's result always includes the `atlan_context_layer` recommendation (a required schema field) — an Atlan context repo as the portable home for the agent's static scaffold (thin tenant → seed it), plus the live-access surface(s) (MCP / MDLH / SDK) routed by the Atlan posture facts captured in discovery (`atlan_integration_posture`). Steps 3/4/5c don't receive the raw spec prose, so this typed field is how the Atlan decision travels downstream.
 
 ## Workload axes (step 1's classification)
 
@@ -92,6 +96,8 @@ uv run python -m agent.inception.run \
 
 The `--spec-md` should point at a discovery agent's spec output (typically `sessions/<session_id>/spec.md`). The `--role-context` should point at an intake pipeline's RoleContext output (typically `skills/<role-id>/context.json` — gitignored).
 
+`--runtime {python,langgraph}` selects the orchestration substrate: `python` (default) is the hand-rolled reference engine with `meta/` resume; `langgraph` runs the same `step_*` contract on the `StateGraph` adapter in `graph.py` (always a fresh run) and produces the same outputs — validated A/B, `findings/10`. The default is overridable via the `INCEPTION_RUNTIME` env var.
+
 ## Validation
 
 The pipeline has been validated on a real customer use case (a CPG brand-analytics agent). Held against an independent reference implementation by a builder who shipped a similar agent and scored 97/100 on LLM-as-judge eval, our inception output independently:
@@ -110,5 +116,6 @@ The empirical reference is at https://github.com/bladata1990/pg-brand-analyst-ag
 - `README.md` — this file
 - `schemas.py` — Pydantic models for every sub-agent's output
 - `prompts/` — one prompt per sub-agent, plus 5 for scaffold_writer's sub-steps
-- `run.py` — CLI entry point + the pipeline orchestration
+- `run.py` — CLI entry point + the reference (`python`) pipeline orchestration
+- `graph.py` — LangGraph `StateGraph` orchestration adapter (same `step_*` contract; selected via `--runtime langgraph`)
 - `sample_feedback/` — example feedback files for Loop 2 testing (gitignored; local-only)

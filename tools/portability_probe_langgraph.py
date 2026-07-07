@@ -11,6 +11,13 @@ Only the orchestration substrate differs (LangGraph StateGraph vs our
 hand-rolled call_step chain). If outputs converge with Python within the
 within-runtime variance band, the runtime is a swappable adapter.
 
+
+FROZEN RESEARCH ARTIFACT: the hardcoded SE_SESSION is deliberate — this
+script reproduces the findings/10 experiment against its exact baseline, so
+it stays byte-stable rather than growing a --session-id flag. For product
+use of the LangGraph substrate, see agent/inception/graph.py (the
+maintained adapter).
+
 Run (langgraph installed transiently — NOT added to product deps):
     SESSIONS_DIR=~/Desktop/discovery-inception/sessions \
       uv run --with langgraph --with langchain-openai \

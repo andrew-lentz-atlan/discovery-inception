@@ -16,6 +16,13 @@ portability_probe_langgraph.py; the Claude Workflow leg was run via the
 Workflow tool. All three feed the SAME rendered prompts + schemas + SE spec —
 only the orchestration substrate differs.
 
+
+FROZEN RESEARCH ARTIFACT: the hardcoded SE_SESSION is deliberate — this
+script reproduces the findings/10 experiment against its exact baseline, so
+it stays byte-stable rather than growing a --session-id flag. For product
+use of the LangGraph substrate, see agent/inception/graph.py (the
+maintained adapter).
+
 Usage:
     SESSIONS_DIR=~/Desktop/discovery-inception/sessions \
       uv run python -m tools.portability_probe --runs 3

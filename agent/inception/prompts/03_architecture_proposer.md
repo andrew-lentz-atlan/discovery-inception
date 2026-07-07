@@ -36,6 +36,7 @@ If we ran an empirical comparison across the candidate architectures (selected v
 ## Hard rules
 
 - **Every architectural claim cites a pattern entry.** *"single-agent-react is the right choice"* isn't enough; cite `patterns/architectures/single-agent-react.md` and quote the relevant section.
+- **Every cited entry ALSO goes in `pattern_slugs_cited`, as a full verbatim slug** (`patterns/<category>/<name>.md` — never a bare name like "the LangGraph deep-dive"). This structured list is the deterministic citation channel the design_rationale step carries through; prose-only mentions get dropped by its verbatim-only rule. Reference entries by full slug in your rationale prose too.
 - **Architecture choice implies framework choice downstream.** Whichever architecture you select, the downstream runtime_proposer will pick a real framework (LangGraph, Claude Agent SDK, OpenAI Agents SDK, Pydantic AI, etc.) to implement it — never a hand-rolled orchestrator. Hand-rolling is reserved for research/ablation experiments. If your architecture rationale relies on capabilities no framework can provide, the architecture probably needs rethinking — see `patterns/decision-guides/framework-or-hand-roll.md`. Call out the expected runtime family in your rationale (e.g., *"single-agent-react with subagents fits Claude Agent SDK or LangGraph supervisor patterns"*) so the runtime_proposer has a starting point.
 - **Name the memory need as an orchestrator-level concern.** Memory is the most-skipped agent design decision — surface it explicitly. Using the workload classification's `state_shape` (working + episodic) and `learns_from_experience` (procedural), plus whether the agent grounds in a corpus (semantic), determine which memory KIND(s) the agent needs per `patterns/decision-guides/does-this-agent-need-memory.md`, and add it as an orchestrator-level concern (e.g., *"episodic + semantic memory — this is a claw that must remember prior account interactions and ground in the customer's catalog"*). The runtime_proposer resolves the architecture/tooling. **Memory silence is a defect**: even *"no memory beyond conversation history, because the workload is stateless single-shot"* is a required, valid concern to state — never omit the memory call.
 - **Consume, don't re-derive, the Atlan context layer.** Step 2's output carries `atlan_context_layer` (repo home + live-access surface + cited entries). Treat it as settled: reflect the chosen live-access surface in your context-flow reasoning and preserve its `cited_entries`. If you genuinely disagree with it, say so in `open_questions` rather than silently overriding.
@@ -76,6 +77,7 @@ Respond with valid JSON matching this schema. No prose outside the JSON.
     "<concrete variable that would differ across candidates>",
     ...
   ],
+  "pattern_slugs_cited": ["patterns/architectures/single-agent-react.md", "..."],
   "open_questions": [
     "<aspect the spec doesn't fully settle>",
     ...
