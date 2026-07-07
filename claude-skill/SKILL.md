@@ -80,8 +80,8 @@ Then parse the message for (relevant to all doors):
 - **A use case** (*"churn-prediction agent at FinCo"*) — confirm or refine
 - **Mentions of artifacts** (*"I have the call transcript"*, *"here's the JD"*, *"we ran two scoping sessions"*) — note the count; you'll collect them in Phase 3 (Build door)
 - **Path preferences** for the repo
-- **An Atlan tenant they want primed** (e.g., *"I want this to read from our `ces.atlan.com` glossary"*) — also tells you the agent is Atlan-leaning, which matters for recommend/audit too
-- **Org context** — is this an Atlan-internal build (Atlan should be in the architecture as a context layer) or neutral/personal? Affects which patterns you weight.
+- **An Atlan tenant they want primed** (e.g., *"I want this to read from our `ces.atlan.com` glossary"*) — also gives you concrete Atlan posture facts, which matter for recommend/audit too
+- **Atlan posture** — default assumption: this is an Atlan-context build (v1.0 is Atlan-internal; the context layer is part of every recommendation). Don't ask *whether* Atlan is in scope — ask about the customer's posture: context repo set up? skills-as-assets? MCP reachable? MDLH tier? metadata coverage? The one exception: a genuinely non-Atlan personal build gets neutral treatment.
 
 If any of those are present, note them and don't re-ask in later phases.
 
@@ -110,7 +110,7 @@ The user is building something and wants the recommended approach. Produce a con
 2. **Recommend an architecture.** Read `architectures/` + the class's implied defaults. Name one, and briefly name the alternatives you rejected and why (the taxonomy + `anti-patterns/wrong-class-architecture.md` are your guard).
 3. **Recommend a runtime.** Read `decision-guides/framework-or-hand-roll.md` (default to a real framework — never hand-roll outside research) + the relevant `harnesses/*-deep-dive.md`. Name a framework + model family, and cite the deep-dive's "when to use / when not."
 4. **Sketch the skills** (don't formalize). 3–7 skills typical; anchor the count on the class. Flag `anti-patterns/over-decomposition.md` if the natural cut is large.
-5. **Atlan context layer** — if the build is Atlan-leaning (Phase 0 org context), read `skill-design/atlan-*` and recommend a context-layer path (context repo / skills-as-assets / raw SDK / MCP / MDLH), honestly noting when one isn't needed. Neutral builds: skip or mention only as an option.
+5. **Atlan context layer** — always include this for Atlan-context builds (the default). Read `skill-design/atlan-*` and recommend both halves: an Atlan context repo as the portable home for the agent's static scaffold (always — a thin tenant means "seed it"), plus the live-access surface(s) (MCP / MDLH / SDK) routed by the posture from Phase 0. Where posture is unknown, state your assumptions and flag them rather than skipping the layer. Genuinely non-Atlan personal builds: mention only as an option.
 6. **Name the top 1–3 anti-patterns** this kind of build should avoid (`anti-patterns/`), especially `silent-tool-fallback` for any tool-using agent.
 
 Keep it to a readable brief with citations. Then offer the escalation: *"Want me to turn this into a full starter scaffold (the Build door, Phases 1–6), or produce the structured/reproducible version via the engine?"*
@@ -124,7 +124,7 @@ The user presents a proposed or existing design and asks if it's the right path.
 3. **Framework vs hand-roll.** Is the runtime a real framework, or a hand-rolled orchestrator? Per `decision-guides/framework-or-hand-roll.md`, hand-rolling outside research is a smell — flag it and name the framework that fits.
 4. **Decomposition.** Over- or under-decomposed? `anti-patterns/over-decomposition.md` (10+ skills where 4–6 fit), and the subagent-vs-skill split (`decision-guides/subagent-vs-skill-tradeoffs.md` + `anti-patterns/wasteful-subagent-context-reload.md` — a subagent that reloads the same context every call should be a skill).
 5. **Robustness gaps.** Tool-using agent with no failure-surfacing? Cite `anti-patterns/silent-tool-fallback.md`. No provenance / eval / observability plan? Note it.
-6. **Atlan fit** (if Atlan-leaning) — is the context-layer choice sound vs `skill-design/atlan-*`?
+6. **Atlan fit** — is the context-layer choice sound vs `skill-design/atlan-*`? Check both halves against the declared posture: a context repo as the portable home for the static scaffold, and live-access surface(s) (MCP / MDLH / SDK) that match. Call out a missing layer or a posture mismatch; genuinely non-Atlan personal builds are the one exception.
 
 Deliver a clear verdict — **right path / right with these fixes / reconsider** — with each point tied to a cited entry. Then offer: *"Want me to draft the corrected approach (Recommend mode), or build it out (Build door)?"*
 

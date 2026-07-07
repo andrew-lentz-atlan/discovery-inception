@@ -19,6 +19,7 @@ inputs (none authoritative on its own):               reads the spec + the patte
   ingest → facts (each tagged w/ its source)             · runtime         (off-the-shelf framework + model)
   → gap_list.md → chat-fill what you know /              · memory          (kind + store + write/retrieve policy)
     interview what you don't                             · eval seed + judge harness
+                                                         · atlan context layer  (repo home + live-access surface — always)
         │                                                       │
         ▼                                                       ▼
   spec.md + spec.json  ──────────────────────────────────▶  agent_starter/
@@ -33,7 +34,7 @@ inputs (none authoritative on its own):               reads the spec + the patte
 
 **Discovery is multi-point on purpose** — no single source gives you the "why." Logs show what a practitioner did; recordings and interviews surface why. The ingest pipeline runs intake + fact extraction in parallel across every artifact you hand it (any modality, via a pluggable extractor seam), tags each fact with the source it came from, and writes a `gap_list.md` of what's covered vs. missing. The FDE chat-fills gaps they know (~5s/fact); the interview-mode agent handles gaps that need a real customer answer (~15s/turn). Hybrid is the common case.
 
-**Inception is a deterministic projection of the spec.** Once the spec is settled, one CLI call (`agent.cli inception --session-id <id>`, ~3–5 min) runs the proposer chain — workload class → skills → architecture → runtime → memory → scaffold — and writes a complete `agent_starter/` with a `design_rationale.md` that cites a `patterns/` entry for every decision. Five sub-agents per discovery turn; six in the inception pipeline; a separate curator agent maintains the knowledge base. Structured Pydantic output at every step; full per-step trace; no black box.
+**Inception is a deterministic projection of the spec.** Once the spec is settled, one CLI call (`agent.cli inception --session-id <id>`, ~3–5 min) runs the proposer chain — workload class → skills (+ the always-produced Atlan context layer: context repo as the portable home, live-access surface routed by the customer's Atlan posture) → architecture → runtime → memory → scaffold — and writes a complete `agent_starter/` with a `design_rationale.md` that cites a `patterns/` entry for every decision. Five sub-agents per discovery turn; six in the inception pipeline; a separate curator agent maintains the knowledge base. Structured Pydantic output at every step; full per-step trace; no black box.
 
 ## Repository layout
 
@@ -67,7 +68,7 @@ Everything else is gitignored — generated outputs (priors, sessions, `agent_st
 
 Discovery-inception's own orchestration is hand-rolled (OpenAI SDK, Pydantic, FastAPI, MCP SDK + ~500 lines of plain Python) for one reason: the research phase needed to *ablate* orchestration-layer variables — sub-agent model choice, context budget, synthesizer timing, sharpener rewrite rate — that a stock framework (LangChain / LangGraph / CrewAI / AutoGen) would have confounded. Hand-rolling was required for the experiment, not a stylistic choice. `findings/06–09` are the receipts.
 
-**That is the narrow research exception, and it expires at v1.0.** The architecture is framework-independent by design — the skill bundle (prompts + schemas + orchestration spec) is the contract, re-implementable on any harness. **At the v1.0 release, discovery-inception's own runtime will be formalized onto off-the-shelf libraries** (Claude Agent SDK + LangGraph hybrid is the current plan), because outside research the engineering costs of hand-rolling — maintenance, onboarding load, lost cross-build knowledge transfer, weak operational maturity, slow incident response — compound over a system's lifetime. That's the same standard inception holds its own outputs to: its runtime_proposer recommends a real framework for every agent it scopes. See `patterns/decision-guides/framework-or-hand-roll.md`.
+**That is the narrow research exception, and it expires at v1.0.** The architecture is framework-independent by design — the skill bundle (prompts + schemas + orchestration spec) is the contract, re-implementable on any harness. **At v1.0 that formalization has begun: LangGraph is a production dependency, and the inception pipeline runs on a LangGraph `StateGraph` adapter as a second orchestration substrate** (`--runtime langgraph` — same step contract and outputs as the hand-rolled reference engine, validated A/B in `findings/10-runtime-portability-three-substrates.md`; the `python` engine stays the reference oracle), because outside research the engineering costs of hand-rolling — maintenance, onboarding load, lost cross-build knowledge transfer, weak operational maturity, slow incident response — compound over a system's lifetime. That's the same standard inception holds its own outputs to: its runtime_proposer recommends a real framework for every agent it scopes. See `patterns/decision-guides/framework-or-hand-roll.md`.
 
 ## Try it
 
@@ -112,6 +113,10 @@ uv run python -m agent.cli finalize --session-id sess_xxx
 
 # Inception → the full starter agent design (~3-5 min) → agent_starter/<id>/
 uv run python -m agent.cli inception --session-id sess_xxx
+# Optional: --runtime {python,langgraph} — same outputs on either adapter
+# (validated A/B, findings/10). Default python (reference engine, meta/ resume);
+# langgraph runs the StateGraph adapter, always fresh. INCEPTION_RUNTIME env
+# var overrides the default.
 
 # Or interview-only mode if you have no artifacts:
 uv run python -m agent.cli start-session --use-case-seed "..."
