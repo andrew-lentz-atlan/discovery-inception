@@ -84,6 +84,14 @@ def _strip_fences(text: str) -> str:
     return s.strip()
 
 
+def parse_json_response(content: str) -> Any:
+    """Canonical entry point for parsing an LLM response as JSON. Tolerates
+    ``` fences and the common LLM syntax errors parse_json_lenient recovers
+    (trailing/missing commas, trailing annotations, trailing extra data).
+    Previously re-defined identically in four modules; import from here."""
+    return parse_json_lenient(content or "")
+
+
 def parse_json_lenient(text: str) -> Any:
     """Parse JSON, tolerating common LLM-emitted syntax errors.
 

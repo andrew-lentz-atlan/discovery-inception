@@ -169,16 +169,7 @@ def load_pattern_category(category: str) -> str:
     return "\n\n---\n\n".join(chunks)
 
 
-def parse_json_response(content: str) -> dict | list:
-    """Lenient JSON parser — see agent/json_utils.py. Critical for the
-    scaffold_writer sub-agents (OrchestratorStub, SkillMdContent,
-    DesignRationale, JudgeHarness) which embed Python source as JSON
-    strings — model occasionally emits trailing commas or missing
-    delimiters that strict json.loads rejects but are deterministically
-    fixable."""
-    from agent.json_utils import parse_json_lenient
-
-    return parse_json_lenient(content or "")
+from agent.json_utils import parse_json_response
 
 
 async def call_step(
@@ -1006,14 +997,14 @@ def _write_design_rationale_fallback(
     for s in skills.skills:
         parts.append(f"### `{s.name}`\n\n")
         parts.append(f"**Purpose:** {s.purpose}\n\n")
-        parts.append(f"**Type:** {s.skill_type}\n\n")
+        parts.append(f"**Body shape:** {s.suggested_body_shape}\n\n")
     parts.append("## Architecture\n\n")
     parts.append(f"- Pattern: `{architecture.selected_pattern_slug}`\n")
-    parts.append(f"- Rationale: {architecture.rationale}\n\n")
+    parts.append(f"- Rationale: {architecture.selection_rationale}\n\n")
     parts.append("## Runtime\n\n")
     parts.append(f"- Runtime: `{runtime.selected_runtime}`\n")
     parts.append(f"- Model: `{runtime.selected_model_family}`\n")
-    parts.append(f"- Rationale: {runtime.rationale}\n")
+    parts.append(f"- Rationale: {runtime.selection_rationale}\n")
     (output_dir / "design_rationale.md").write_text("".join(parts))
 
 

@@ -10,7 +10,24 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _normalize_pattern_slugs(entries: list[str]) -> list[str]:
+    """Normalize pattern-entry citations toward `patterns/<category>/<slug>.md`.
+
+    Trivially fixable format drift (backticks, whitespace, missing .md suffix)
+    is corrected; anything else passes through unchanged — the downstream
+    citation verifier (file-existence check) is the real gate, so this must
+    never introduce a validation failure of its own.
+    """
+    out: list[str] = []
+    for e in entries:
+        s = e.strip().strip("`").strip()
+        if s.startswith("patterns/") and not s.endswith(".md"):
+            s += ".md"
+        out.append(s)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +296,10 @@ class AtlanContextLayer(BaseModel):
             "'patterns/skill-design/atlan-mcp-integration.md')."
         ),
     )
+
+    _normalize_cited = field_validator("cited_entries")(
+        classmethod(lambda cls, v: _normalize_pattern_slugs(v))
+    )
     rationale: str = Field(
         ...,
         description=(
@@ -431,6 +452,22 @@ class ArchitectureProposal(BaseModel):
             "critic has rewrite authority'. Used to scope the bake-off harness."
         ),
     )
+    pattern_slugs_cited: list[str] = Field(
+        default_factory=list,
+        description=(
+            "EVERY pattern entry cited anywhere in this proposal, as full verbatim "
+            "slugs ('patterns/<category>/<name>.md'). This is the deterministic "
+            "citation channel the design_rationale step (5c) carries through — "
+            "prose-only mentions get dropped by its verbatim-only rule, so a slug "
+            "that matters must appear here. (Issue 3: upstream slug-format variance "
+            "caused 25→7 citation-density swings.)"
+        ),
+    )
+
+    _normalize_cited = field_validator("pattern_slugs_cited")(
+        classmethod(lambda cls, v: _normalize_pattern_slugs(v))
+    )
+
     open_questions: list[str] = Field(
         default_factory=list,
         description=(
@@ -556,6 +593,20 @@ class RuntimeProposal(BaseModel):
             "understand future-portability tradeoffs."
         ),
     )
+    pattern_slugs_cited: list[str] = Field(
+        default_factory=list,
+        description=(
+            "EVERY pattern entry cited anywhere in this proposal, as full verbatim "
+            "slugs ('patterns/<category>/<name>.md'). The deterministic citation "
+            "channel step 5c carries through — prose-only mentions get dropped by "
+            "its verbatim-only rule."
+        ),
+    )
+
+    _normalize_cited = field_validator("pattern_slugs_cited")(
+        classmethod(lambda cls, v: _normalize_pattern_slugs(v))
+    )
+
     open_questions: list[str] = Field(
         default_factory=list,
         description="Aspects the spec doesn't settle (e.g., specific model choice, hosted vs self-hosted).",

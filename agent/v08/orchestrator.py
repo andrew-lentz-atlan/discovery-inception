@@ -43,6 +43,7 @@ from agent.orchestrator import (
 from agent.schemas import (
     ChecklistResult,
     DistilledFact,
+    DistilledFactBatch,
     FlaggedGap,
     SharpenerResult,
     TensionsResult,
@@ -358,23 +359,29 @@ async def run_v08_turn(
             CUSTOMER_MESSAGE=customer_message,
             RELEVANT_PRIORS=_relevant_priors(session, target_topic),
         )
-        last_distilled, ms, model = await call_sub_agent(
+        # Batch-tolerant: a fact-dense message (e.g. the FDE chat-filling the
+        # whole Atlan posture in one turn) legitimately distills to SEVERAL
+        # facts — the model emits an array, and forcing a single DistilledFact
+        # burned every retry and failed the turn. Record every fact.
+        distilled_batch, ms, model = await call_sub_agent(
             client,
             sub_agent="distill",
             user_prompt=distill_prompt,
-            output_model=DistilledFact,
-            max_tokens=512,
+            output_model=DistilledFactBatch,
+            max_tokens=1024,
         )
         turn.events.append(
             TurnEvent(
                 sub_agent="distill",
                 input_summary=f"distilling on target_topic={target_topic!r}",
-                output=last_distilled.model_dump(),
+                output=distilled_batch.model_dump(),
                 duration_ms=ms,
                 model=model,
             )
         )
-        session.record_fact(last_distilled)
+        for fact in distilled_batch.facts:
+            session.record_fact(fact)
+        last_distilled = distilled_batch.facts[-1] if distilled_batch.facts else None
         session.save()
 
         if triage.label == "out_of_scope_for_counterparty":
@@ -385,7 +392,7 @@ async def run_v08_turn(
                     f"Question came up but the current counterparty can't answer; "
                     f"needs escalation to {who}."
                 ),
-                related_topic=last_distilled.topic,
+                related_topic=last_distilled.topic if last_distilled else target_topic,
                 gap_type="missing_why",
             )
             session.flag_gap(gap)

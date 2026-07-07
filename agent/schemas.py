@@ -121,6 +121,29 @@ class DistilledFact(BaseModel):
     )
 
 
+class DistilledFactBatch(BaseModel):
+    """One-or-many DistilledFacts from a single distill call.
+
+    A fact-DENSE customer message (e.g. an FDE chat-filling the whole Atlan
+    posture in one turn) legitimately carries several independent facts. The
+    model correctly refuses to drop all but one, emitting a JSON array — which
+    a bare `DistilledFact` output_model rejects after burning every retry.
+    This wrapper accepts all three shapes the model emits: a single fact
+    object, a bare array of facts, or {"facts": [...]}.
+    """
+
+    facts: list[DistilledFact]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_shapes(cls, v: object) -> object:
+        if isinstance(v, list):
+            return {"facts": v}
+        if isinstance(v, dict) and "facts" not in v:
+            return {"facts": [v]}
+        return v
+
+
 class FactRecord(BaseModel):
     """One captured fact with its provenance, as STORED in a TopicEntry.
 

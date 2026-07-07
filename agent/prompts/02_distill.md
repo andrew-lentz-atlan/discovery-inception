@@ -58,6 +58,8 @@ Respond with **only** valid JSON matching:
 }
 ```
 
+**Multi-fact answers:** when the customer's message carries several independent facts (different topics, or several distinct statements on one topic — e.g. an Atlan-posture rundown covering repo + MCP + MDLH + metadata coverage in one breath), return a JSON **array** of fact objects instead of collapsing them into one blob or dropping all but one. One object per atomic fact. A single-fact answer stays a single object.
+
 ## Inputs
 
 ### The probe the agent asked (so you know what topic the answer relates to)
