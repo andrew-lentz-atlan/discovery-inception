@@ -22,19 +22,24 @@ The colleague's experience:
 
 The tester ALWAYS plays customer. The mega-agent is the FDE.
 
-Eight tools across two groups:
+Ten tools across three groups:
 
   Priors / intake:
+    ingest_artifacts(use_case_seed, artifacts, role_id?)
     generate_priors(artifact_text, role_id, source_name?)
     list_priors()
     get_priors(role_id)
 
   Discovery:
-    start_discovery_session(use_case_seed, role_id?)
-    submit_customer_turn(session_id, message)
+    start_discovery_session(use_case_seed, role_id?, atlan_*?)
+    submit_customer_turn(session_id, message, no_probe?)
     get_session_state(session_id)
     finalize_discovery_session(session_id)
     list_sessions()
+
+  Inception:
+    run_inception(session_id, output_dir?, prior_feedback_path?,
+                  force_fresh?, runtime?)
 """
 from __future__ import annotations
 

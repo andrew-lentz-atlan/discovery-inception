@@ -31,14 +31,13 @@ RoleContext written to skills/<role-id>/context.json
 
 - `schemas.py` — Pydantic types. `RoleContext` is the final output; the rest are step intermediates.
 - `prompts/0N_*.md` — one prompt per step. Most of the value of this whole tool lives in these files.
-- `run.py` — CLI entry point. Loads `.env` from `../harness/`, chains the six steps, writes output.
+- `run.py` — CLI entry point. Loads `.env` from the repo root, chains the six steps, writes output.
 - `sources/` — artifacts you've fed into the intake (kept alongside their outputs for reproducibility).
 
 ## Prerequisites
 
-The harness at `../harness/` must be runnable. That means:
-- `llama-server` is up on the URL in `../harness/.env` (default: `http://localhost:8080`)
-- `../harness/` has had `uv sync` run (its venv is what we'll use)
+- `uv sync` has been run in the repo root
+- LiteLLM proxy credentials set: `LITELLM_BASE_URL` + `LITELLM_API_KEY`, in your shell or in `discovery-inception/.env` (see `.env.example`)
 
 ## Running it
 
@@ -49,14 +48,13 @@ From inside `discovery-inception/`:
 mkdir -p intake/sources
 cp /wherever/sc-role.md intake/sources/
 
-# Run the intake. Uses the harness's venv.
-cd ../harness
+# Run the intake.
 uv run python -m intake.run \
-    --artifact ../discovery-inception/intake/sources/sc-role.md \
+    --artifact intake/sources/sc-role.md \
     --role-id solutions-consultant
 ```
 
-(The `cd ../harness` matters because that's where the `uv` project lives. The `run.py` adds the harness directory to sys.path so it can import `core.client` etc.)
+(Optional: `--use-case "<one-liner>"` orients the extraction toward the target user of the agent being built — useful when the artifact is a meta-document like a scoping-call transcript rather than the target user's own runbook.)
 
 Output goes to `discovery-inception/skills/<role-id>/`:
 - `context.json` — the structured RoleContext
@@ -89,5 +87,5 @@ This is pure prompt engineering. Most of the time on this project will live here
 
 - **Hallucinated content.** If the model invents details not in the source, the extractor prompt is too lenient. Tighten "extract only what the source supports."
 - **Templatey output.** If escalation paths read like a McKinsey deck, the source genuinely had nothing concrete and the extractor should have left them empty. Tighten "empty is better than wrong."
-- **Bad JSON.** Small Gemma sometimes wraps JSON in prose despite the system prompt. The parser strips ```` ```json ```` fences. If parsing still fails, lower temperature further or split the prompt into smaller calls.
+- **Bad JSON.** The worker model (`claude-haiku-4-5`) occasionally wraps JSON in prose or emits small syntax slips despite the system prompt. The parser (`agent/json_utils.parse_json_response`) strips ```` ```json ```` fences and repairs the common error classes. If parsing still fails, lower temperature further or split the prompt into smaller calls.
 - **Unwritten rules sniffer returns nothing.** Either the source genuinely has no asides (formal job descriptions often don't), or the prompt's threshold is too strict. Try running it against a transcript instead — those have far more implicit content.

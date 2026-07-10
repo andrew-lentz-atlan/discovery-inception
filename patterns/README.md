@@ -33,7 +33,7 @@ Prompts encode invariants. This directory encodes opinions. When the field shift
 
 **Phase 1 expansion (2026-05-29):** ~17 additional entries staged. Adds per-framework harness deep-dives (Claude Agent SDK, LangGraph, OpenAI Agents SDK, Pydantic AI, Cortex, Genie), the 5-class system taxonomy, 4 new anti-patterns, and 4 Atlan context-layer entries. Most are marked `status: draft` — they pass internal sanity checks against n=2 real inception comparison runs but haven't been audited by peers yet. That's the prompt for the WIP banner above.
 
-Phase 2 builds the curator's `ingest` operation and validates it by reproducing these seed entries from their source materials. Phase 3 has the curator ingest the remaining ~20 entries (more harnesses, more anti-patterns, builder lessons, decision guides).
+Phase 2 shipped the curator's `ingest` operation (plus `promote` and `audit` — see `agent/patterns_curator/README.md`); validating ingest by reproducing these seed entries from their source materials remains the standing target. Phase 3 has the curator ingest the remaining ~20 entries (more harnesses, more anti-patterns, builder lessons, decision guides).
 
 ## How to consume this directory
 
@@ -48,6 +48,7 @@ Phase 2 builds the curator's `ingest` operation and validates it by reproducing 
 - `_log.md` — audit trail
 - `<category>/<entry>.md` — knowledge entries (lean, agent-consumable)
 - `<category>/<entry>.reference.md` — supplementary content when justified (rare; reserved for substantive non-source-resident detail like deprecation history)
+- `<category>/<entry>.{draft,update,contested,candidate,triage}.md` — curator working files awaiting human review/promotion (see `agent/patterns_curator/README.md`); not canonical, not listed in `_index.md`
 
 ## Authoring conventions
 
@@ -100,4 +101,4 @@ When authoring (or when the curator authors), pick the shape that fits the knowl
 5. Append a row to `_index.md`
 6. Append a dated entry to `_log.md`
 
-When the `patterns_curator` agent ships, steps 1–4 become automated from source materials; humans review before commit.
+The `patterns_curator` agent's `ingest` now automates steps 1–4 from source materials (output lands as `.draft.md` / `.update.md` / `.triage.md`, never canonical `<slug>.md`); humans review and promote before an entry becomes canonical.

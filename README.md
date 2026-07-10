@@ -52,7 +52,7 @@ discovery-inception/
 ├── intake/                      priors pipeline (artifact → RoleContext)
 ├── patterns/                    knowledge base (architectures, anti-patterns, skill-design, harnesses, decision-guides)
 ├── findings/                    empirical research notes (the receipts; cited from patterns/)
-├── tests/                       provenance, artifact-seam, and spec-tools regression tests
+├── tests/                       regression tests (70) — provenance, artifact seam, spec tools, JSON repair, inception runtimes + resume
 ├── tools/                       compare_inception.py (A/B inception across patterns refs)
 ├── skill/                       v1.0 packaging design (the portable skill-bundle contract)
 ├── claude-skill/                installable Claude skill (the curl distribution — how most people run it)

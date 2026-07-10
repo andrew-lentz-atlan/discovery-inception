@@ -215,7 +215,7 @@ Deliver a clear verdict — **right path / right with these fixes / reconsider**
    >
    > Three answers work:
    > - **Yes, here are the details:** name the tenant (e.g. `ces.atlan.com`) + at least one of: glossary name, list of table QNs, list of DataDomain names. If you can paste an `ATLAN_API_KEY` with read scope right now, even better; if not, name the scope anyway and we'll surface the gap in the gap list.
-   > - **Yes but I don't have credentials handy right now:** we'll proceed without it; you can re-run later with `--atlan-tenant`.
+   > - **Yes but I don't have credentials handy right now:** we'll proceed without it; you can prime it later — `start-session --atlan-tenant …` in interview mode, or just chat-fill the Atlan posture facts directly (see the posture bank in Phase 5).
    > - **No tenant for this use case** (e.g., prospect / pre-sale / generic exploration): we'll proceed with the artifact-first flow and the technical thread will probe via questioning.
    >
    > Which?
@@ -229,7 +229,7 @@ Deliver a clear verdict — **right path / right with these fixes / reconsider**
    EOF
    ```
 
-   Capture whatever they named (tenant + glossary + tables + domains) so the ingest command in step 4 can pass them as flags. If they only name partial scope (tenant + glossary but no tables), still pass what they have — partial scope priming is better than none.
+   Capture whatever they named (tenant + glossary + tables + domains). The `--atlan-*` scope flags live on `start-session` (interview-first, step 6) — `ingest` doesn't take them; in the artifact-first flow, chat-fill the named scope as posture facts in Phase 4. If they only name partial scope (tenant + glossary but no tables), still capture what they have — partial scope is better than none.
 
 3. **Collect artifacts** — this is the recommended path:
 
@@ -245,21 +245,17 @@ Deliver a clear verdict — **right path / right with these fixes / reconsider**
    >
    > *If you genuinely have nothing*, say "no artifacts" and we'll go to interview-first mode.
 
-4. **If the user provides artifacts**, write each one to a temp file (so long ones don't shell-escape badly), then run multi-artifact ingest. Pass the Atlan scope flags from step 2 if they named any:
+4. **If the user provides artifacts**, write each one to a temp file (so long ones don't shell-escape badly), then run multi-artifact ingest:
 
    ```bash
    cd "$REPO" && uv run python -m agent.cli ingest \
        --use-case-seed "<one-line use case>" \
        --role-id "<kebab-case slug, e.g. soco-techco>" \
        --artifact /path/to/artifact-1.txt \
-       --artifact /path/to/artifact-2.md \
-       # Pass these only if the user named them in step 2:
-       --atlan-tenant ces.atlan.com \
-       --atlan-glossary Fabric_Care_Analytics \
-       --atlan-tables "default.aos,default.ddm"
+       --artifact /path/to/artifact-2.md
    ```
 
-   This takes ~30-60 seconds (intake + fact extraction run in parallel per artifact). If Atlan flags were passed, the established-context fetch runs at session start (read-only). The CLI prints JSON with `session_id`, `n_facts_captured`, `n_topics_covered`, `n_flagged_unknowns`, `gap_list_path`. **Capture the `session_id`** — every subsequent command needs it.
+   This takes ~30-60 seconds (intake + fact extraction run in parallel per artifact). If the user named Atlan scope in step 2, chat-fill it as posture facts in Phase 4 — `ingest` doesn't take the `--atlan-*` flags (those live on `start-session`, where the established-context fetch runs read-only at session start). The CLI prints JSON with `session_id`, `n_facts_captured`, `n_topics_covered`, `n_flagged_unknowns`, `gap_list_path`. **Capture the `session_id`** — every subsequent command needs it.
 
 5. **Read the gap_list.md** and surface a summary:
 
@@ -288,9 +284,12 @@ Deliver a clear verdict — **right path / right with these fixes / reconsider**
    ```bash
    cd "$REPO" && uv run python -m agent.cli start-session \
        --use-case-seed "<use case>"
+   # Add the Atlan scope flags here if the user named them in step 2:
+   #   --atlan-tenant ces.atlan.com --atlan-glossary Fabric_Care_Analytics \
+   #   --atlan-tables "default.aos,default.ddm" --atlan-domains "F&HC"
    ```
 
-   Capture the `session_id` and go straight to Phase 5 in interview mode.
+   Capture the `session_id` and go straight to Phase 4 in interview mode.
 
 ---
 
@@ -300,7 +299,7 @@ This is the loop. The user picks a mode per turn; you don't have to commit to on
 
 ### Chat-fill mode (FDE answers a known gap)
 
-When the user knows the answer to a gap — they were on the call, they wrote the runbook, they've done this 10 times before — they chat-fill it. The fact gets captured; no follow-up question is generated.
+When the user knows the answer to a gap — they were on the call, they wrote the runbook, they've done this 10 times before — they chat-fill it. The fact — or facts; one dense message can yield several — gets captured; no follow-up question is generated.
 
 ```bash
 cd "$REPO" && uv run python -m agent.cli submit-turn --no-probe \

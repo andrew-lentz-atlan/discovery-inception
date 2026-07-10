@@ -131,7 +131,7 @@ The contract surface CES cares about is `final_spec.json`. The orchestration int
 
 That research case is the narrow exception, not the rule. The skill bundle is **framework-independent by design** — the orchestration_spec is a portable contract you implement on whichever harness fits the consumer's stack. If you're a downstream builder consuming this skill, your default should be a real framework (Claude Agent SDK, LangGraph, OpenAI Agents SDK, Pydantic AI). See `patterns/decision-guides/framework-or-hand-roll.md` for the full reasoning on why.
 
-Specifically: the engineering costs of hand-rolling — maintenance burden, cognitive onboarding cost, lost knowledge transfer across builds, weak operational maturity, slow incident response, reviewer illegibility — compound over a system's lifetime. Framework adoption pays back quickly. Discovery-inception's own infrastructure will migrate to a real framework once the research-stage justification expires; v0.10 backlog includes the discovery-layer migration.
+Specifically: the engineering costs of hand-rolling — maintenance burden, cognitive onboarding cost, lost knowledge transfer across builds, weak operational maturity, slow incident response, reviewer illegibility — compound over a system's lifetime. Framework adoption pays back quickly. Discovery-inception's own infrastructure is migrating as the research-stage justification expires: the inception pipeline already runs on a LangGraph `StateGraph` adapter (`--runtime langgraph`, validated A/B in `findings/10`); the discovery-layer migration is still backlog.
 
 **Long version:** see the README at the project root and `patterns/decision-guides/framework-or-hand-roll.md`.
 
@@ -146,12 +146,12 @@ skill/
 ├── README.md               ← (THIS FILE)
 ├── prompts/                ← migrated from agent/prompts/
 ├── schemas/                ← derived from agent/schemas.py (Pydantic → JSON Schema)
-└── tools/                  ← migrated from agent/v08/spec_tools.py + agent/v07/spec_tools.py
+└── tools/                  ← migrated from agent/v08/spec_tools.py (self-contained since the v0.6/v0.7 archival)
 ```
 
 When that migration happens (post-CES meeting):
 - `runtimes/core/` becomes the reference implementation of the runtime contract
 - `runtimes/cli/`, `runtimes/mcp/`, `runtimes/api/` each wrap `runtimes/core/`
-- `agent/v06/`, `agent/v07/`, `agent/v08/` move to `archive/research-iterations/` with brief READMEs explaining what each version was
+- `agent/v08/` moves to `archive/research-iterations/`, joining `v06/` and `v07/` (already archived there, with a README explaining what each version was)
 
 The findings docs stay. The demos stay. The intake pipeline stays separate. The discovery agent's research code gets archived, the skill bundle becomes the durable artifact.

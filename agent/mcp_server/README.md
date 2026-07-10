@@ -1,6 +1,6 @@
 # discovery-inception MCP server
 
-Wraps the v0.8 discovery agent + the intake (priors) pipeline as tools Claude Code or Claude Desktop can invoke.
+Wraps the v0.8 discovery agent, the intake (priors) pipeline, and the inception pipeline as tools Claude Code or Claude Desktop can invoke.
 
 > **Version pinning:** This is the canonical user-facing entry point — the CLI and the Claude skill both drive it. The MCP server is currently wired to `agent.v08.orchestrator` (sharpener + tensions + deterministic close-out). The version every external user sees is whatever `agent/mcp_server/server.py` imports.
 
@@ -8,7 +8,10 @@ Wraps the v0.8 discovery agent + the intake (priors) pipeline as tools Claude Co
 
 ## What you get
 
-Eight tools, two groups:
+Ten tools, four groups:
+
+**Ingest (artifact-first — the recommended starting tool):**
+- `ingest_artifacts(use_case_seed, artifact_paths, role_id?)` — feed N artifact files (transcripts, runbooks, docs), get a populated session with facts captured + a `gap_list.md`
 
 **Priors (intake):**
 - `generate_priors(artifact_text, role_id, source_name?)` — feed in a customer artifact, get a structured RoleContext
@@ -16,11 +19,14 @@ Eight tools, two groups:
 - `get_priors(role_id)` — inspect one
 
 **Discovery:**
-- `start_discovery_session(use_case_seed, role_id?)` — start the interview
-- `submit_customer_turn(session_id, message)` — speak as the customer, get the agent's next probe
+- `start_discovery_session(use_case_seed, role_id?, atlan_tenant?, atlan_glossary?, atlan_tables?, atlan_domains?)` — start the interview, optionally primed with the customer's established Atlan context
+- `submit_customer_turn(session_id, message, no_probe?)` — speak as the customer, get the agent's next probe; `no_probe=true` is FDE chat-fill (the facts still get captured, the follow-up question is skipped)
 - `get_session_state(session_id)` — inspect the running spec, topics, working theory
 - `finalize_discovery_session(session_id)` — run the deterministic close-out synthesis and export `spec.md` + `spec.json`
 - `list_sessions()` — past sessions on disk
+
+**Inception:**
+- `run_inception(session_id, output_dir?, prior_feedback_path?, force_fresh?, runtime?)` — turn the finalized spec into a starter agent design at `agent_starter/<id>/`; `runtime` selects the orchestration substrate (`python` default, `langgraph` optional)
 
 ## One-time setup
 

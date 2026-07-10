@@ -115,7 +115,7 @@ The empirical reference is at https://github.com/bladata1990/pg-brand-analyst-ag
 - `__init__.py`
 - `README.md` — this file
 - `schemas.py` — Pydantic models for every sub-agent's output
-- `prompts/` — one prompt per sub-agent, plus 5 for scaffold_writer's sub-steps
+- `prompts/` — one prompt per sub-agent, plus 6 for scaffold_writer's sub-steps (05a–05f)
 - `run.py` — CLI entry point + the reference (`python`) pipeline orchestration
 - `graph.py` — LangGraph `StateGraph` orchestration adapter (same `step_*` contract; selected via `--runtime langgraph`)
 - `sample_feedback/` — example feedback files for Loop 2 testing (gitignored; local-only)

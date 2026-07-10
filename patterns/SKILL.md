@@ -28,7 +28,7 @@ Filter entries by frontmatter:
 - `applies_when.constraints` — secondary filter (e.g., `low-latency-target`, `simplicity-prized`)
 - `contradicts` / `related` — traverse the entry graph
 
-Example query: "what architecture for a conversational workload where output quality matters?" → filter `category: architectures` + `applies_when.workloads contains conversational` + `applies_when.workloads contains quality-critical` → returns `adversarial-decomposition` + `single-agent-react`.
+Example query: "what architecture for a conversational workload where output quality matters?" → filter `category: architectures` + `applies_when.workloads contains conversational` → returns `single-agent-react` + `adversarial-decomposition` (the latter also carries the `quality-critical` tag, answering the quality half).
 
 ## Entry shape
 
@@ -57,6 +57,7 @@ Some entries have a `<entry-name>.reference.md` companion with deeper justificat
 - Files are named by **content**, not by source. A lesson from builder X goes in the topical category by what it teaches (`anti-patterns/truncated-data-summary.md`, not `lessons-from-builders/bala-truncation-lesson.md`).
 - Attribution to a source builder lives in `source_external:` frontmatter and optionally a one-line credit in the body. Not the filename.
 - `SKILL.md` is reserved for **directory-level navigation skills** (like this file). Pattern entries do not use the `SKILL.md` filename — they are knowledge articles, not skills.
+- Canonical entries are `<slug>.md`. Files suffixed `.draft.md` / `.update.md` / `.contested.md` / `.candidate.md` / `.triage.md` are curator output awaiting human promotion — not canonical, not in `_index.md`; don't cite them.
 
 ## Status semantics
 
@@ -64,6 +65,7 @@ Some entries have a `<entry-name>.reference.md` companion with deeper justificat
 |---|---|---|
 | `validated` | Empirically supported; default choice | returned by query |
 | `experimental` | Promising but single-source / anecdotal | returned with flag |
+| `draft` | Authored + internally sanity-checked, awaiting peer audit — opinionated-but-unvalidated | returned with flag |
 | `deprecated` | Superseded; kept readable for traceability | excluded unless audit query |
 
 When an entry is `deprecated`, follow its `superseded_by:` pointer to the canonical replacement.
@@ -81,6 +83,6 @@ This is the audit trail. It tells a human reviewer (a) what pattern was consulte
 
 ## When to add a new entry
 
-The `patterns_curator` agent will handle ingest from raw sources (findings/, external research, builder lessons) once it ships. Until then, entries are hand-authored. See `README.md` for the authoring workflow.
+The `patterns_curator` agent handles ingest from raw sources (findings/, external research, builder lessons) — it drafts (`.draft.md` / `.update.md` / `.triage.md`), never publishes canonical entries; humans review and promote. Entries can also be hand-authored — see `README.md` for the workflow.
 
 If you're an agent encountering a decision that has no covering pattern entry, **emit a candidate** in your output rather than silently making the decision. The curator (or a human) can promote the candidate to a real entry if it generalizes.

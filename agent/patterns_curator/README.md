@@ -1,6 +1,6 @@
 # agent/patterns_curator — the patterns/ knowledge-base curator agent
 
-Companion agent to discovery-inception. Maintains the `patterns/` knowledge base via four operations: **ingest**, **promote**, **query**, **lint**. Inspired by Karpathy's LLM-maintained wiki gist (https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+Companion agent to discovery-inception. Maintains the `patterns/` knowledge base via four operations: **ingest**, **promote**, **query**, **audit**. Inspired by Karpathy's LLM-maintained wiki gist (https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
 ## Status
 
@@ -102,7 +102,7 @@ A reasonable match is ~80% on structure (right category, right body shape, all r
 - `__init__.py`
 - `README.md` — this file
 - `schemas.py` — Pydantic models for the intermediate step outputs and the final draft entry (covers both `ingest` and `promote`)
-- `prompts/` — one prompt per pipeline step. Prefix `promote_*.md` for the cross-session pipeline.
+- `prompts/` — one prompt per LLM step of ingest (steps 1–5; `validate` is deterministic, no prompt), plus `audit_semantic_scan.md` for audit's semantic pass. Prefix `promote_*.md` for the cross-session pipeline.
 - `run.py` — `ingest` CLI entry point
 - `promote.py` — `promote` CLI entry point (Loop 3)
 - `audit.py` — `audit` CLI entry point (hygiene + drift detection)
