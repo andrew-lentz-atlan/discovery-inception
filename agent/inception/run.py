@@ -155,12 +155,21 @@ def load_pattern_category(category: str) -> str:
     if not category_dir.is_dir():
         return f"(no patterns/{category}/ directory found)"
 
+    # Curator working files stay OUT of the agent payload — promotion is the
+    # gate to agent-visibility. Feeding a .draft.md leaks a near-canonical name
+    # into the model's context, which it then cites WITHOUT the suffix; the
+    # citation verifier correctly flags that as non-existent (seen live on the
+    # P&G pre-flight: `system-prompt-bloat.md` cited, only the .draft exists).
+    # Matches patterns/SKILL.md's rule: never cite working-suffix files.
+    _WORKING_SUFFIXES = (
+        ".reference.md",  # human-review companions
+        ".draft.md", ".update.md", ".contested.md", ".candidate.md", ".triage.md",
+    )
     chunks: list[str] = []
     for path in sorted(category_dir.iterdir()):
         if not path.is_file() or not path.name.endswith(".md"):
             continue
-        if path.name.endswith(".reference.md"):
-            # Reference companions are for human review, not agent payload
+        if path.name.endswith(_WORKING_SUFFIXES):
             continue
         slug = path.stem
         chunks.append(f"### Pattern: `{category}/{slug}`\n\n{path.read_text()}")
