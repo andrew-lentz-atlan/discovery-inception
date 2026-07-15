@@ -643,6 +643,11 @@ async def run_ingest(source_text: str, source_filename: str) -> IngestRunReport:
             print("   clean")
 
         # ---- Output file routing ----
+        # Defensive slug normalization: the overlap_check model sometimes emits
+        # target_slug with the category already prefixed ("skill-design/foo"),
+        # which doubled the path (patterns/skill-design/skill-design/foo) and
+        # crashed the write. Keep only the final path segment.
+        triage.target_slug = triage.target_slug.split("/")[-1]
         category_dir = PROJECT_ROOT / "patterns" / triage.target_category
         category_dir.mkdir(parents=True, exist_ok=True)
 
