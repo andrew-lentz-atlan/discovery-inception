@@ -99,3 +99,12 @@ Prompts authored against one harness/model don't always port cleanly across boun
 - Survey entries date faster than operational-decision entries. The `snapshot_date` field is added to the frontmatter for this category — when the date is stale, the entry needs a refresh ingest pass.
 - Per-harness deep-dive entries live alongside this survey (the first is `harnesses/agentforce-deep-dive.md`, added 2026-05-22). They're code-pattern shaped (gotchas + code excerpts + decision criteria) and cover one framework each in depth. This entry is the meta-view; deep-dives are the detail. Each deep-dive is cited from the relevant row in this survey's table.
 - Source: internal Atlan research docs reviewed in conversation. Cited but not co-located in this repo; if the source docs are committed, link directly.
+
+## Provenance
+
+`status: validated` rests on sustained pipeline use, not a single measurement:
+this survey has been loaded into every runtime-proposal step since 2026-05 and
+is cited in the selection rationales of the SE co-pilot and P&G FHC baseline
+runs (see the repo's baseline comparisons). Survey claims themselves carry the
+`snapshot_date` and should be re-verified against vendor docs when consumed
+after a major release cycle.

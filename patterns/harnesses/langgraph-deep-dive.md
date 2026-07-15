@@ -15,7 +15,7 @@ applies_when:
   workloads: [graph-state-machine-agents, durable-multi-step-workflows, human-in-the-loop-pipelines, multi-agent-supervisor-systems]
   constraints: [team-on-python, explicit-control-flow-needed, durability-or-resumability-required, complex-routing-or-approval-gates]
 contradicts: []
-related: [harnesses/landscape-2026-may, architectures/graph-state-machine, decision-guides/what-kind-of-agent-are-you-building]
+related: [harnesses/landscape-2026-may, decision-guides/what-kind-of-agent-are-you-building]
 snapshot_date: 2026-05-29
 ---
 

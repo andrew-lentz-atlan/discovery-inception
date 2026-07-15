@@ -103,7 +103,7 @@ class ExtractedPattern(BaseModel):
 # Final output: draft PatternEntry
 # ---------------------------------------------------------------------------
 
-PatternStatus = Literal["validated", "experimental", "deprecated"]
+PatternStatus = Literal["draft", "validated", "experimental", "deprecated"]
 
 
 class AppliesWhen(BaseModel):
@@ -491,6 +491,8 @@ AuditKind = Literal[
     "reference_broken",          # related: or contradicts: points at non-existent entry
     "fence_imbalance",           # markdown code fences unbalanced
     "stale",                     # last_updated / snapshot_date past staleness threshold
+    "style_violation",           # STYLE.md voice rules (§4) — first-person / roadmap tense
+    "provenance_violation",      # STYLE.md §3 — source_findings entry isn't a real findings/ file
     "semantic_duplicate",        # two entries cover substantially the same lesson
     "semantic_contradiction",    # two entries make directly opposing claims
     "orphan",                    # entry not referenced by any other entry + not used by any agent
@@ -519,6 +521,18 @@ class AuditFinding(BaseModel):
             "Specific proposed fix. For frontmatter violations, the missing/wrong field. "
             "For semantic findings, the merge or deprecation proposal."
         ),
+    )
+    rule: str | None = Field(
+        None,
+        description="patterns/STYLE.md rule id this finding lints against (e.g. `STYLE-2`). Set by the deterministic lint; semantic findings may leave it null.",
+    )
+    file: str | None = Field(
+        None,
+        description="Path of the offending file, relative to the project root.",
+    )
+    line: int | None = Field(
+        None,
+        description="1-based line number of the offending content, where the lint can pinpoint it.",
     )
 
 

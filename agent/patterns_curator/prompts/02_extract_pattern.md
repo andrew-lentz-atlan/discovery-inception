@@ -21,7 +21,7 @@ The output schema is `ExtractedPattern`. Fill the fields appropriate to the body
 - **use_when** — Bullet list. Each bullet a concrete situation where this pattern applies. Example: *"Frontier models doing the routing (Claude Opus 4.7, GPT-5.4 route tool calls well)"*.
 - **dont_use_when** — Bullet list. Each bullet a concrete situation where this pattern is the wrong choice. Example: *"Deliverable is heavily structured and must persist across turns"*.
 - **gotchas** — Bullet list. Each bullet is `**Name.** Description.` Format. Specific failure modes from the source. Example: *"**Tool descriptions are load-bearing.** Vague descriptions cause wrong-moment invocations."*
-- **empirical_receipts** — Bullet list. Each one cites a finding, an external source, or a builder report with one-sentence explanation. Example: *"`findings/01` — 5-turn deterministic script comparing chained / mega-only / hybrid. Mega-only produced 2/5 conversation-quality wins."*
+- **empirical_receipts** — Bullet list. Each one cites a finding, an external source, or a builder report with one-sentence explanation. Example: *"`findings/01` — 5-turn deterministic script comparing chained / mega-only / hybrid. Mega-only produced 2/5 conversation-quality wins."* Capture only receipts that pass STYLE.md §3's receipt test — generalizable, quantified or concrete, provenance-pointed. Project narrative ("a real output was called out for X") is not a receipt; leave it out.
 - **code_excerpts** — List of code blocks. Each is markdown-formatted (```lang ... ```). Used only for `code-pattern` body shape. Excerpt verbatim or near-verbatim code from the source with minimal annotation; let the code speak.
 - **survey_items** — List of dicts. Each item compares one thing (a framework, a tool, an idea). Used only for `comparative-survey`. Fields per item: `name`, `summary` (one-sentence), `key_property_or_gotcha` (string).
 
@@ -29,7 +29,7 @@ The output schema is `ExtractedPattern`. Fill the fields appropriate to the body
 
 1. **Lift from source, don't paraphrase past recognition.** Where the source has crisp language, preserve it.
 2. **No padding.** If the source doesn't say it, don't write it. Empty bullets are better than fluff.
-3. **Cite empirical receipts explicitly.** If the source references a measurement (50-turn script, A/B numbers, score improvements), capture it. If it doesn't, leave `empirical_receipts` empty — the next step decides whether status should be `validated` or `experimental`.
+3. **Cite empirical receipts explicitly.** If the source references a measurement (50-turn script, A/B numbers, score improvements), capture it. If it doesn't, leave `empirical_receipts` empty — do not pad. (Status is always `draft` at ingest regardless; receipts inform later promotion, per STYLE.md §2.)
 4. **Code excerpts are verbatim.** Don't reformat. Don't add explanatory comments the source doesn't have.
 
 ## Inputs

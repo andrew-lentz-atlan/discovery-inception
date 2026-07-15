@@ -6,10 +6,10 @@ You produce the YAML frontmatter for a new pattern entry. Many fields are determ
 
 - **title** — `{CANDIDATE_TITLE}` (from step 1)
 - **category** — `{TARGET_CATEGORY}` (from step 1)
-- **status** — set to `validated` only if `empirical_receipts` from step 2 is non-empty AND those receipts cite a measured outcome (numbers, A/B comparison, judge scores). Otherwise `experimental`.
+- **status** — ALWAYS `draft`. STYLE.md §2: every newly ingested entry is a draft, no exceptions — research quality does not make an entry `validated`; use does. `validated` requires named evidence (a `findings/NN` entry, a measured before/after run, or repeated confirmed use in real builds) and is assigned at promotion, never at ingest. Do NOT self-assign `validated` or `experimental`; the pipeline force-sets `draft` in code regardless.
 - **last_updated** — `{TODAY}` (caller injects)
-- **source_findings** — if the source filename matches `findings/NN-*.md`, set to `["findings/NN-*.md"]`. Otherwise empty.
-- **source_external** — if the source is an external doc/URL/builder report, set to `["<short citation>"]`. Otherwise empty.
+- **source_findings** — lists ONLY real `findings/NN-*.md` files (STYLE.md §3). If the source filename matches `findings/NN-*.md`, set to `["findings/NN-*.md"]`. Otherwise EMPTY — never invent a findings/ path, and never file a talk/paper/doc here.
+- **source_external** — if the source is a talk, paper, external doc/URL, or builder report, set to `["<citation with enough identity to locate it — author/venue; URL + date where they exist>"]`. Otherwise empty. Never fabricate an origin: if the source is a talk, cite the talk — do not invent "internal findings".
 - **snapshot_date** — set ONLY for `comparative-survey` body shape (these date faster). Otherwise null.
 
 ## What you decide
@@ -63,7 +63,7 @@ Return ONLY a JSON object matching `PatternFrontmatter`:
 {
   "title": "<from step 1, verbatim>",
   "category": "<from step 1, verbatim>",
-  "status": "validated | experimental",
+  "status": "draft",
   "last_updated": "{TODAY}",
   "source_findings": ["..."],
   "source_external": ["..."],

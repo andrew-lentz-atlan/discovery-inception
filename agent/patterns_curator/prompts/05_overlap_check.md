@@ -52,7 +52,9 @@ Reconciliation option examples:
 
 ### The target_slug / target_category fields
 
-These determine where the output file lands:
+These determine where the output file lands.
+
+**`target_slug` is ALWAYS a bare kebab-case slug** — the filename stem only, no `.md`, and NO category prefix (STYLE.md §6). The category lives exclusively in `target_category`. `target_slug: "inner-pipeline"` is right; `target_slug: "skill-design/inner-pipeline"` is wrong and breaks file routing.
 
 - For `create_new`: `target_slug = <new entry's slug from step 1>`, `target_category = <new entry's category>`. Output: `patterns/<target_category>/<target_slug>.draft.md`
 - For `update_existing`: `target_slug = <existing entry's slug>`, `target_category = <existing entry's category>`. Output: `patterns/<target_category>/<target_slug>.update.md` (alongside the original `.md` for diffing)
@@ -114,7 +116,7 @@ Return ONLY a JSON object matching `TriageReport`:
       "confidence": 0.0-1.0
     }
   ],
-  "target_slug": "<see guidance above>",
+  "target_slug": "<bare kebab-case slug — no category prefix, no .md>",
   "target_category": "<see guidance above>"
 }
 ```

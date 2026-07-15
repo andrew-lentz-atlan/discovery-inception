@@ -9,7 +9,7 @@ source_external:
 applies_when:
   workloads: [skill-with-data-source-access, llm-generated-sql-then-interpret, structured-output-from-multi-step-reasoning]
   constraints: [skill-needs-its-own-mini-llm-flow, single-shot-llm-insufficient]
-contradicts: [single-llm-call-skill]
+contradicts: []
 related: [truncated-data-summary, definitions-without-context, architectures/single-agent-react]
 ---
 

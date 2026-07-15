@@ -30,7 +30,7 @@ Read the source document. Decide:
 1. **What category** the resulting entry belongs in (one of the 5 above)
 2. **What body shape** fits the source's content (one of the 6 above) — operational-decision is the default; only deviate when the content genuinely warrants it
 3. **A candidate title** for the entry (used as the markdown `# heading`)
-4. **A candidate slug** for the filename (lowercase-with-dashes, named by **content** — never by source builder)
+4. **A candidate slug** for the filename — a bare kebab-case stem, named by **content**, never by source builder. NO category prefix, no `.md` extension: `truncated-data-summary`, never `anti-patterns/truncated-data-summary` or `truncated-data-summary.md` (STYLE.md §6)
 5. **Confidence** (0.0–1.0)
 6. **Rationale** (1-2 sentences explaining the choices)
 
@@ -39,6 +39,7 @@ Read the source document. Decide:
 - **Name by content, not by source.** If the source is "Bala's lesson about data summaries," the slug is `truncated-data-summary`, NOT `bala-truncation-lesson`. Attribution to a builder lives in `source_external:` frontmatter and optionally a one-line credit in the body — never the filename.
 - **Default to `operational-decision` body shape unless the source clearly contains something else.** A code-heavy build report → `code-pattern`. A comparison of N items → `comparative-survey`. A first-principles essay → `theoretical`.
 - **Prefer specific over generic.** "Truncated Data Summary" beats "Data Handling Pattern" — names should evoke the failure mode or the rule, not the topic area.
+- **Slugs carry no category.** The category lives in `target_category` and the directory path — never inside the slug. Also no redundant category words in the filename (`over-decomposition`, not `anti-pattern-over-decomposition`).
 - **One pattern per source typically.** A long source (e.g., a 30-page harness review) may produce multiple entries — in that case, classify the *primary* pattern this iteration captures, and note in `rationale` that follow-up ingests are warranted.
 
 ## Output

@@ -7,8 +7,15 @@ You produce the markdown body for a pattern entry. The frontmatter is already dr
 - **First content under the H1 title is a 3-6 sentence opener** — the `summary` field from step 2, rendered as prose. No bullet preamble. This is what an agent reads first.
 - **Every line earns its place.** No ceremony, no padding, no recapitulation of the cited source. If the source already says it, link to the source — don't restate.
 - **Match the existing entries' tone.** Direct, present-tense, no marketing voice, no exclamation points. *"Use when X. Don't use when Y."* not *"You should consider using this powerful pattern when..."*.
-- **No emojis. No first-person plural ("we"). No filler transitions ("Furthermore," "In addition,").**
+- **No emojis. No filler transitions ("Furthermore," "In addition,").**
+- **Voice is timeless, third-person, self-contained (STYLE.md §4):**
+  - No first person, singular or plural — "my read," "we found," "our pipeline" all get rewritten as factual statements. (If the fact is about this product's pipeline, it belongs in the pipeline's docs, not a pattern entry.)
+  - No roadmap tense. Entries state what IS. "The pipeline should add signal X" goes stale the day X ships; write the resolved rule instead.
+  - No project-context-required sentences. Every sentence must be meaningful to a reader who has never seen this repo's history.
 - **Inline code uses backticks**, e.g., `single-agent-react`. Code blocks use triple-backtick fences with language tags.
+- **Receipts pass the receipt test (STYLE.md §3)** — each must be (a) generalizable: a reader outside this project learns from it; (b) quantified or concrete; (c) provenance-pointed: cites a `findings/` entry or names the measurement. Anecdotes and project narrative are rejected at review.
+  - PASSES: *"Citation density swung 25→7 across identical runs"* — quantified, generalizable, traceable to a measurement.
+  - FAILS: *"A real SE-agent output was called out for X"* — narrative; that lives in findings/, not here.
 
 ## Body shape templates
 
@@ -191,7 +198,7 @@ Origin: <attribution>.
 
 If `frontmatter.related` includes other entries, weave a sentence or two into the body where the relationship is naturally surfaced (typically in the Cross-cutting observation, Anti-pattern callouts, or Empirical anchor sections). Use the format `[<slug>](../<category>/<slug>.md)` for the link.
 
-If `frontmatter.contradicts` is non-empty, the body should explicitly name the contradicted entry (e.g., *"This pattern contradicts `anti-patterns/cheap-cascade-orchestrator-compensation` — the receipts there showed +67% cost; we believe those receipts no longer hold because..."*).
+If `frontmatter.contradicts` is non-empty, the body should explicitly name the contradicted entry (e.g., *"This pattern contradicts `anti-patterns/cheap-cascade-orchestrator-compensation` — the receipts there showed +67% cost; those receipts no longer hold because..."*).
 
 ## Inputs
 
