@@ -648,6 +648,15 @@ async def run_ingest(source_text: str, source_filename: str) -> IngestRunReport:
         # which doubled the path (patterns/skill-design/skill-design/foo) and
         # crashed the write. Keep only the final path segment.
         triage.target_slug = triage.target_slug.split("/")[-1]
+
+        # Contract gates (patterns/STYLE.md), enforced in CODE because the
+        # drafting model violated them in every sprint to date:
+        # §2 — ingest NEVER self-assigns validated; promotion upgrades status.
+        frontmatter.status = "draft"
+        # §6 — frontmatter category must match the directory the entry lands in
+        # (triage owns final placement; the earlier classify step's guess loses).
+        frontmatter.category = triage.target_category
+
         category_dir = PROJECT_ROOT / "patterns" / triage.target_category
         category_dir.mkdir(parents=True, exist_ok=True)
 
