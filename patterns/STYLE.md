@@ -53,6 +53,13 @@ promotion is the consolidation gate between them.
   narrative, and narrative lives in findings/, not here.
 - Never fabricate an origin. If the source is a talk, say the talk; do not
   invent "internal findings."
+- **No customer, tenant, or employee identifiers — anywhere.** Customer names,
+  tenant slugs, ticket/PR IDs, internal channel names, and individual names do
+  not appear in entries or provenance. Use role descriptors ("a healthcare
+  enterprise", "a customer QA tenant", "internal issue tracker") + dates. The
+  incident's analytical value (dates, durations, magnitudes, failure shape)
+  survives anonymization; identity never earns its risk. This applies to
+  bodies AND source citations (titles + dates only).
 
 ## 4. Voice — timeless, third-person, self-contained
 
