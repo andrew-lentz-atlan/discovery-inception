@@ -13,7 +13,7 @@ source_external:
   - Internal Atlan research — "Context Studio — MCP Capabilities, Architecture & Code Provenance" (Wisdom routers / TPuf architecture)
   - Internal Atlan research — "Skills as Assets Project" (Slack: temp-skills-asset-project, Apr–May 2026)
   - Internal Atlan research — Conversational Studio release notes (skills as first-class asset, Skills Hub, atlanfs POC)
-  - Internal Atlan research — Linear AICHAT-1088, AICHAT-1089, REQ-987, CTX-417 (skill failure modes)
+  - Internal Atlan research — issue-tracker tickets, 2026-05 (skill failure modes)
 applies_when:
   workloads:
     - multi-team-agent-reuse
@@ -163,23 +163,23 @@ There's also an unresolved question Slack-active in mid-May 2026: **should Wisdo
 ## When *not* to use Atlan-managed skills
 
 - **Skills tightly coupled to one agent's prompt.** If the skill is essentially "this agent's system prompt continued," round-tripping through Atlan to edit it is friction with no payoff. Keep it in the agent's source.
-- **Highly experimental skills under rapid iteration.** Per the Conversational Studio team's own bug list (`AICHAT-1088`: saved skill v7 wrote under wrong filename and reverted to v6 silently), the authoring path is still maturing. If you're iterating five times a day, the round-trip cost compounds.
+- **Highly experimental skills under rapid iteration.** Per the platform team's own bug list (tracked bug: saved skill v7 wrote under wrong filename and reverted to v6 silently), the authoring path is still maturing. If you're iterating five times a day, the round-trip cost compounds.
 - **Skills wrapping runtime-specific APIs.** A Claude Code skill that orchestrates `Read`/`Edit`/`Bash` doesn't belong in Atlan — it has no semantic value for a Cortex or Agentforce consumer. Keep runtime-bound skills in the runtime.
 - **When the team isn't using Atlan for governance.** If certificates and ownership aren't a thing the team cares about, Atlan-managed skills add ceremony without payoff. A `~/.claude/skills/` folder or an `atlanhq/atlan-skills` Git repo is lighter.
 - **For skills that don't reach Atlan data.** If the skill's job is to talk to ServiceNow, write Slack messages, or call a Stripe API, putting it in Atlan is metadata-for-its-own-sake. The substrate the skill governs isn't in Atlan.
 
-## Failure modes and gotchas (real ones, from Linear/Slack mid-May 2026)
+## Failure modes and gotchas (real ones, from internal trackers, mid-May 2026)
 
 These aren't hypothetical — they're what's failing on live tenants.
 
 1. **Routing precedence is unsolved.** `Mandeep Singh Cheema (2026-05-11)`: enabled the `asset-deep-dive-report` skill, asked "tell me everything about finance domain," and the agent loaded `gold-layer-data-mesh` instead — a system skill that's always visible. **System skills outrank tenant skills in current routing.** No deterministic precedence control yet.
-2. **"Enable in chat" toggle leaks** (`AICHAT-1089`, Done 2026-05-28). On `vmo2-qa`, a `find-workbooks` skill with the toggle OFF was still being invoked by routing. The Atlas metastore stored only `skillVersion="7"` and dropped the rest of the metadata silently. Toggle state was not in the metastore at all.
-3. **Silent filename corruption on save** (`AICHAT-1088`, Done 2026-05-27). A skill edit appeared to save and then reverted. Root cause: the v7 artifact wrote to `skills/find-workbooks/v7/Find Dashboards.md` instead of `skills/find-workbooks/v7/SKILL.md`. The read path falls back to v6 if `SKILL.md` is missing — no error surfaced.
+2. **"Enable in chat" toggle leaks** (tracked bug, fixed 2026-05-28). On a customer QA tenant, a `find-workbooks` skill with the toggle OFF was still being invoked by routing. The Atlas metastore stored only `skillVersion="7"` and dropped the rest of the metadata silently. Toggle state was not in the metastore at all.
+3. **Silent filename corruption on save** (tracked bug, fixed 2026-05-27). A skill edit appeared to save and then reverted. Root cause: the v7 artifact wrote to `skills/find-workbooks/v7/Find Dashboards.md` instead of `skills/find-workbooks/v7/SKILL.md`. The read path falls back to v6 if `SKILL.md` is missing — no error surfaced.
 4. **TPuf metadata drops** (Context Studio audit, May 2026). `_index_parent_in_tpuf()` accepted 5 extended params (`lifecycle_status`, `target_connection_qn`, `agent_instructions`, `input_asset_guids`, `skill_type`) but never wrote them into `skill_attrs`. All 5 silently dropped. Discovered via E2E test, not by any monitoring.
-5. **Catalog naming risk** (`CTX-417`, Triage). Context Repositories surface in the catalog as `SKILL` asset type, which "may be confusing since context repos are a distinct concept." Open question whether to introduce a dedicated `ContextRepository` asset type at the UI layer. (Internally it already is its own entity; the UI just defers to skill-typed display.)
-6. **`type` enum is too narrow** (`REQ-987`, Under Consideration). `SYSTEM | CONTEXT_REPO | CUSTOM` doesn't fit "extracted from a Databricks workspace" or "synced from a Snowflake stage." Using `CUSTOM` for connector-sourced skills conflates tenant-authored with platform-sourced. Need a fourth value `CONNECTOR_SYNC`.
+5. **Catalog naming risk** (tracked issue, in triage as of 2026-05). Context Repositories surface in the catalog as `SKILL` asset type, which "may be confusing since context repos are a distinct concept." Open question whether to introduce a dedicated `ContextRepository` asset type at the UI layer. (Internally it already is its own entity; the UI just defers to skill-typed display.)
+6. **`type` enum is too narrow** (tracked request, under consideration as of 2026-05). `SYSTEM | CONTEXT_REPO | CUSTOM` doesn't fit "extracted from a Databricks workspace" or "synced from a Snowflake stage." Using `CUSTOM` for connector-sourced skills conflates tenant-authored with platform-sourced. Need a fourth value `CONNECTOR_SYNC`.
 7. **Eager-loading skill content is a scaling cliff.** Sherlock (the internal incident agent) eager-loaded skill reference files into its system prompt and hit the Linux `MAX_ARG_STRLEN` ~128KB cap (`MER-59`). Had to drop `debug-atlas-401.md` to stay under. Fix is on-demand `read_skill_reference` — the same progressive-disclosure pattern Conversational Studio uses. **The lesson: if your harness doesn't do progressive disclosure, Atlan-managed skills will starve it of context budget.** External harnesses without progressive disclosure (CrewAI was called out specifically — Simone Useri 2026-05-18) need to either implement lazy fetch via MCP or restructure the skill to be smaller.
-8. **No version control on the skill content path itself.** Skills version by `(slug, version)` tuple but there's no Git-equivalent for the body — you can't diff v6 vs v7 in the UI, you can't do a PR review of a skill edit, and rollback is "create a new version that's a copy of an old one." Several Slack threads (Rohan Goel, Anirudh Agarwal) are pushing for "Atlan AI registry" with a real registry feel. Not there yet.
+8. **No version control on the skill content path itself.** Skills version by `(slug, version)` tuple but there's no Git-equivalent for the body — you can't diff v6 vs v7 in the UI, you can't do a PR review of a skill edit, and rollback is "create a new version that's a copy of an old one." Several internal engineering threads are pushing for "Atlan AI registry" with a real registry feel. Not there yet.
 
 ## Maturity snapshot, May 2026
 
@@ -196,7 +196,7 @@ What ships and works today:
 What's in flight or unresolved:
 
 - **Routing precedence.** When tenant skill and system skill both match, which wins? No deterministic answer.
-- **External harness discovery.** "Skill discovery and consumption on external agents would be the next thing we need to focus on" — Shivansh Pahwa, 2026-05-05. `atlanfs` is the early bet; it's experimental.
+- **External harness discovery.** "Skill discovery and consumption on external agents would be the next thing we need to focus on" — platform-team engineering lead, 2026-05-05. `atlanfs` is the early bet; it's experimental.
 - **Bidirectional sync with the consumers of skills.** A Skill that gets re-edited by an agent (`agent-created skills` — "learns new patterns during conversation and saves them for reuse") needs a different audit posture than a hand-authored skill. Skill `createdBy` field is supposed to disambiguate but isn't yet a first-class filter in most surfaces.
 - **Connector-synced skills.** `CONNECTOR_SYNC` enum value pending. Means skills sitting in Databricks/Snowflake stages can't yet be reflected as Atlan-managed assets cleanly.
 - **Simulation/eval per skill version.** Ankit Jaggi's April 2026 thread laid out simulation gating as part of the vision — every skill testable against the defined agent before promotion. Not built yet.

@@ -235,7 +235,7 @@ WHERE cp.input_column_guid IN (SELECT col_guid FROM table_cols)
 
 ### Freshness — read the fine print
 
-Native gold layer (Atlan-managed) refreshes minutes-to-hour-ish behind the OLTP metastore. Customer-managed gold (Snowflake Dynamic Tables, deployed via `lakehouse-solutions/snowflake/gold-layer/MDLH_Gold_layer.sql`) defaults `SCHEDULE = 'USING CRON 0 * * * * UTC'` — hourly. Self-hosters have been bitten by stale-data bugs (Medtronic, March 2026 — gold table silently stopped refreshing for 19 days due to a tenant config flag).
+Native gold layer (Atlan-managed) refreshes minutes-to-hour-ish behind the OLTP metastore. Customer-managed gold (Snowflake Dynamic Tables, deployed via `lakehouse-solutions/snowflake/gold-layer/MDLH_Gold_layer.sql`) defaults `SCHEDULE = 'USING CRON 0 * * * * UTC'` — hourly. Self-hosters have been bitten by stale-data bugs (a self-hosted enterprise tenant, March 2026 — gold table silently stopped refreshing for 19 days due to a tenant config flag).
 
 **For agent design**: if you need real-time consistency for write-back decisions, use the SDK. Use MDLH for analytical queries where minutes-to-hours staleness is fine. **Always include a freshness check** — `SELECT MAX(source_updated_at) FROM gold.assets` — and bail/warn past your tolerance.
 
@@ -298,7 +298,7 @@ The honest split: if you're building **the first agent** against Atlan for a use
 
 - Native gold: minutes-to-hour-ish.
 - Customer-managed gold: hourly default; customer owns the refresh job.
-- Real outage shape: gold table silently stops refreshing (Medtronic, 19 days stale before detection). The fix is freshness checks in the agent, not trust.
+- Real outage shape: gold table silently stops refreshing (observed at an enterprise tenant: 19 days stale before detection). The fix is freshness checks in the agent, not trust.
 
 ### MCP server reality
 
@@ -342,6 +342,6 @@ Cost of integration scales with surface area. Pick the smallest surface that sol
 
 ## Empirical anchor
 
-Patterns observed across Atlan customer integrations and the Atlan internal app stack as of mid-2026: pyatlan-backed scripts (Edenred's classification-sync workflow, Sophos's Copilot harvest exploration), MCP-backed conversational agents (Bancorp's ChatGPT integration, Tiger Global's Snowflake-MDLH integration), and lakehouse-driven analytical agents (Chick-fil-A's Athena queries, Medtronic's Snowflake gold layer). The 400-RPM SDK limit, gold-layer refresh failures, and custom-metadata save footgun are all documented production incidents — not theoretical risks.
+Patterns observed across Atlan customer integrations and the Atlan internal app stack as of mid-2026: pyatlan-backed scripts (an enterprise classification-sync workflow, a security vendor's Copilot-harvest exploration), MCP-backed conversational agents (a bank's ChatGPT integration, an investment firm's Snowflake-MDLH integration), and lakehouse-driven analytical agents (a restaurant chain's Athena queries, a healthcare enterprise's Snowflake gold layer). The 400-RPM SDK limit, gold-layer refresh failures, and custom-metadata save footgun are all documented production incidents — not theoretical risks.
 
 Neutral framing: **Atlan integration is the boring, fast-to-build path that solves most agent context needs.** Reach for a context repo when you have evidence you need one, not as a default. Reach for raw integration first.

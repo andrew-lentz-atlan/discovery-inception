@@ -4,7 +4,7 @@
 >
 > This knowledge base is actively being designed. Many entries are marked
 > `status: draft` and have been validated against a small number of real
-> inception runs (n=2 so far: an SE copilot use case and a P&G FHC use
+> inception runs (n=2 so far: an SE copilot use case and an analyst copilot use
 > case). Critique is more valuable than approval — if an entry's framing
 > is wrong, misleading, or missing context, please flag it. If a pattern
 > you'd expect to see isn't here, please name it. The whole point of

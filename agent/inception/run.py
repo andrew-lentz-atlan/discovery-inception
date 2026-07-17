@@ -159,7 +159,7 @@ def load_pattern_category(category: str) -> str:
     # gate to agent-visibility. Feeding a .draft.md leaks a near-canonical name
     # into the model's context, which it then cites WITHOUT the suffix; the
     # citation verifier correctly flags that as non-existent (seen live on the
-    # P&G pre-flight: `system-prompt-bloat.md` cited, only the .draft exists).
+    # v1.0.0 pre-flight: `system-prompt-bloat.md` cited, only the .draft exists).
     # Matches patterns/SKILL.md's rule: never cite working-suffix files.
     _WORKING_SUFFIXES = (
         ".reference.md",  # human-review companions

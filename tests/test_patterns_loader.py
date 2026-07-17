@@ -3,7 +3,7 @@
 Promotion is the gate to agent-visibility. A .draft.md in the payload leaks a
 near-canonical name the model cites WITHOUT the suffix, which the citation
 verifier then (correctly) flags as a non-existent slug — observed live on the
-P&G pre-flight run."""
+v1.0.0 pre-flight run."""
 import agent.inception.run as run_mod
 from agent.inception.run import load_pattern_category
 

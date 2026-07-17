@@ -167,7 +167,7 @@ def load_artifacts(output_dir: Path) -> dict[str, Any]:
     # under output_dir/_patterns/) and HALLUCINATED (the model emitted a
     # plausible-looking slug that doesn't resolve to a real file). The
     # hallucinated bucket surfaces a quality signal that's otherwise invisible
-    # — e.g. PG FHC iteration cited `harnesses/langraph-deep-dive` (typo) and
+    # — e.g. an analyst-copilot iteration cited `harnesses/langraph-deep-dive` (typo) and
     # `architectures/inner-pipeline` (fabricated), neither of which exist.
     # Counting them as real citations inflates the apparent lift; surfacing
     # them separately makes the fabrication rate observable.

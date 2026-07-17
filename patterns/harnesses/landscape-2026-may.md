@@ -104,7 +104,7 @@ Prompts authored against one harness/model don't always port cleanly across boun
 
 `status: validated` rests on sustained pipeline use, not a single measurement:
 this survey has been loaded into every runtime-proposal step since 2026-05 and
-is cited in the selection rationales of the SE co-pilot and P&G FHC baseline
+is cited in the selection rationales of the SE co-pilot and analyst-copilot baseline
 runs (see the repo's baseline comparisons). Survey claims themselves carry the
 `snapshot_date` and should be re-verified against vendor docs when consumed
 after a major release cycle.
