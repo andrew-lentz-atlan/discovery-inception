@@ -85,6 +85,6 @@ Neither is a blocker; both are *carry-the-contract-faithfully* details. That's t
 ## Caveats
 
 - **n=1 on the Workflow leg.** Its divergence is diagnosed (port infidelity), corroborated by LangGraph's clean match, but a faithful Workflow re-run (prompt-as-message, full schema, ×3) would confirm it directly. Worth doing before the v1.0 cutover.
-- **One use case** (SE copilot). The architecture for SE is an unusually stable pick (single-agent-react dominates the co-pilot class); a more contested workload might show more cross-runtime spread on architecture. Re-run on the P&G FHC session to test.
+- **One use case** (SE copilot). The architecture for SE is an unusually stable pick (single-agent-react dominates the co-pilot class); a more contested workload might show more cross-runtime spread on architecture. Re-run on the second baseline session (a contested analyst-copilot workload) to test.
 - **Slice, not the whole pipeline.** Steps 1–3 (classify/skills/architecture); not the scaffold writer (step 5) or the discovery half. The discovery side (pyatlan, the artifact seam) is the part with the real *language/stack* port cost, separate from this decision-fidelity question.
 - **Same model across legs.** This isolates the orchestration substrate — it does NOT test model-portability (Claude vs GPT vs Gemini), which is a different axis.

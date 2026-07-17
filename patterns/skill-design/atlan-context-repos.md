@@ -6,15 +6,15 @@ last_updated: 2026-05-29
 source_external:
   - Atlan Docs — "ContextRepository | Atlan Documentation" (typedef reference, 2026-05-20)
   - Atlan Docs — "Context Engineering Studio" (21 docs tagged, customer-facing concept pages, 2026-05-21)
-  - Internal Atlan Confluence — "Context Studio — MCP Capabilities, Architecture & Code Provenance" (Abhinav Mathur, 2026-05-20)
-  - Internal Atlan Confluence — "Atlan Context Engine" (Amit Prabhu / Austin Kronz, 2026-05-01)
-  - Internal Atlan Confluence — "Context Studio Audit — feat/context-studio-wisdom-routers" (Abhinav Mathur, 2026-05-22)
-  - Internal Atlan Linear — TTD-105 "Context Repository TypeDef" (Shivansh Pahwa, 2026-05-07)
-  - Internal Atlan Linear — CTX-417 "Context Repositories display as SKILL asset type in catalog" (2026-05-29)
-  - Internal Atlan GitHub — atlanhq/agent-toolkit PR #227 "feat(mcp): add create_context_repos and create_skills tools" (Anirudh Agarwal, 2026-05-21)
-  - Internal Atlan GitHub — atlanhq/atlas-metastore PR #6571 "TTD-700 | Relationship policies for Skill and Context Repository associations" (Shivansh Pahwa, 2026-05-07)
-  - Internal Atlan Slack — #collab-context-engineering-studio threads (Apr–May 2026)
-  - Internal Atlan Pulse — "Q&A: Agent Development and Context Repositories" (Prashant Agrawal, Shivansh Pahwa, 2026-05-21)
+  - Internal Atlan Confluence — "Context Studio — MCP Capabilities, Architecture & Code Provenance" (2026-05-20)
+  - Internal Atlan Confluence — "Atlan Context Engine" (2026-05-01)
+  - Internal Atlan Confluence — "Context Studio Audit" (2026-05-22)
+  - Internal Atlan issue tracker — "Context Repository TypeDef" (2026-05-07)
+  - Internal Atlan issue tracker — "Context Repositories display as SKILL asset type in catalog" (2026-05-29)
+  - Internal Atlan GitHub — agent-toolkit PR "add create_context_repos and create_skills tools" (2026-05-21)
+  - Internal Atlan GitHub — atlas-metastore PR "Relationship policies for Skill and Context Repository associations" (2026-05-07)
+  - Internal Atlan Slack — engineering channel threads (Apr–May 2026)
+  - Internal Atlan Pulse — "Q&A: Agent Development and Context Repositories" (2026-05-21)
   - Atlan Activate 2026 — "The Context Layer, Live" marketing site (atlan.com/activate)
 applies_when:
   workloads: [atlan-internal-agent-builds, customer-facing-data-agents, nl2sql-agents, multi-runtime-agent-deployments, cross-team-agent-stacks]
@@ -34,7 +34,7 @@ Context repos are one option among several. The SE/FDE decision is not *"should 
 
 ## What a context repo actually is
 
-A `ContextRepository` is a concrete Atlas typedef in the `Agentic` supertype hierarchy. The shape, per the public type reference and the internal Linear ticket (TTD-105):
+A `ContextRepository` is a concrete Atlas typedef in the `Agentic` supertype hierarchy. The shape, per the public type reference and the internal typedef ticket:
 
 ```
 Catalog
@@ -135,11 +135,11 @@ The composition pattern, in the framing Sushovan put on it in April: *"Agents wi
 
 Where the boundaries get fuzzy in practice:
 
-- **Repo vs standalone Skill** — Both produce `Skill` entities in Atlas; both get TPuf rows in `{tenant}_atlan_skills`; both are searchable by `search_skills_tool`. The difference is the parent: a Skill *with* a `contextSourceRepository` belongs to a repo; one without is standalone. SYSTEM and CUSTOM skills exist independently. Practically: if a behavior is one of many capabilities a domain agent needs, it lives inside a repo; if it's a platform-wide utility (`list-lineage-impact`, `find-data-product-owner`), it's a standalone Skill. The Atlan-skills GitHub repo (`atlanhq/atlan-skills`) is a parallel publishing surface for standalone skills, populated by Anirudh in early May 2026 for customer demos through Cursor and Claude Code.
+- **Repo vs standalone Skill** — Both produce `Skill` entities in Atlas; both get TPuf rows in `{tenant}_atlan_skills`; both are searchable by `search_skills_tool`. The difference is the parent: a Skill *with* a `contextSourceRepository` belongs to a repo; one without is standalone. SYSTEM and CUSTOM skills exist independently. Practically: if a behavior is one of many capabilities a domain agent needs, it lives inside a repo; if it's a platform-wide utility (`list-lineage-impact`, `find-data-product-owner`), it's a standalone Skill. The Atlan-skills GitHub repo (`atlanhq/atlan-skills`) is a parallel publishing surface for standalone skills, populated by the platform team in early May 2026 for customer demos through Cursor and Claude Code.
 - **Repo vs MDLH query** — A repo's `semantic_models/*.yaml` describes how to *talk about* a table. MDLH gives you the table itself. The agent ideally reads the YAML for definitions and joins, then queries MDLH for the actual rows. Trying to encode operational answers in repo artifacts (rather than as MDLH queries the agent runs) is a known anti-pattern; the repo gets stale fast.
 - **Repo vs code-resident skill** — If your agent is single-purpose, single-team, and you don't need other agents to consume the same context, code-resident is faster. The repo earns its weight when *another agent* needs the same context.
 
-The shared-context pitch is real but conditional. The headline on the Activate 2026 site — *"One Context Repo, shared across every agent in your stack via MCP and native integrations, and improved continuously"* — describes a working pattern (Medtronic's HR Cortex repo shared across the analyst agent + MoveWorks rollout is a live example). But the sharing-discipline assumes the *consuming agents* respect the repo's framing — if one agent treats `revenue.yml` as gospel and another silently overrides definitions in its prompt, the shared-repo guarantee dissolves.
+The shared-context pitch is real but conditional. The headline on the Activate 2026 site — *"One Context Repo, shared across every agent in your stack via MCP and native integrations, and improved continuously"* — describes a working pattern (a healthcare enterprise's HR context repo shared across an analyst agent + a service-desk assistant rollout is a live example). But the sharing-discipline assumes the *consuming agents* respect the repo's framing — if one agent treats `revenue.yml` as gospel and another silently overrides definitions in its prompt, the shared-repo guarantee dissolves.
 
 ## Per-output dialect translation
 
@@ -150,7 +150,7 @@ This is the most-discussed forward-looking play and the most-misunderstood one i
 
 The state as of late May 2026:
 
-- **Cortex Analyst YAML** — Implemented. Public docs page exists ("Certify and deploy a context repository to Snowflake Cortex Analyst"). Customer-running: Medtronic HR Headcount, ColPal P&L + Nielsen, others. The YAML *is* the semantic model the Cortex Analyst consumes.
+- **Cortex Analyst YAML** — Implemented. Public docs page exists ("Certify and deploy a context repository to Snowflake Cortex Analyst"). Customer-running at multiple enterprise tenants (HR headcount; CPG P&L + syndicated retail models). The YAML *is* the semantic model the Cortex Analyst consumes.
 - **Databricks Genie Metric Views + Genie Space** — Implemented. Public doc: "Deploy a context repository to Databricks Genie."
 - **Generic MCP** — The default. Every repo is consumable via `search_skills_tool` / `get_context_repo` / `get_skill_artifact_content` regardless of runtime.
 - **Claude Skills format** — Aspirational at the platform level, working at the demo level via `atlanfs` (the May 8 POC mounts repo artifacts as a `./atlan/skills/<name>/SKILL.md` tree). Conceptually clean — Claude Code reads it as native filesystem skills. Not yet a GA "publish to Claude Skill" path.
@@ -181,7 +181,7 @@ Be honest: most agent builds in mid-2026 don't need this.
 
 ## Failure modes and gotchas
 
-1. **The "SKILL asset type in catalog" UX bug.** Per Linear CTX-417 (open as of 2026-05-29), context repos display as `SKILL` asset type in the customer-facing catalog browser. Customers see "SKILL" and get confused — *"is this a context repo or a skill?"* The full repo structure renders correctly from the asset page; the type label is the wrong abstraction at the catalog list level. Workaround: explain the model when demoing.
+1. **The "SKILL asset type in catalog" UX bug.** Per a tracked internal issue (open as of 2026-05-29), context repos display as `SKILL` asset type in the customer-facing catalog browser. Customers see "SKILL" and get confused — *"is this a context repo or a skill?"* The full repo structure renders correctly from the asset page; the type label is the wrong abstraction at the catalog list level. Workaround: explain the model when demoing.
 
 2. **No update-in-place for artifacts.** As of May 2026: no `PATCH` for artifact content. To edit, add a new artifact with the same `display_name` — the old entity persists as an orphan in Atlas. Cleanup is manual. Anyone authoring repos via MCP at scale should expect orphans.
 
@@ -201,11 +201,11 @@ Be honest: most agent builds in mid-2026 don't need this.
 
 10. **V3 vs V2 tenant fragmentation.** Per Ghazal's clarification in April: typedefs are live on all tenants, but the demo-version-3 Context Studio is only on `home`, `dsm`, `projectred`. Customer tenants run V2. Don't assume parity between the demo tenant a customer was shown and the tenant they'll be using.
 
-11. **The "is this an agent or a repo" naming controversy.** Internal Pulse Q&A (May 21, 2026, Prashant + Shivansh): audience asked *"why are these called 'agents' rather than 'repos'?"* Prashant's framing: the context repository *is* the agent's definition and consciousness; the model and runtime are commoditized. Worth knowing internally that the product framing is shifting — *"agent"* and *"context repo"* are increasingly the same thing in Atlan's marketing surface, which can confuse customers who think of an "agent" as the running process.
+11. **The "is this an agent or a repo" naming controversy.** Internal Pulse Q&A (May 21, 2026): audience asked *"why are these called 'agents' rather than 'repos'?"* The engineering framing given: the context repository *is* the agent's definition and consciousness; the model and runtime are commoditized. Worth knowing internally that the product framing is shifting — *"agent"* and *"context repo"* are increasingly the same thing in Atlan's marketing surface, which can confuse customers who think of an "agent" as the running process.
 
 ## Internal disagreement worth knowing
 
-There's a live tension in the design docs (Amit Prabhu's "Atlan Context Engine" page, April–May 2026) between two framings:
+There's a live tension in the design docs (the "Atlan Context Engine" design page, April–May 2026) between two framings:
 
 - **Tightly-coupled context repo model** — the repo is a standalone primitive with its own approval workflows, versioning, lifecycle hooks. *Atlan owns the source of truth.*
 - **Unified agent/skill model** — context repo becomes a skill builder on top of a shared agent/skill platform. CLI-driven, where customers store the canonical bytes in their own GitHub and use CI/CD to push to Atlan. *GitHub owns the source of truth, Atlan is a deploy target.*
@@ -240,4 +240,4 @@ For an SE: if a customer's data team is git-native and asks *"can I author this 
 
 A context repo is a real, governed, composable primitive for the agent context layer — useful when context is shared across agents, when governance matters, and when the dialect-translation roadmap pays back. It is not the default answer; the default answer is *"start with code-resident skills + Atlan MCP tools, graduate to a repo when sharing or governance becomes a real requirement."* For Atlan-internal builds where the customer expects to see context governed inside their tenant, the repo is the right call. For internal experiments and single-agent builds where speed matters more than reuse, it's not.
 
-Origin: synthesized from the typedef reference on docs.atlan.com, the internal Confluence architecture audit, the open PRs in atlanhq/agent-toolkit and atlanhq/atlas-metastore, Linear tickets TTD-105 / TTD-700 / CTX-393 / CTX-417, the #collab-context-engineering-studio and #temp-skills-asset-project Slack channels, and the Activate 2026 / Mastercard / Lowes / Gap / Medtronic / ColPal customer-call corpus.
+Origin: synthesized from the typedef reference on docs.atlan.com, the internal Confluence architecture audit, the open PRs in atlanhq/agent-toolkit and atlanhq/atlas-metastore, internal issue-tracker tickets (2026-05), internal engineering Slack channels, and an Activate-2026 customer-call corpus spanning five enterprise accounts.

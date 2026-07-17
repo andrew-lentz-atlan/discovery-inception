@@ -86,7 +86,7 @@ When the same fabricated slug appears across multiple runs, the model is telling
 
 ## Provenance
 
-This anti-pattern was extracted from the P&G FHC iteration documented in findings/09. The first compare_inception run reported 20 → 20 citation parity between main and the patterns-deepening branch, which looked like no lift. After fixing the citation verifier to check file existence, the real number was 20 → 15 — actual citation count *dropped*, with 5 of the "new" citations being fabricated. The fabrication count is itself an honest signal that this use case (analyst-flavored data-resident workload) doesn't anchor as cleanly to our existing patterns as the SE co-pilot use case does.
+This anti-pattern was extracted from the analyst-copilot iteration documented in findings/09. The first compare_inception run reported 20 → 20 citation parity between main and the patterns-deepening branch, which looked like no lift. After fixing the citation verifier to check file existence, the real number was 20 → 15 — actual citation count *dropped*, with 5 of the "new" citations being fabricated. The fabrication count is itself an honest signal that this use case (analyst-flavored data-resident workload) doesn't anchor as cleanly to our existing patterns as the SE co-pilot use case does.
 
 ## Hard rule for synthesizer prompts
 
